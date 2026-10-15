@@ -1,0 +1,2880 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- ✅ PWA — Instalação do App -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#D4AF37">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="IBN Diamantino">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="description" content="Igreja Batista Nacional Diamantino — Família para pertencer">
+    <title>Igreja Batista Nacional Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0A1A3F',
+                        secondary: '#D4AF37',
+                        accent: '#1E3A8A',
+                        light: '#F8F9FC',
+                        dark: '#0F172A'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        .video-card:hover { transform: translateY(-5px); transition: all 0.3s ease; }
+        
+        .hero-banner {
+            background: linear-gradient(rgba(10, 26, 63, 0.75), rgba(10, 26, 63, 0.65)), 
+                        url('banner-ibn.jpg');
+            background-size: cover;
+            background-position: center;
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
+        }
+        .install-banner {
+            position: fixed;
+            bottom: 70px;
+            right: 20px;
+            max-width: 320px;
+            background: #fff9e6;
+            border: 1px solid #ffd900;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 99;
+            display: none;
+        }
+        .live-indicator {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+        .month-toggle {
+            cursor: pointer;
+            user-select: none;
+        }
+        .month-toggle:hover {
+            color: #D4AF37;
+        }
+        .month-videos { overflow: hidden; transition: max-height 0.35s ease; }
+        .month-videos.collapsed { max-height: 0; padding-top: 0 !important; padding-bottom: 0 !important; }
+        .month-videos.expanded { max-height: 4000px; }
+        #mapaCelulas {
+            height: 450px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 768px) {
+            .hero-banner { min-height: 70vh; }
+            #mapaCelulas { height: 380px; }
+        }
+        /* ✅ Player de Louvores */
+        body { padding-bottom: 60px; }
+        #playerFixo.tocando { border-top: 2px solid #D4AF37; }
+    </style>
+</head>
+<body class="bg-light text-gray-800 font-sans antialiased">
+    <!-- ✅ Aviso de Instalação do App (Android / Chrome) -->
+    <div id="installBanner" class="install-banner p-4">
+        <div class="flex items-start gap-3">
+            <div class="flex-1">
+                <p class="font-bold text-primary mb-1">Instalar App IBN</p>
+                <p class="text-sm text-gray-600 mb-3">Acesse mais rápido, mesmo offline</p>
+                <button id="btnInstalar" class="bg-secondary text-primary px-4 py-2 rounded-md font-bold w-full hover:bg-yellow-400">
+                    <i class="fa fa-download mr-2"></i> Instalar Agora
+                </button>
+            </div>
+            <button id="btnFecharAviso" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+    </div>
+
+    <!-- ✅ Modal de instruções para instalar (iPhone / iPad / outros) -->
+    <div id="modalInstalar" class="fixed inset-0 z-[100] hidden items-center justify-center p-4" style="background:rgba(0,0,0,0.55);">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 relative">
+            <button type="button" id="btnFecharModalInstalar" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            <div class="text-center mb-4">
+                <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-secondary flex items-center justify-center">
+                    <i class="fa fa-mobile text-3xl text-primary"></i>
+                </div>
+                <h3 class="text-lg font-bold text-primary">Instalar App IBN</h3>
+                <p class="text-sm text-gray-500 mt-1">Adicione o atalho na tela inicial</p>
+            </div>
+            <div id="instrucoesIOS" class="hidden space-y-3 text-sm text-gray-700">
+                <p class="font-semibold text-primary">No iPhone / iPad (Safari):</p>
+                <ol class="list-decimal list-inside space-y-2">
+                    <li>Toque no botão <strong>Compartilhar</strong> <i class="fa fa-share-square-o text-blue-500"></i> (barra inferior)</li>
+                    <li>Role e toque em <strong>“Adicionar à Tela de Início”</strong></li>
+                    <li>Toque em <strong>Adicionar</strong></li>
+                </ol>
+                <p class="text-xs text-gray-500 mt-2">O ícone da IBN aparecerá na sua tela inicial.</p>
+            </div>
+            <div id="instrucoesAndroid" class="hidden space-y-3 text-sm text-gray-700">
+                <p class="font-semibold text-primary">No Android:</p>
+                <ol class="list-decimal list-inside space-y-2">
+                    <li>Toque nos <strong>três pontinhos</strong> <i class="fa fa-ellipsis-v"></i> do navegador</li>
+                    <li>Toque em <strong>“Instalar aplicativo”</strong> ou <strong>“Adicionar à tela inicial”</strong></li>
+                    <li>Confirme a instalação</li>
+                </ol>
+                <p class="text-xs text-gray-500 mt-2">O app IBN ficará disponível como um aplicativo.</p>
+            </div>
+            <div id="instrucoesDesktop" class="hidden space-y-3 text-sm text-gray-700">
+                <p class="font-semibold text-primary">No computador:</p>
+                <p>No Chrome ou Edge, clique no ícone de instalação na barra de endereço, ou no menu → “Instalar IBN Diamantino”.</p>
+            </div>
+            <button type="button" id="btnOkModalInstalar" class="mt-5 w-full bg-primary text-white py-3 rounded-xl font-bold hover:bg-accent">
+                Entendi
+            </button>
+        </div>
+    </div>
+
+    <!-- ✅ Aviso de usuário logado (uma única mensagem) + Sair -->
+    <div id="avisoLogado" class="bg-green-50 border-b border-green-200 py-2 px-4 text-center hidden">
+        <span class="text-green-700 text-sm inline-flex flex-wrap items-center justify-center gap-2">
+            <span>
+                <i class="fa fa-check-circle mr-1"></i>
+                Olá, <strong id="nomeUsuario"></strong>! Você está logado(a).
+            </span>
+            <button type="button" id="btnSairBanner" class="text-xs font-bold text-red-600 border border-red-300 bg-white px-3 py-1 rounded-full hover:bg-red-50">
+                Sair / Trocar conta
+            </button>
+        </span>
+    </div>
+
+    
+    <!-- Aniversariantes (somente membros logados) -->
+    
+    <!-- Aviso de escala de serviço (dia anterior / no dia) -->
+    <div id="bannerEscalaServico" class="hidden bg-indigo-700 text-white py-2.5 px-4 text-center text-sm font-semibold shadow">
+        <span id="textoBannerEscala"></span>
+        <button type="button" id="btnConfirmarEscalaBanner" class="ml-2 bg-white text-indigo-800 px-2 py-0.5 rounded text-xs font-bold">✓ Confirmei que recebi</button>
+        <button type="button" id="btnDetalheEscala" class="underline ml-2 font-bold">Ver detalhes</button>
+    </div>
+
+    <div id="bannerAniversario" class="hidden bg-gradient-to-r from-pink-500 to-rose-500 text-white py-2 px-4 text-center text-sm font-semibold shadow cursor-pointer">
+        <span id="textoBannerAniv"></span>
+        <button type="button" id="btnAbrirAniv" class="underline ml-2 font-bold">Ver e homenagear →</button>
+    </div>
+    <div id="modalAniversariantes" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[90] p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="sticky top-0 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-5 py-3 flex justify-between items-center rounded-t-2xl">
+                <h3 class="font-bold text-lg">🎂 Aniversariantes</h3>
+                <button type="button" id="btnFecharAniv" class="text-2xl leading-none hover:opacity-80">&times;</button>
+            </div>
+            <div class="p-5 space-y-4 text-sm">
+                <div id="boxAnivProprio" class="hidden rounded-xl bg-pink-50 border border-pink-200 p-4 text-center">
+                    <p class="text-2xl mb-1">🎉</p>
+                    <p class="font-bold text-pink-700 text-lg">Feliz aniversário, <span id="nomeAnivProprio"></span>!</p>
+                    <p class="text-gray-600 mt-1">A família IBN Diamantino celebra o seu dia com muita alegria. Que Deus abençoe sua vida!</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-primary mb-2">Hoje</h4>
+                    <div id="listaAnivHoje" class="space-y-2"></div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-primary mb-2">Próximos 8 dias</h4>
+                    <div id="listaAnivProx" class="space-y-2"></div>
+                </div>
+                <div id="boxEnviarAniv" class="border-t pt-4 space-y-3">
+                    <h4 class="font-bold text-primary">Enviar feliz aniversário</h4>
+                    <p class="text-xs text-gray-500">Para: <strong id="nomeDestAniv"></strong></p>
+                    <textarea id="textoMsgAniv" rows="5" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" id="btnWaAniv" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold hover:bg-green-700">
+                            <i class="fa fa-whatsapp"></i> Enviar no WhatsApp
+                        </button>
+                        <button type="button" id="btnCopiarAniv" class="flex-1 border border-primary text-primary py-2.5 rounded-lg font-bold hover:bg-primary hover:text-white">
+                            Copiar mensagem
+                        </button>
+                    </div>
+                    <p id="msgAnivStatus" class="text-xs text-center hidden"></p>
+                </div>
+                <p class="text-xs text-gray-400 text-center">Recurso exclusivo para membros logados.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ ALERTA DO DIA (barra dourada no topo — restaurada do que funcionava bem) -->
+    <div id="alertaDoDia" class="hidden bg-secondary text-primary py-2.5 px-4 text-center font-bold shadow-sm">
+        <span id="textoAlertaDia"></span>
+        <a id="linkAlertaDia" href="#celulas" class="underline ml-2 text-sm font-semibold hover:opacity-80"></a>
+    </div>
+
+    <!-- ✅ REDES + INSTALAR APP -->
+    <div id="barraTopoUtil" class="bg-primary text-white">
+        <div class="container mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <div class="flex items-center gap-3">
+                <span class="text-white/70 text-xs hidden sm:inline">Siga a IBN:</span>
+                <a href="https://www.instagram.com/ibndiamantino" target="_blank" rel="noopener"
+                   class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center hover:scale-110 transition" title="Instagram">
+                    <i class="fa fa-instagram text-white"></i>
+                </a>
+                <a href="https://youtube.com/@ibndiamantino" target="_blank" rel="noopener"
+                   class="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center hover:scale-110 transition" title="YouTube">
+                    <i class="fa fa-youtube-play text-white"></i>
+                </a>
+            </div>
+            <button type="button" id="btnBaixarApp" class="inline-flex items-center gap-2 bg-secondary text-primary px-3 py-1.5 rounded-full font-bold text-xs hover:bg-yellow-400 transition">
+                <i class="fa fa-download"></i> Baixar / Instalar App
+            </button>
+        </div>
+    </div>
+
+    <!-- ✅ Cabeçalho -->
+
+    <header class="bg-primary/95 text-white sticky top-0 z-50 shadow-md backdrop-blur-sm">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="#inicio" class="flex items-center gap-2">
+                <span class="text-2xl font-bold text-secondary">IBN</span>
+                <span class="hidden sm:inline text-sm">Família para pertencer</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-4 text-sm">
+                <a href="#inicio" class="border-b-2 border-secondary pb-1 font-bold">Início</a>
+                <a href="#celulas" class="hover:text-secondary transition-colors">Células</a>
+                <a href="#eventos" class="hover:text-secondary transition-colors">Programação</a>
+                <a href="eventos.html" class="hover:text-secondary transition-colors font-bold text-secondary">Eventos</a>
+                <a href="#transmissoes" class="hover:text-secondary transition-colors flex items-center gap-1">
+                    <i class="fa fa-play-circle text-xs"></i> Ao Vivo
+                </a>
+                <a href="ministerios.html" class="hover:text-secondary transition-colors">Ministérios</a>
+                <a href="fotos.html" class="hover:text-secondary transition-colors">Fotos</a>
+                <a href="#biblia" class="hover:text-secondary transition-colors">Bíblia</a>
+                <a href="#devocional" class="hover:text-secondary transition-colors">Devocional</a>
+                <a href="#oracao" class="hover:text-secondary transition-colors flex items-center gap-1">
+                    <i class="fa fa-heart text-xs"></i> Oração
+                </a>
+                <a href="#doacao" class="hover:text-secondary transition-colors">Doação</a>
+                <a href="adminlogin.html" id="linkGestao" class="hover:text-secondary transition-colors hidden font-semibold">Gestão</a>
+                <a href="#mais" class="hover:text-secondary transition-colors">Mais</a>
+            </nav>
+            <div class="hidden md:flex items-center gap-3">
+                <div id="areaVisitante" class="flex gap-3">
+                    <a href="cadastro.html" class="bg-secondary text-primary px-4 py-2 rounded-md font-bold text-sm hover:bg-yellow-400 transition-colors">
+                        <i class="fa fa-user-plus mr-1"></i> Seja Membro
+                    </a>
+                    <a href="login.html" class="border border-white/40 px-4 py-2 rounded-md text-sm hover:bg-white/10 transition-colors">Entrar</a>
+                </div>
+                <div id="areaLogado" class="hidden flex items-center gap-3">
+                    <a href="area-membro.html" id="botaoUsuario" class="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-md cursor-pointer hover:bg-white/20">
+                        <i class="fa fa-user-circle"></i>
+                        <span id="nomeMenu" class="text-sm">Usuário</span>
+                    </a>
+                    <button type="button" id="btnSairDesktop" class="text-xs text-red-300 hover:text-red-200 px-2" title="Sair">
+                        <i class="fa fa-sign-out"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="button" class="md:hidden flex items-center gap-2 bg-secondary text-primary px-3 py-2 rounded-lg font-bold text-sm shadow" id="btnMenu" aria-label="Abrir menu">
+                <i class="fa fa-bars text-lg" id="iconMenu"></i>
+                <span id="txtMenu">Menu</span>
+            </button>
+        </div>
+        <!-- Menu mobile reduzido (sem tela cheia — evita travar) -->
+        <div id="menuMobile" class="md:hidden hidden px-4 pb-4 border-t border-white/10" style="background-color:#0A1A3F;">
+            <nav class="flex flex-col text-white text-sm pt-2">
+                <a href="#celulas" class="menu-link py-3 border-b border-white/15">Células</a>
+                <a href="#eventos" class="menu-link py-3 border-b border-white/15">Programação</a>
+                <a href="eventos.html" class="menu-link py-3 border-b border-white/15 font-bold" style="color:#D4AF37;">Eventos</a>
+                <a href="ministerios.html" class="menu-link py-3 border-b border-white/15">Ministérios</a>
+                <a href="#biblia" class="menu-link py-3 border-b border-white/15">Bíblia</a>
+                <a href="#devocional" class="menu-link py-3 border-b border-white/15">Devocional</a>
+                <a href="#oracao" class="menu-link py-3 border-b border-white/15">Oração</a>
+                <a href="adminlogin.html" id="linkGestaoMobile" class="menu-link py-3 border-b border-white/15 hidden font-semibold">Gestão</a>
+            </nav>
+            <div id="areaVisitanteMobile" class="flex flex-col gap-2 mt-3">
+                <a href="cadastro.html" class="px-4 py-2.5 rounded-lg font-bold text-center" style="background-color:#D4AF37;color:#0A1A3F;">Seja Membro</a>
+                <a href="login.html" class="border border-white px-4 py-2.5 rounded-lg text-center">Entrar</a>
+            </div>
+            <div id="areaLogadoMobile" class="hidden flex flex-col gap-2 mt-3">
+                <a href="area-membro.html" class="border border-white/40 px-4 py-2.5 rounded-lg text-center">Minha Área</a>
+                <a href="#" id="btnSairMobile" class="px-4 py-2.5 rounded-lg text-center" style="color:#fca5a5;">Sair</a>
+            </div>
+            <button type="button" id="btnFecharMenu" class="mt-3 w-full py-2.5 rounded-lg text-sm font-bold text-white border border-white/30">
+                Fechar menu
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- ✅ Seção Hero — com destaque de vídeo restaurado -->
+        <section id="inicio" class="hero-banner text-white py-20">
+            <div class="container mx-auto px-4 text-center">
+                <p class="inline-block bg-white/10 px-4 py-1 rounded-full text-sm mb-8">● Boas-vindas à nossa família</p>
+                <h1 class="text-5xl md:text-7xl font-bold mb-4 text-secondary tracking-wider">JESUS</h1>
+                <h2 class="text-2xl md:text-3xl mb-6 font-light">Ele é o caminho, a verdade e a vida</h2>
+                <p class="text-lg md:text-xl mb-6 text-gray-200 max-w-2xl mx-auto">
+                    Uma comunidade de fé, amor e esperança. Venha crescer espiritualmente conosco.
+                </p>
+                <div class="mb-6 flex flex-wrap justify-center gap-3">
+                    <a href="cadastro.html" class="inline-flex items-center gap-2 bg-secondary text-primary px-6 py-3 rounded-lg font-bold text-base shadow-lg hover:bg-yellow-400 transition">
+                        <i class="fa fa-user-plus"></i> Seja Membro
+                    </a>
+                    <a href="login.html" class="inline-flex items-center gap-2 border-2 border-white/50 px-5 py-3 rounded-lg font-semibold text-sm hover:bg-white/10 transition">
+                        Entrar
+                    </a>
+                </div>
+                <div id="destaqueVideo" class="max-w-2xl mx-auto mb-8 bg-black/30 rounded-xl p-6 backdrop-blur-sm">
+                    <span class="text-gray-300">Última transmissão — 22/09/2026</span>
+                    <a href="https://youtu.be/2kOBSVtDEpM" target="_blank" rel="noopener" class="block mt-4">
+                        <img src="https://i.ytimg.com/vi/2kOBSVtDEpM/hqdefault.jpg"
+                             alt="VERDADEIROS AMIGOS - Pr Maxsoel Guilhen"
+                             class="w-full max-w-md mx-auto rounded-lg shadow-lg">
+                        <p class="mt-3 font-bold text-lg text-white">VERDADEIROS AMIGOS - Pr Maxsoel Guilhen</p>
+                        <span class="inline-block mt-2 bg-secondary text-primary px-5 py-2.5 rounded-md font-bold hover:bg-yellow-400 transition">
+                            <i class="fa fa-play mr-2"></i> Ver Último Culto
+                        </span>
+                    </a>
+                </div>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="#transmissoes" class="bg-secondary text-primary px-8 py-3 rounded-md font-bold text-lg hover:bg-yellow-400 transition-colors">
+                        <i class="fa fa-play mr-2"></i> Ver Transmissões
+                    </a>
+                    <a href="eventos.html" class="bg-white/20 hover:bg-white/30 px-8 py-3 rounded-md font-bold text-lg transition-colors border border-white/30">
+                        <i class="fa fa-calendar mr-2"></i> Eventos e Inscrições
+                    </a>
+                    <a href="#celulas" class="bg-white/20 hover:bg-white/30 px-8 py-3 rounded-md font-bold text-lg transition-colors border border-white/30">
+                        <i class="fa fa-map-marker mr-2"></i> Encontrar Célula
+                    </a>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- 📖 BÍBLIA — busca rápida livro → capítulo → versículo -->
+        <section id="biblia" class="py-12 md:py-16 bg-gradient-to-b from-[#faf6ef] to-white border-y border-[#e8dcc8]">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-stretch bg-white rounded-2xl shadow-lg border border-[#d4c4a8]/60 overflow-hidden">
+                        <div class="md:w-2/5 bg-gradient-to-br from-primary to-accent text-white p-8 flex flex-col items-center justify-center text-center relative">
+                            <div class="text-7xl md:text-8xl mb-3 leading-none" aria-hidden="true">📖</div>
+                            <h2 class="text-2xl md:text-3xl font-bold text-secondary tracking-wide">Bíblia Sagrada</h2>
+                            <p class="text-sm text-white/80 mt-2 max-w-xs">Consulte a Palavra aqui no site — NVI ou Almeida Corrigida Fiel</p>
+                            <p class="text-xs text-white/50 mt-4">IBN Diamantino</p>
+                        </div>
+                        <div class="md:w-3/5 p-6 md:p-8 flex flex-col">
+                            <p class="text-sm text-gray-600 mb-4">Escolha <strong>versão</strong>, depois <strong>livro</strong>, <strong>capítulo</strong> e <strong>versículo</strong> — só aparecem opções que existem na Bíblia.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-primary mb-1">Versão</label>
+                                    <select id="bibHomeVersao" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white">
+                                        <option value="nvi" selected>NVI — Nova Versão Internacional</option>
+                                        <option value="acf">ACF — Almeida Corrigida Fiel</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-primary mb-1">Livro</label>
+                                    <select id="bibHomeLivro" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white" disabled>
+                                        <option value="">Aguardando…</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-primary mb-1">Capítulo</label>
+                                    <select id="bibHomeCap" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white" disabled>
+                                        <option value="">—</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-primary mb-1">Versículo</label>
+                                    <select id="bibHomeVer" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white" disabled>
+                                        <option value="">—</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="bibHomeResultado" class="mt-2 flex-1 min-h-[100px] rounded-xl border border-[#e8dcc8] bg-[#faf6ef] p-4">
+                                <p id="bibHomeStatus" class="text-sm text-gray-500">Selecione livro, capítulo e versículo para ler.</p>
+                                <p id="bibHomeRef" class="hidden text-xs font-bold text-primary mb-2"></p>
+                                <div id="bibHomeTexto" class="hidden text-base text-gray-800 leading-relaxed font-serif space-y-2"></div>
+                            </div>
+                            <div id="bibHomeNav" class="hidden flex flex-wrap gap-2 mt-3 items-center justify-between">
+                                <button type="button" id="bibHomeAnt" class="px-3 py-2 rounded-lg border border-primary/30 text-primary text-sm font-bold hover:bg-primary/5">← Anterior</button>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" id="bibHomeCont" class="px-3 py-2 rounded-lg bg-secondary text-primary text-sm font-bold hover:bg-yellow-400">Continuar lendo (+3)</button>
+                                    <button type="button" id="bibHomeProx" class="px-3 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-accent">Próximo →</button>
+                                </div>
+                            </div>
+                            <p id="bibHomeMsg" class="text-xs text-gray-400 mt-2">Na primeira consulta a Bíblia é baixada uma vez; depois fica rápida neste aparelho.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ✅ CÉLULAS — MAPA INTERATIVO (restaurado do index 1) -->
+        <section id="celulas" class="py-16 bg-gray-50">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-4 text-primary">Encontre a Célula Mais Próxima</h2>
+                <p class="text-center text-gray-600 mb-2">Terça-feira às 20h — nas casas</p>
+                <p class="text-center text-gray-500 text-sm mb-8">Sábado: Adolescentes (18h) e Jovens (20h) — local definido pelo líder da célula (veja na página da célula ou com o líder; o local do dia pode ser anunciado minutos antes)</p>
+
+                <div class="max-w-3xl mx-auto mb-6">
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+                        <button id="btnLocalizar" class="bg-primary text-white px-6 py-3 rounded-md font-bold hover:bg-accent">
+                            <i class="fa fa-location-arrow mr-2"></i> Usar Minha Localização
+                        </button>
+                        <a href="https://www.google.com/maps/search/?api=1&query=Igreja+Batista+Nacional+Diamantino" target="_blank" 
+                           class="bg-white text-gray-700 px-6 py-3 rounded-md font-bold hover:bg-gray-100 border">
+                            <i class="fa fa-map-o mr-2"></i> Abrir no Google Maps
+                        </a>
+                    </div>
+                    <div id="resultadoProxima" class="hidden bg-white p-4 rounded-xl border-2 border-secondary shadow-sm">
+                    </div>
+                </div>
+                <div class="max-w-4xl mx-auto">
+                    <div id="mapaCelulas" class="w-full"></div>
+                    <p class="text-center text-sm text-gray-500 mt-3">
+                        Clique no marcador para ver detalhes e a distância até você
+                    </p>
+                </div>
+                <div class="max-w-4xl mx-auto mt-8">
+                    <h3 class="text-lg font-bold text-center mb-4 text-primary">Lista Rápida</h3>
+                    <div id="listaCompacta" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                    </div>
+                    <div class="text-center mt-6">
+                        <a href="celulas.html" class="inline-block bg-primary text-white px-6 py-3 rounded-md font-bold hover:bg-accent">
+                            <i class="fa fa-users mr-2"></i> Organização das Células — equipe, membros e relatórios
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ✅ PROGRAMAÇÃO -->
+        <section id="eventos" class="py-16 bg-white">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-10 text-primary">Programação Semanal</h2>
+                <div class="max-w-3xl mx-auto space-y-4">
+                    <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
+                        <h3 class="font-bold text-xl text-primary">Segunda-feira</h3>
+                        <p class="font-semibold">Futebol dos Homens</p>
+                        <p class="text-sm text-gray-500 mt-1">Encontro e comunhão entre os homens da igreja</p>
+                    </div>
+                    <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
+                        <h3 class="font-bold text-xl text-primary">Terça-feira</h3>
+                        <p class="font-semibold">Células nas casas — 20:00</p>
+                        <a href="#celulas" class="text-secondary text-sm font-medium hover:underline">→ Encontrar a mais próxima no mapa</a>
+                    </div>
+                    <div class="border-l-4 border-gray-300 pl-6 py-4 bg-gray-50 rounded-r-lg">
+                        <h3 class="font-bold text-xl text-gray-600">Quinta-feira</h3>
+                        <p class="font-semibold text-gray-500">Culto da Fé — 19:30 <span class="text-gray-400 text-sm">Sem transmissão ao vivo</span></p>
+                    </div>
+                    <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
+                        <h3 class="font-bold text-xl text-primary">Sábado</h3>
+                        <p class="font-semibold">Célula de Adolescentes — 18:00</p>
+                        <p class="font-semibold mt-1">Célula de Jovens — 20:00</p>
+                        <p class="text-sm text-gray-500 mt-1"><i class="fa fa-map-marker text-secondary"></i> Local definido pelo líder a cada sábado</p>
+                    </div>
+                    <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
+                        <h3 class="font-bold text-xl text-primary">Domingo</h3>
+                        <p class="font-semibold">Culto de Celebração — 19:00 <span class="text-red-500 text-sm live-indicator">● AO VIVO</span></p>
+                        <p class="text-sm text-gray-500 mt-1">1º domingo do mês: Culto de Ceia</p>
+                    </div>
+                    <div class="border-l-4 border-gray-300 pl-6 py-4 bg-gray-50 rounded-r-lg">
+                        <h3 class="font-bold text-xl text-gray-600">Sexta antes do 1º domingo do mês</h3>
+                        <p class="font-semibold text-gray-500">Vigília</p>
+                    </div>
+                    <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
+                        <h3 class="font-bold text-xl text-primary">40 Dias de Jejum e Oração</h3>
+                        <p class="font-semibold mt-1">Seg a sex · 05:30 e 18:00 · na Igreja</p>
+                        <p class="text-sm text-gray-500 mt-1">Sáb e dom: o jejum continua em casa · Início 05/10/2026 · 40 dias</p>
+                        <p id="contador40Dias" class="text-sm font-bold text-secondary mt-2"></p>
+                    </div>
+
+                </div>
+                <div class="text-center mt-8 flex flex-wrap gap-3 justify-center">
+                    <button type="button" id="btnVerAgenda" class="inline-block bg-primary text-white px-8 py-3 rounded-md font-bold text-lg hover:opacity-90">
+                        <i class="fa fa-calendar mr-2"></i> Ver agenda
+                    </button>
+                    <a href="eventos.html" class="inline-block bg-secondary text-primary px-8 py-3 rounded-md font-bold text-lg hover:bg-yellow-400">
+                        <i class="fa fa-calendar-plus-o mr-2"></i> Ver Eventos e Fazer Inscrição
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modal Agenda -->
+        <div id="modalAgenda" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[80] p-4">
+            <div class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-xl">
+                <div class="sticky top-0 bg-white border-b px-5 py-3 flex justify-between items-center">
+                    <h3 class="font-bold text-primary text-lg">📅 Agenda da igreja</h3>
+                    <button type="button" id="btnFecharAgenda" class="text-gray-500 hover:text-primary text-xl leading-none">&times;</button>
+                </div>
+                <div class="px-5 py-4 space-y-4 text-sm">
+                    <p class="text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs">
+                        ⚠️ A programação pode sofrer alteração. Confirme no cabeçalho do site ou com a secretaria.
+                    </p>
+                    <div>
+                        <h4 class="font-bold text-primary mb-2">Programação semanal fixa</h4>
+                        <ul class="space-y-1.5 text-gray-700">
+                            <li><strong>Segunda:</strong> Futebol dos homens (quando houver)</li>
+                            <li><strong>Terça:</strong> Células · 20:00</li>
+                            <li><strong>Quinta:</strong> Culto da Fé · 19:30</li>
+                            <li><strong>Sábado:</strong> Célula Adolescentes 18:00 · Jovens 20:00</li>
+                            <li><strong>Domingo:</strong> Culto de Celebração · 19:00 (ao vivo)</li>
+                            <li><strong>40 dias:</strong> Seg–sex 05:30 e 18:00 na igreja · sáb/dom em casa</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-primary mb-2">Avisos do quadro (próximos dias)</h4>
+                        <div id="agendaAvisosLista" class="space-y-2 text-gray-700"></div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-primary mb-2">Eventos com inscrição</h4>
+                        <div id="agendaEventosLista" class="space-y-2 text-gray-700"></div>
+                    </div>
+                    <a href="eventos.html" class="block text-center bg-secondary text-primary font-bold py-2.5 rounded-lg hover:bg-yellow-400">
+                        Ir para inscrição em eventos →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ TRANSMISSÕES — lógica dinâmica restaurada do index 1 -->
+        <section id="transmissoes" class="py-16 bg-gray-50">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-4 text-primary">Transmissões dos Cultos</h2>
+                <p class="text-center text-gray-600 mb-8">Apenas aos Domingos às 19:00</p>
+                <div class="max-w-3xl mx-auto mb-8 bg-white p-6 rounded-xl border-2 border-secondary/30">
+                    <h3 class="text-xl font-bold text-center mb-4 text-primary">📅 Transmissões por Período</h3>
+                    <p class="text-center text-gray-500 text-sm mb-4">Clique no mês para ver os vídeos disponíveis</p>
+                    
+                    <div id="lista-meses" class="space-y-3">
+                        <div class="border rounded-lg overflow-hidden bg-white">
+                            <button type="button" class="month-toggle w-full flex justify-between items-center p-4 font-bold text-left hover:bg-gray-50" data-mes="Setembro de 2026">
+                                <span>Setembro de 2026 <span class="text-gray-400 font-normal text-sm">(3)</span></span>
+                                <i class="fa fa-chevron-down transition-transform rotate-180"></i>
+                            </button>
+                            <div class="month-videos expanded px-4 pb-4">
+                                <div class="grid sm:grid-cols-2 gap-3">
+                                    <a href="https://www.youtube.com/watch?v=2kOBSVtDEpM" target="_blank" rel="noopener"
+                                       class="flex gap-3 p-2 rounded-lg hover:bg-gray-50 border border-gray-100">
+                                        <img src="https://i.ytimg.com/vi/2kOBSVtDEpM/mqdefault.jpg" alt="" class="w-28 h-16 object-cover rounded flex-shrink-0">
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-semibold text-primary line-clamp-2">VERDADEIROS AMIGOS - Pr Maxsoel Guilhen</p>
+                                            <p class="text-xs text-gray-500 mt-1">22/09/2026</p>
+                                        </div>
+                                    </a>
+                                    <a href="https://www.youtube.com/watch?v=yb269GCKtWc" target="_blank" rel="noopener"
+                                       class="flex gap-3 p-2 rounded-lg hover:bg-gray-50 border border-gray-100">
+                                        <img src="https://i.ytimg.com/vi/yb269GCKtWc/mqdefault.jpg" alt="" class="w-28 h-16 object-cover rounded flex-shrink-0">
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-semibold text-primary line-clamp-2">NÃO SE DEIXE VENCER PELA INTIMIDAÇÃO - Missionária Roseli</p>
+                                            <p class="text-xs text-gray-500 mt-1">15/09/2026</p>
+                                        </div>
+                                    </a>
+                                    <a href="https://www.youtube.com/watch?v=3VxCgJf4_Xc" target="_blank" rel="noopener"
+                                       class="flex gap-3 p-2 rounded-lg hover:bg-gray-50 border border-gray-100">
+                                        <img src="https://i.ytimg.com/vi/3VxCgJf4_Xc/mqdefault.jpg" alt="" class="w-28 h-16 object-cover rounded flex-shrink-0">
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-semibold text-primary line-clamp-2">NAO DEIXE O AMOR ESFRIAR - Pr Maxsoel Guilhen</p>
+                                            <p class="text-xs text-gray-500 mt-1">08/09/2026</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-center text-gray-400 text-sm pt-2">
+                            <a href="https://www.youtube.com/@ibndiamantino/streams" target="_blank" class="text-red-600 hover:underline">Ver canal completo no YouTube →</a>
+                        </p>
+                    </div>
+                </div>
+                <div class="text-center mt-6 space-y-4">
+                    <a href="ministerios.html" class="inline-block bg-secondary text-primary px-6 py-3 rounded-md font-bold hover:bg-yellow-400 mr-2">
+                        <i class="fa fa-users mr-2"></i> Conheça e faça parte dos nossos Ministérios
+                    </a>
+                    <a href="https://www.youtube.com/@ibndiamantino/streams" target="_blank" 
+                       class="inline-block bg-primary text-white px-6 py-3 rounded-md font-bold hover:bg-accent">
+                        <i class="fa fa-youtube-play mr-2"></i> Ver TODO o histórico no YouTube
+                    </a>
+                </div>
+            </div>
+        </section>
+        <!-- ✅ DEVOCIONAL DIÁRIO -->
+        <section id="devocional" class="py-16 bg-gradient-to-b from-primary to-accent text-white">
+            <div class="container mx-auto px-4 max-w-3xl">
+                <div class="text-center mb-8">
+                    <p class="text-secondary font-bold text-sm tracking-wide mb-2">TODOS OS DIAS</p>
+                    <h2 class="text-3xl md:text-4xl font-bold mb-3">📖 Devocional Diário</h2>
+                    <p class="text-white/80 max-w-xl mx-auto">
+                        Veja os <strong>últimos devocionais</strong> e toque no episódio desejado. Só aparecem datas que já têm postagem no Spotify.
+                    </p>
+                </div>
+
+                <div class="bg-black/30 rounded-2xl p-3 md:p-4 shadow-xl border border-white/10 mb-6">
+                    <p class="text-secondary text-sm font-bold mb-2 text-center">Veja os últimos devocionais</p>
+                    <iframe
+                        style="border-radius:12px"
+                        src="https://open.spotify.com/embed/show/5hSS9sP5fa0GYBJNP5IqEQ?utm_source=generator&theme=0"
+                        width="100%"
+                        height="232"
+                        frameBorder="0"
+                        allowfullscreen=""
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        title="Devocional Diário IBN Diamantino">
+                    </iframe>
+                    <p class="text-center text-xs text-white/50 mt-2">Lista fina de episódios · só dias com postagem no Spotify</p>
+                </div>
+
+                <div class="flex justify-center mb-10">
+                    <a href="https://open.spotify.com/show/5hSS9sP5fa0GYBJNP5IqEQ" target="_blank" rel="noopener"
+                       class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 py-3 flex items-center gap-2 shadow-lg transition">
+                        <span class="text-xl">🎧</span>
+                        <span class="font-bold">Abrir no Spotify</span>
+                    </a>
+                </div>
+
+                <!-- Prévia das galerias (público vê logos; membro vê fotos reais) -->
+                <div class="grid md:grid-cols-2 gap-6 mt-4">
+                    <div class="bg-white/10 border border-white/15 rounded-2xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-lg">📷 Fotos das Células</h3>
+                            <a href="fotos-celulas.html" id="linkGaleriaCelulas" class="text-xs text-secondary font-bold hover:underline">Ver todas →</a>
+                        </div>
+                        <div id="previewFotosCelulas" class="grid grid-cols-4 gap-2">
+                            <!-- preenchido por JS -->
+                        </div>
+                        <p class="text-xs text-white/50 mt-2">Últimas postagens · toque para abrir a galeria</p>
+                    </div>
+                    <div class="bg-white/10 border border-white/15 rounded-2xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-lg">📷 Fotos dos Ministérios</h3>
+                            <a href="fotos.html" id="linkGaleriaMinisterios" class="text-xs text-secondary font-bold hover:underline">Ver todas →</a>
+                        </div>
+                        <div id="previewFotosMinisterios" class="grid grid-cols-4 gap-2">
+                            <!-- preenchido por JS -->
+                        </div>
+                        <p class="text-xs text-white/50 mt-2">Últimas postagens · toque para abrir a galeria</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ✅ ORAÇÃO — formulário completo restaurado -->
+        <section id="oracao" class="py-16 bg-white">
+            <div class="container mx-auto px-4 max-w-2xl">
+                <h2 class="text-3xl font-bold text-center mb-6 text-primary">Pedido de Oração</h2>
+                <p class="text-center text-lg italic text-gray-600 mb-8">"Confessai as vossas culpas uns aos outros, e orai uns pelos outros." — Tiago 5:16</p>
+                <form id="formOracao" class="space-y-4">
+                    <p class="text-sm text-gray-500 text-center">Para orarmos por você, pedimos pelo menos o <strong>primeiro nome ou apelido</strong>. Pedidos anônimos não são aceitos.</p>
+                    <input type="text" name="nome" id="oracaoNome" placeholder="Seu nome ou apelido *" required minlength="2" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary outline-none">
+                    <input type="email" name="email" id="oracaoEmail" placeholder="E-mail ou WhatsApp (opcional)" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary outline-none">
+                    <textarea name="pedido" placeholder="Seu pedido de oração *" rows="4" required minlength="5" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary outline-none"></textarea>
+                    <button type="submit" class="w-full bg-primary text-white p-3 rounded-md font-bold hover:bg-accent">Enviar Pedido</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ✅ DOAÇÃO — dados oficiais restaurados -->
+        <section id="doacao" class="py-16 bg-gray-50">
+            <div class="container mx-auto px-4 max-w-2xl text-center">
+                <h2 class="text-3xl font-bold mb-6 text-primary">Dízimos e Ofertas</h2>
+                <p class="text-lg italic text-gray-600 mb-8">"Deus ama ao que dá com alegria." — 2 Coríntios 9:7</p>
+                <div class="bg-white p-8 rounded-xl shadow-sm">
+                    <p class="text-sm text-gray-500 mb-2">FUNDAÇÃO MISSÃO DA IGREJA BATISTA NACIONAL DE DIAMANTINO MT</p>
+                    <p class="text-sm text-gray-500 mb-4">CNPJ: 36.158.983/0001-36</p>
+                    <h3 class="text-xl font-bold mb-4 text-primary">Chave PIX</h3>
+                    <p class="text-lg font-mono bg-gray-50 p-3 rounded border mb-4">36.158.983/0001-36</p>
+                    <button onclick="copiarPix()" class="bg-primary text-white px-6 py-3 rounded-md font-bold hover:bg-accent">
+                        <i class="fa fa-copy mr-2"></i> Copiar Chave PIX
+                    </button>
+                    <p id="msgPix" class="mt-3 text-green-600 font-bold hidden">✅ Copiado!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ✅ CONTATO E LOCALIZAÇÃO -->
+        <section id="mais" class="py-16 bg-primary text-white">
+            <div class="container mx-auto px-4 text-center">
+                <h2 class="text-3xl font-bold mb-6">Contato e Localização</h2>
+                <p class="text-lg mb-2"><strong>Igreja Batista Nacional Diamantino</strong></p>
+                <p class="mb-4">Av. Ministro Gilmar Ferreira Mendes, S/N — ao lado do Sicredi<br>Diamantino — MT</p>
+                <p class="mb-4"><i class="fa fa-whatsapp"></i> <a href="tel:+5565996292021" class="text-secondary font-bold">(65) 9 9629-2021</a></p>
+                <div class="flex justify-center gap-4 mb-6">
+                    <a href="https://www.instagram.com/ibndiamantino" target="_blank" rel="noopener" class="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center hover:scale-110 transition" title="Instagram"><i class="fa fa-instagram text-white text-lg"></i></a>
+                    <a href="https://youtube.com/@ibndiamantino" target="_blank" rel="noopener" class="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center hover:scale-110 transition" title="YouTube"><i class="fa fa-youtube-play text-white text-lg"></i></a>
+</div>
+                <a href="https://www.google.com/maps/search/?api=1&query=Av.+Ministro+Gilmar+Ferreira+Mendes,Diamantino-MT" target="_blank" 
+                   class="inline-block bg-secondary text-primary px-6 py-3 rounded-md font-bold hover:bg-yellow-400">
+                    <i class="fa fa-map-marker mr-2"></i> Como Chegar →
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- ✅ RODAPÉ -->
+    <footer class="bg-dark text-white py-8 text-center mb-10">
+        <p class="text-xl font-bold text-secondary mb-2">Igreja Batista Nacional Diamantino</p>
+        <p class="text-sm text-gray-400">© 2026 — "Eu e a minha Casa serviremos ao Senhor." — Josué 24:15</p>
+    </footer>
+
+    <!-- ==================================================
+        🎵 PLAYER DE LOUVORES — Fixo no fundo
+    ================================================== -->
+    <div id="playerFixo" class="fixed bottom-0 left-0 right-0 bg-primary text-white py-2 px-4 shadow-lg z-50">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            <div class="flex-1 min-w-0">
+                <p class="text-xs text-gray-300">🎵 Playlist de Louvores</p>
+                <p id="nomeMusica" class="font-bold text-secondary truncate text-sm">Clique para ouvir</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btnAnterior" class="text-gray-300 hover:text-white transition-colors px-2">
+                    <i class="fa fa-step-backward"></i>
+                </button>
+                <button id="btnPlay" class="w-9 h-9 rounded-full bg-secondary text-primary flex items-center justify-center font-bold hover:bg-yellow-400 transition-colors text-sm">
+                    <i class="fa fa-play"></i>
+                </button>
+                <button id="btnProximo" class="text-gray-300 hover:text-white transition-colors px-2">
+                    <i class="fa fa-step-forward"></i>
+                </button>
+                <div class="flex items-center gap-1 ml-1">
+                    <i class="fa fa-volume-up text-gray-300 text-xs"></i>
+                    <input type="range" id="volume" min="0" max="100" value="65" 
+                        class="w-16 h-1 bg-gray-600 rounded-full appearance-none cursor-pointer">
+                </div>
+                <button id="linkAdmin" class="hidden ml-2 text-xs text-gray-300 hover:text-secondary" title="Gerenciar Playlist">
+                    <i class="fa fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ GOOGLE MAPS API — carregamento com callback (mais confiável) -->
+    <script>
+        window.__mapaPronto = false;
+        function onGoogleMapsReady() {
+            window.__mapaPronto = true;
+            if (typeof initMap === 'function') {
+                try { initMap(); } catch(e) { console.error('initMap:', e); }
+            }
+        }
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDvIb1B_rLoN1VIamugnaw5IJQ85ksBcpM&language=pt-BR&region=BR&callback=onGoogleMapsReady"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+
+    <script>
+        // ==================================================
+        // 🔐 VERIFICAR SESSÃO DO USUÁRIO (usa conta.js)
+        // ==================================================
+        function verificarSessao() {
+            // Preferência: conta.js (ibn_sessao_atual). Fallback: chave antiga.
+            let usuario = null;
+            if (typeof getUsuarioLogado === 'function') {
+                usuario = getUsuarioLogado();
+            }
+            if (!usuario) {
+                try {
+                    const antigo = localStorage.getItem('usuarioLogado') || localStorage.getItem('ibn_sessao_atual');
+                    if (antigo) {
+                        usuario = JSON.parse(antigo);
+                        // Sincroniza as duas chaves (não remove — assim o login permanece)
+                        if (usuario && typeof iniciarSessao === 'function') {
+                            iniciarSessao(usuario);
+                        }
+                    }
+                } catch (e) {}
+            }
+            if (!usuario) return;
+
+            try {
+                document.getElementById('avisoLogado').classList.remove('hidden');
+                document.getElementById('nomeUsuario').textContent = usuario.nome || 'Irmão(ã)';
+                document.getElementById('areaVisitante').classList.add('hidden');
+                document.getElementById('areaLogado').classList.remove('hidden');
+                document.getElementById('nomeMenu').textContent = usuario.nome ? usuario.nome.split(' ')[0] : 'Usuário';
+
+                document.getElementById('areaVisitanteMobile').classList.add('hidden');
+                document.getElementById('areaLogadoMobile').classList.remove('hidden');
+
+                // Gestão: admin/gestor sempre; líderes se tiverem autoridade
+                var lg = document.getElementById('linkGestao');
+                var lgm = document.getElementById('linkGestaoMobile');
+                var pend = (typeof pendenciasDoUsuarioLogado === 'function')
+                    ? pendenciasDoUsuarioLogado(usuario)
+                    : { total: 0, gestao: false, temAutoridade: false, href: 'adminlogin.html' };
+                var mostraGestao = (usuario.nivel === 'admin' || usuario.nivel === 'gestor' || pend.gestao || pend.temAutoridade || pend.total > 0);
+                // Cores de pendência: vermelho cargos, âmbar membros, azul relatórios/modelos; verde = ok
+                var corPend = 'ok';
+                if (pend.total > 0) {
+                    if (pend.nVermelho > 0) corPend = 'vermelho';
+                    else if (pend.nLaranja > 0 || pend.membrosPendentes > 0) corPend = 'laranja';
+                    else if (pend.nAzul > 0) corPend = 'azul';
+                    else corPend = 'laranja';
+                }
+                if (mostraGestao) {
+                    if (lg) {
+                        lg.classList.remove('hidden', 'text-red-500', 'text-amber-400', 'text-blue-400', 'text-emerald-400');
+                        lg.href = pend.href || (usuario.nivel === 'admin' || usuario.nivel === 'gestor' ? 'adminlogin.html' : 'celulas.html');
+                        var bolas = '';
+                        if (corPend === 'ok') {
+                            lg.classList.add('text-emerald-400');
+                            lg.title = 'Gestão — sem pendências';
+                            lg.innerHTML = 'Gestão <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 ml-0.5 align-middle" title="Tudo ok"></span>';
+                        } else {
+                            lg.title = 'Há pendências na sua gestão: ' + (pend.motivos || []).join(' · ');
+                            if (pend.nVermelho > 0) bolas += '<span class="inline-block w-2 h-2 rounded-full bg-red-500 ml-0.5 align-middle" title="Cargos vagos / ministérios"></span>';
+                            if (pend.nLaranja > 0 || (pend.membrosPendentes > 0)) bolas += '<span class="inline-block w-2 h-2 rounded-full bg-amber-400 ml-0.5 align-middle" title="Membros / aprovações"></span>';
+                            if (pend.nAzul > 0) bolas += '<span class="inline-block w-2 h-2 rounded-full bg-blue-400 ml-0.5 align-middle" title="Relatórios / formulários"></span>';
+                            if (!bolas) bolas = '<span class="inline-block w-2 h-2 rounded-full bg-amber-400 ml-0.5 align-middle"></span>';
+                            if (corPend === 'vermelho') lg.classList.add('text-red-500');
+                            else if (corPend === 'azul') lg.classList.add('text-blue-400');
+                            else lg.classList.add('text-amber-400');
+                            lg.innerHTML = 'Gestão ' + bolas;
+                        }
+                    }
+                    if (lgm) {
+                        lgm.classList.remove('hidden', 'text-red-400', 'text-amber-300', 'text-blue-300', 'text-emerald-300');
+                        lgm.href = pend.href || (lg && lg.href) || 'adminlogin.html';
+                        if (corPend === 'ok') {
+                            lgm.classList.add('text-emerald-300');
+                            lgm.title = 'Gestão — sem pendências';
+                            lgm.innerHTML = 'Gestão <span class="text-emerald-300">●</span>';
+                        } else {
+                            lgm.title = 'Há pendências na sua gestão';
+                            var bolasM = '';
+                            if (pend.nVermelho > 0) bolasM += '<span class="text-red-400">●</span> ';
+                            if (pend.nLaranja > 0 || pend.membrosPendentes > 0) bolasM += '<span class="text-amber-300">●</span> ';
+                            if (pend.nAzul > 0) bolasM += '<span class="text-blue-300">●</span> ';
+                            if (!bolasM) bolasM = '<span class="text-amber-300">●</span>';
+                            if (corPend === 'vermelho') lgm.classList.add('text-red-400');
+                            else if (corPend === 'azul') lgm.classList.add('text-blue-300');
+                            else lgm.classList.add('text-amber-300');
+                            lgm.innerHTML = 'Gestão ' + bolasM;
+                        }
+                    }
+                }
+                // Botão Menu (celular): mesma cor — visível sem abrir o menu
+                try {
+                    var btnMenu = document.getElementById('btnMenu');
+                    if (btnMenu && (mostraGestao || pend.total > 0 || usuario.nivel === 'admin' || usuario.nivel === 'gestor')) {
+                        btnMenu.classList.remove('bg-secondary', 'bg-red-500', 'bg-amber-400', 'bg-blue-500', 'bg-emerald-500', 'text-primary', 'text-white');
+                        if (corPend === 'vermelho') {
+                            btnMenu.classList.add('bg-red-500', 'text-white');
+                            btnMenu.title = 'Menu — há pendências (vermelho)';
+                        } else if (corPend === 'laranja') {
+                            btnMenu.classList.add('bg-amber-400', 'text-primary');
+                            btnMenu.title = 'Menu — aprovações / membros';
+                        } else if (corPend === 'azul') {
+                            btnMenu.classList.add('bg-blue-500', 'text-white');
+                            btnMenu.title = 'Menu — relatórios / formulários';
+                        } else {
+                            btnMenu.classList.add('bg-emerald-500', 'text-white');
+                            btnMenu.title = 'Menu — tudo ok';
+                        }
+                    } else if (btnMenu) {
+                        btnMenu.classList.remove('bg-red-500', 'bg-amber-400', 'bg-blue-500', 'bg-emerald-500');
+                        btnMenu.classList.add('bg-secondary', 'text-primary');
+                    }
+                } catch (eMenu) {}
+                if (usuario.nivel === 'admin' || usuario.nivel === 'gestor') {
+                    var la = document.getElementById('linkAdmin');
+                    if (la) la.classList.remove('hidden');
+                }
+                // registra status de notificação (não bloqueia)
+                setTimeout(function() {
+                    if (typeof Notification !== 'undefined' && typeof gravarPermissaoNotifMembro === 'function') {
+                        gravarPermissaoNotifMembro(usuario.id, Notification.permission);
+                    }
+                }, 2000);
+            } catch (e) {
+                console.warn('verificarSessao:', e);
+            }
+        }
+
+        // Botão Sair (banner, menu e desktop) — pede confirmação
+        document.addEventListener('click', function(e) {
+            var alvo = e.target.closest('#btnSairBanner, #btnSairMobile, #btnSairDesktop');
+            if (!alvo) return;
+            e.preventDefault();
+            var ok = confirm(
+                'Deseja sair da sua conta?\n\n' +
+                'Você poderá entrar com outro membro ou usuário em seguida.\n\n' +
+                'Toque em OK para sair ou Cancelar para continuar logado.'
+            );
+            if (!ok) return;
+            if (typeof sair === 'function') {
+                sair();
+            } else {
+                localStorage.removeItem('ibn_sessao_atual');
+                localStorage.removeItem('usuarioLogado');
+                window.location.href = 'login.html';
+            }
+        });
+
+        // Menu mobile reduzido (abre abaixo do cabeçalho, sem travar a tela)
+        (function() {
+            var menu = document.getElementById('menuMobile');
+            var btn = document.getElementById('btnMenu');
+            var icon = document.getElementById('iconMenu');
+            var txt = document.getElementById('txtMenu');
+            if (!menu || !btn) return;
+            function fecharMenu() {
+                menu.classList.add('hidden');
+                if (icon) icon.className = 'fa fa-bars text-lg';
+                if (txt) txt.textContent = 'Menu';
+            }
+            function abrirMenu() {
+                menu.classList.remove('hidden');
+                if (icon) icon.className = 'fa fa-times text-lg';
+                if (txt) txt.textContent = 'Fechar';
+            }
+            btn.addEventListener('click', function() {
+                if (menu.classList.contains('hidden')) abrirMenu();
+                else fecharMenu();
+            });
+            var f1 = document.getElementById('btnFecharMenu');
+            if (f1) f1.addEventListener('click', fecharMenu);
+            menu.querySelectorAll('a').forEach(function(a) {
+                a.addEventListener('click', function() { setTimeout(fecharMenu, 50); });
+            });
+        })();
+
+        // ==================================================
+        // 🎵 PLAYER DE LOUVORES
+        // ==================================================
+        const repertorioPadrao = [
+            { titulo: '500 GRAUS', artista: 'THALES ROBERTO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178280378-d9gm4o.mp3' },
+            { titulo: 'A BOA PARTE', artista: 'FHOP MUSIC', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178719443-2w3g5b.mp3' },
+            { titulo: 'Á ESPREITA DE TI', artista: 'OS BRAVOS', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770316461660-8yl81.mp3' },
+            { titulo: 'A RESPOSTA', artista: 'THALES ROBERTO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192874811-awrz.mp3' },
+            { titulo: 'ABRE OS SELOS', artista: 'NÍVEA SOARES', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192422082-dq5lqm.mp3' },
+            { titulo: 'ACENDE OUTRA VEZ', artista: 'JEFFERSON E SUELLEN', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769180031307-nn54nd.mp3' },
+            { titulo: 'ACLAME AO SENHOR', artista: 'FELIPE RODRIGUES', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179563556-brd8l.mp3' },
+            { titulo: 'ACLAME AO SENHOR', artista: 'MEDELY- MORADA', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178214485-04g4k.mp3' },
+            { titulo: 'AGNUS DEI', artista: 'MATEUS BRITO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195665736-dbu7qf.mp3' },
+            { titulo: 'ÁGUAS PURIFICADORAS+OCEANOS', artista: 'ISAÍAS SAAD', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195767953-68oitq.mp3' },
+            { titulo: 'ALELUIA (QUEM MUITO FOI PERDOADO)', artista: 'ALESSANDRO VILAS BOAS', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192303131-qrgzo9.mp3' },
+            { titulo: 'ALÉM DO IMPOSSÍVEL _ PEDRO • BRASAS  FELIPE RODRIGUES  SALVAON', artista: 'IBN Diamantino', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769176011585-hh6q1.mp3' },
+            { titulo: 'AMO O SENHOR', artista: 'FELIPE RODRIGUES feat MARCUS SALLES', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771506252464-l4gwyq.mp3' },
+            { titulo: 'AOS PÉS DA CRUZ', artista: 'ELI SOARES', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771507938545-0fdnyu.mp3' },
+            { titulo: 'APENAS UM DIA NA SUA CASA', artista: 'MATEUS BRITO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770146990442-knxf4.mp3' },
+            { titulo: 'AQUELE QUE HÁ DE VIR', artista: 'ELEVE MUSIC', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770403916345-5rxlm.mp3' },
+            { titulo: 'ATÉ QUE O SENHOR VENHA', artista: 'CULTURA DO CÉU', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189669291-8qj44k.mp3' },
+            { titulo: 'ATÉ QUE TODA TERRA CANTE', artista: 'GABI SAMPAIO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771505734164-ks0zgb.mp3' },
+            { titulo: 'BOM COMIGO', artista: 'BEATRIZ CRISTINA', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189809290-vb3hzi.mp3' },
+            { titulo: 'BONDADE DE DEUS', artista: 'ISAÍAS SAAD', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179972930-0gd3u.mp3' },
+            { titulo: 'CAIA FOGO', artista: 'FERNANDINHO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179843361-se6z7n.mp3' },
+            { titulo: 'CANÇÃO AO CORDEIRO', artista: 'ISRAEL SALAZAR feat GABRIEL GUEDES', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179015737-rcf9gs.mp3' },
+            { titulo: 'CANÇÃO DE SIMEÃO', artista: 'DROPS', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144373813-rbygm.mp3' },
+            { titulo: 'CANÇÃO DO APOCALIPSE', artista: 'CAROL BRAGA', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178765272-mjxeo.mp3' },
+            { titulo: 'CANÇÃO DOS REDIMIDOS', artista: 'JULIA VITORIA feat NÍVEA SOARES', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770145091104-7y2ceo.mp3' },
+            { titulo: 'CENTRO', artista: 'GUILHERME BAPTISTA', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771506053059-vl6m0d.mp3' },
+            { titulo: 'CLAMO JESUS', artista: 'MARCELO MARKES feat SUED SILVA', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147167731-eo3ps.mp3' },
+            { titulo: 'COLOSSENSES E SUAS LINHAS DE AMOR', artista: 'FHOP MUSIC', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769175381967-3qnd2q.mp3' },
+            { titulo: 'COMUNHÃO', artista: 'GABI SAMPAIO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770317636046-4032q.mp3' },
+            { titulo: 'CONSOLADOR', artista: 'BEATRIZ CRISTINA', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770317889266-n7ra9.mp3' },
+            { titulo: 'CORDEIRO E LEÃO', artista: 'JEFFERSON E SUELLEN', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192142759-h7gpyn.mp3' },
+            { titulo: 'CREIO', artista: 'SARAH BEATRIZ', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144945536-4kqhsg.mp3' },
+            { titulo: 'CRISTO', artista: 'SOM DO REINO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771505988941-lk2ojh.mp3' },
+            { titulo: 'CRISTO+ TUDO É TEU', artista: 'DRPOS', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178023823-2d5xia.mp3' },
+            { titulo: 'DEUS DA MINHA VIDA', artista: 'THALES ROBERTO', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769174410193-wv3ic3.mp3' },
+            { titulo: 'DIGNO DE TUDO', artista: 'CENTRAL 3', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144581612-4xhjc.mp3' },
+            { titulo: 'DIGNO DE TUDO+TE EXALTAMOS', artista: 'FELIPE RODRIGUES', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769190083058-v9mj6o.mp3' },
+            { titulo: 'DIGNO É O SENHOR', artista: 'FELIPE RODRIGUES', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196203275-kuoj0q.mp3' },
+            { titulo: 'DONO DA MINHA AFEIÇÃO', artista: 'FHOP MUSIC', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189580081-s3dez9.mp3' },
+            { titulo: 'É ELE+AGNUS DEI', artista: 'CAROL BRAGA', url: 'https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144640032-8ift5l.mp3' }
+        ];
+
+        function carregarRepertorio() {
+            const salvo = localStorage.getItem('playlistLouvores');
+            if (salvo) {
+                try { return JSON.parse(salvo); }
+                catch (e) { return repertorioPadrao; }
+            }
+            return repertorioPadrao;
+        }
+
+        let REPERTORIO = carregarRepertorio();
+
+        const player = {
+            lista: [],
+            indice: -1,
+            audio: null,
+            estaTocando: false,
+            desbloqueado: false,
+            tentativasErro: 0,
+
+            criarAudio() {
+                const a = new Audio();
+                a.preload = 'metadata';
+                a.setAttribute('playsinline', 'true');
+                a.setAttribute('webkit-playsinline', 'true');
+                a.crossOrigin = 'anonymous';
+                a.addEventListener('ended', () => this.proxima());
+                a.addEventListener('error', () => {
+                    this.tentativasErro++;
+                    if (this.tentativasErro > 8) {
+                        this.estaTocando = false;
+                        this.atualizarUI(false);
+                        const el = document.getElementById('nomeMusica');
+                        if (el) el.textContent = 'Erro ao carregar áudio — toque Play de novo';
+                        return;
+                    }
+                    if (this.estaTocando) {
+                        this.indice++;
+                        this.tocar(true);
+                    }
+                });
+                a.addEventListener('playing', () => {
+                    this.tentativasErro = 0;
+                    this.atualizarUI(true);
+                });
+                a.addEventListener('pause', () => {
+                    if (!this.estaTocando) this.atualizarUI(false);
+                });
+                return a;
+            },
+
+            embaralhar(arr) {
+                const a = [...arr];
+                for (let i = a.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [a[i], a[j]] = [a[j], a[i]];
+                }
+                return a;
+            },
+
+            garantirAudio() {
+                if (!this.audio) this.audio = this.criarAudio();
+            },
+
+            recarregarEReiniciar() {
+                REPERTORIO = carregarRepertorio();
+                if (!REPERTORIO.length) return;
+                this.lista = this.embaralhar(REPERTORIO);
+                this.indice = 0;
+                this.tocar(true);
+            },
+
+            tocar(forcarPlay) {
+                this.garantirAudio();
+                if (this.indice >= this.lista.length) {
+                    this.lista = this.embaralhar(REPERTORIO);
+                    this.indice = 0;
+                }
+                if (!this.lista.length) return;
+                const m = this.lista[this.indice];
+                const nome = document.getElementById('nomeMusica');
+                if (nome) nome.textContent = `${m.titulo} — ${m.artista}`;
+
+                // Só troca src se mudou (ajuda no iOS)
+                if (this.audio.src !== m.url) {
+                    this.audio.src = m.url;
+                    this.audio.load();
+                }
+
+                if (forcarPlay || this.estaTocando) {
+                    const playPromise = this.audio.play();
+                    if (playPromise && typeof playPromise.then === 'function') {
+                        playPromise.then(() => {
+                            this.desbloqueado = true;
+                            this.atualizarUI(true);
+                        }).catch((err) => {
+                            console.warn('play bloqueado/erro:', err);
+                            // iOS: UI não fica como "tocando" se não tocou de verdade
+                            this.atualizarUI(false);
+                            this.estaTocando = false;
+                        });
+                    }
+                }
+            },
+
+            proxima() {
+                this.indice++;
+                this.tocar(this.estaTocando);
+            },
+            anterior() {
+                if (this.indice > 0) {
+                    this.indice--;
+                    this.tocar(this.estaTocando);
+                }
+            },
+
+            // Deve ser chamado SEMPRE a partir de clique/toque do usuário (iOS)
+            toggle() {
+                this.garantirAudio();
+                if (!this.estaTocando || this.audio.paused) {
+                    this.estaTocando = true;
+                    if (!this.lista.length) {
+                        this.recarregarEReiniciar();
+                    } else {
+                        this.tocar(true);
+                    }
+                } else {
+                    this.estaTocando = false;
+                    this.audio.pause();
+                    this.atualizarUI(false);
+                }
+            },
+
+            pausar() {
+                if (!this.audio) return;
+                this.audio.pause();
+                this.atualizarUI(false);
+            },
+
+            retomar() {
+                if (!this.estaTocando || !this.audio) return;
+                this.audio.play().then(() => this.atualizarUI(true)).catch(() => {});
+            },
+
+            atualizarUI(tocando) {
+                const icone = document.querySelector('#btnPlay i');
+                if (icone) icone.className = tocando ? 'fa fa-pause' : 'fa fa-play';
+                const bar = document.getElementById('playerFixo');
+                if (bar) bar.classList.toggle('tocando', tocando);
+            },
+
+            volume(v) {
+                this.garantirAudio();
+                this.audio.volume = Math.max(0, Math.min(1, v / 100));
+            }
+        };
+
+        // Dados das células (CSV IBN) — coordenadas aproximadas por bairro.
+        // Líderes/anfitriões podem salvar a localização REAL (fica no aparelho / site).
+        const CHAVE_COORDS_CELULAS = 'ibn_celulas_coords';
+        const celulasBase = [
+            { id: 'somos-igreja', nome: "Célula Somos a Igreja", endereco: "Rua Pirarara, 97", bairro: "Solar", localidade: "Novo Diamantino", lat: -14.3795, lng: -56.3915 },
+            { id: 'genesis', nome: "Célula Gênesis", endereco: "Rua das Paineiras, 541", bairro: "Centro", localidade: "Novo Diamantino", lat: -14.3810, lng: -56.3930 },
+            { id: 'fonte-agua', nome: "Célula Fonte de Água Viva", endereco: "Rua Jacarandá, 321", bairro: "Centro", localidade: "Novo Diamantino", lat: -14.3805, lng: -56.3920 },
+            { id: 'ebenezer', nome: "Célula Ebenézer", endereco: "Rua Cajarana, 533", bairro: "Bom Jesus", localidade: "Novo Diamantino", lat: -14.3780, lng: -56.3890 },
+            { id: 'shamah', nome: "Célula Shamah", endereco: "Rua 5 Alta Floresta, 241", bairro: "Bom Jesus", localidade: "Novo Diamantino", lat: -14.3775, lng: -56.3880 },
+            { id: 'morada', nome: "Célula Morada", endereco: "Rua B, 25", bairro: "Buriti", localidade: "Diamantino", lat: -14.4120, lng: -56.4480 },
+            { id: 'atos2', nome: "Célula Atos 2", endereco: "Rua 2, próximo ao ginásio de esportes", bairro: "Buriti", localidade: "Diamantino", lat: -14.4135, lng: -56.4495 },
+            { id: 'primeiro-mandamento', nome: "Célula Primeiro Mandamento", endereco: "Rua Manoel Ferreira de Arruda, 33", bairro: "Buriti", localidade: "Diamantino", lat: -14.4145, lng: -56.4505 },
+            { id: 'missao', nome: "Célula Missão", endereco: "Centro", bairro: "Centro", localidade: "Alto Paraguai", lat: -14.5200, lng: -56.4800 },
+            { id: 'adolescentes', nome: "Célula de Adolescentes", endereco: "Local definido pelo líder a cada sábado", bairro: "A definir", localidade: "Diamantino", lat: -14.4089, lng: -56.4458 },
+            { id: 'jovens', nome: "Célula de Jovens", endereco: "Local definido pelo líder a cada sábado", bairro: "A definir", localidade: "Diamantino", lat: -14.4089, lng: -56.4458 }
+        ];
+
+        function carregarCoordsSalvas() {
+            try {
+                return JSON.parse(localStorage.getItem(CHAVE_COORDS_CELULAS) || '{}');
+            } catch (e) { return {}; }
+        }
+
+        function aplicarCoordsSalvas() {
+            const salvas = carregarCoordsSalvas();
+            return celulasBase.map(function(c) {
+                const s = salvas[c.id];
+                const lat = (s && typeof s.lat === 'number') ? s.lat : c.lat;
+                const lng = (s && typeof s.lng === 'number') ? s.lng : c.lng;
+                const real = !!(s && s.real);
+                return Object.assign({}, c, {
+                    lat: lat,
+                    lng: lng,
+                    real: real,
+                    // Texto legível
+                    enderecoCompleto: c.endereco + ' — ' + c.bairro + ', ' + c.localidade,
+                    // Query limpa para o Google Maps (sem travessão / "nº")
+                    queryMaps: c.endereco + ', ' + c.bairro + ', ' + c.localidade + ' - MT, Brasil'
+                });
+            });
+        }
+
+        let celulas = aplicarCoordsSalvas();
+
+        // Links de navegação: SEMPRE por coordenada (evita "lugar não encontrado")
+        function linkComoChegar(c, origem) {
+            var dest = c.lat + ',' + c.lng;
+            if (origem && origem.lat && origem.lng) {
+                return 'https://www.google.com/maps/dir/?api=1&origin=' + origem.lat + ',' + origem.lng + '&destination=' + dest + '&travelmode=driving';
+            }
+            return 'https://www.google.com/maps/dir/?api=1&destination=' + dest + '&travelmode=driving';
+        }
+        function linkVerNoMapa(c) {
+            return 'https://www.google.com/maps/search/?api=1&query=' + c.lat + ',' + c.lng;
+        }
+
+        function salvarCoordCelula(id, lat, lng) {
+            var salvas = carregarCoordsSalvas();
+            salvas[id] = { lat: lat, lng: lng, real: true, atualizadoEm: new Date().toISOString() };
+            localStorage.setItem(CHAVE_COORDS_CELULAS, JSON.stringify(salvas));
+            celulas = aplicarCoordsSalvas();
+            // Atualiza marcador no mapa se existir
+            if (mapa && marcadores.length) {
+                celulas.forEach(function(c, idx) {
+                    if (marcadores[idx]) {
+                        marcadores[idx].setPosition({ lat: c.lat, lng: c.lng });
+                    }
+                });
+            }
+            renderizarListaCompacta();
+        }
+
+        function pedirLocalizacaoReal(idCelula, nomeCelula) {
+            var opcao = confirm(
+                'Atualizar localização de:\n' + nomeCelula + '\n\n' +
+                'OK = usar a localização ATUAL deste aparelho (GPS)\n' +
+                'Cancelar = colar coordenadas ou link do Google Maps'
+            );
+            if (opcao) {
+                if (!navigator.geolocation) {
+                    alert('Seu aparelho não suporta GPS neste navegador.');
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        salvarCoordCelula(idCelula, pos.coords.latitude, pos.coords.longitude);
+                        alert('✅ Localização real salva para ' + nomeCelula + '!\nO pin e o "Como Chegar" já usam este ponto.');
+                    },
+                    function() {
+                        alert('Não foi possível obter o GPS. Tente novamente ou cole as coordenadas.');
+                    },
+                    { enableHighAccuracy: true, timeout: 15000 }
+                );
+            } else {
+                var texto = prompt(
+                    'Cole o link do Google Maps ou as coordenadas (ex: -14.4123, -56.4481)\npara a célula ' + nomeCelula + ':'
+                );
+                if (!texto) return;
+                var lat = null, lng = null;
+                // Tenta extrair de URL (@lat,lng ou !3d !4d)
+                var mAt = texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                var mQ = texto.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                var m3d = texto.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+                var mPar = texto.match(/(-?\d+\.\d+)\s*[,;\s]\s*(-?\d+\.\d+)/);
+                if (mAt) { lat = parseFloat(mAt[1]); lng = parseFloat(mAt[2]); }
+                else if (mQ) { lat = parseFloat(mQ[1]); lng = parseFloat(mQ[2]); }
+                else if (m3d) { lat = parseFloat(m3d[1]); lng = parseFloat(m3d[2]); }
+                else if (mPar) { lat = parseFloat(mPar[1]); lng = parseFloat(mPar[2]); }
+                if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) {
+                    alert('Não entendi as coordenadas. Exemplo válido:\n-14.4123, -56.4481');
+                    return;
+                }
+                salvarCoordCelula(idCelula, lat, lng);
+                alert('✅ Localização real salva para ' + nomeCelula + '!');
+            }
+        }
+
+        let mapa = null;
+        let marcadores = [];
+        let posicaoUsuario = null;
+
+        function calcularDistancia(lat1, lng1, lat2, lng2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const km = R * c;
+            if (km < 1) return `${Math.round(km * 1000)} m`;
+            return `${km.toFixed(1)} km`;
+        }
+
+        function mostrarMapaFallback(msg) {
+            const el = document.getElementById('mapaCelulas');
+            if (el) {
+                el.innerHTML = `<div class="flex flex-col items-center justify-center h-full bg-gray-100 rounded-xl p-6 text-center">
+                    <i class="fa fa-map-o text-4xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-600 font-semibold mb-2">${msg || 'Mapa temporariamente indisponível'}</p>
+                    <p class="text-sm text-gray-500 mb-4">Use a lista rápida abaixo ou o botão do Google Maps.</p>
+                    <a href="https://www.google.com/maps/search/?api=1&query=Igreja+Batista+Nacional+Diamantino" target="_blank"
+                       class="bg-primary text-white px-4 py-2 rounded-md text-sm font-bold hover:bg-accent">Abrir no Google Maps</a>
+                </div>`;
+            }
+        }
+
+        function initMap() {
+            if (mapa) return; // já iniciado
+            const elMapa = document.getElementById('mapaCelulas');
+            if (!elMapa) return;
+            if (typeof google === 'undefined' || !google.maps) {
+                mostrarMapaFallback('Não foi possível carregar o Google Maps.');
+                renderizarListaCompacta();
+                return;
+            }
+            try {
+            // Centro entre Diamantino e Novo Diamantino
+            const centro = { lat: -14.3950, lng: -56.4200 };
+            mapa = new google.maps.Map(elMapa, {
+                zoom: 13,
+                center: centro,
+                mapTypeControl: true,
+                streetViewControl: false,
+                fullscreenControl: true
+            });
+            marcadores = [];
+            celulas.forEach((celula, idx) => {
+                const marcador = new google.maps.Marker({
+                    position: { lat: celula.lat, lng: celula.lng },
+                    map: mapa,
+                    title: celula.nome,
+                    icon: {
+                        url: celula.real
+                            ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
+                            : 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                        scaledSize: new google.maps.Size(32, 32)
+                    }
+                });
+                const statusLoc = celula.real
+                    ? '<span style="color:#15803d;font-size:11px;">● Localização confirmada</span>'
+                    : '<span style="color:#a16207;font-size:11px;">● Aproximada (bairro)</span>';
+                const janela = new google.maps.InfoWindow({
+                    content: `
+                        <div style="min-width: 230px; padding: 4px;">
+                            <h4 style="font-weight: bold; margin: 0 0 4px 0; color: #0A1A3F;">${celula.nome}</h4>
+                            <p style="font-size: 13px; color: #555; margin: 0 0 4px 0;">${celula.enderecoCompleto || celula.endereco}</p>
+                            <p style="margin: 0 0 8px 0;">${statusLoc}</p>
+                            <a href="${linkComoChegar(celula)}" target="_blank"
+                               style="color: #D4AF37; font-weight: bold; text-decoration: none; font-size: 13px;">
+                                Como Chegar →
+                            </a>
+                        </div>
+                    `
+                });
+                marcador.addListener('click', () => janela.open(mapa, marcador));
+                marcador.celulaIdx = idx;
+                marcadores.push(marcador);
+            });
+            renderizarListaCompacta();
+            } catch (err) {
+                console.error('Erro ao iniciar mapa:', err);
+                mostrarMapaFallback('Não foi possível carregar o mapa. Use a lista abaixo.');
+                renderizarListaCompacta();
+            }
+        }
+
+        function renderizarListaCompacta(distancias = null) {
+            const container = document.getElementById('listaCompacta');
+            if (!container) return;
+            let lista = distancias || celulas;
+            container.innerHTML = lista.map(c => {
+                const link = linkVerNoMapa(c);
+                const dirLink = linkComoChegar(c, posicaoUsuario);
+                const badge = c.real
+                    ? '<span class="text-xs text-green-700 font-semibold">● Localização confirmada</span>'
+                    : '<span class="text-xs text-amber-700">● Aproximada (bairro)</span>';
+                return `
+                    <div class="p-4 bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                        <p class="font-bold text-primary text-sm mb-1">${c.nome}</p>
+                        <p class="text-xs text-gray-600 mb-1"><i class="fa fa-map-marker text-secondary"></i> ${c.enderecoCompleto || c.endereco}</p>
+                        <p class="mb-1">${badge}</p>
+                        ${c.distanciaTexto ? `<p class="text-xs font-semibold text-secondary mb-2"><i class="fa fa-location-arrow"></i> ${c.distanciaTexto}</p>` : ''}
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <a href="${link}" target="_blank" class="text-xs bg-primary text-white px-3 py-1.5 rounded font-semibold hover:bg-accent">Ver no Mapa</a>
+                            <a href="${dirLink}" target="_blank" class="text-xs bg-secondary text-primary px-3 py-1.5 rounded font-semibold hover:bg-yellow-400">Como Chegar</a>
+                            <button type="button" data-celula-id="${c.id}" data-celula-nome="${c.nome}"
+                                class="btn-atualizar-loc text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded font-semibold hover:bg-gray-50">
+                                📍 Atualizar localização
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            // Liga botões de atualizar localização
+            container.querySelectorAll('.btn-atualizar-loc').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    pedirLocalizacaoReal(btn.getAttribute('data-celula-id'), btn.getAttribute('data-celula-nome'));
+                });
+            });
+        }
+
+        function atualizarListaComDistancias(ordenadas) { renderizarListaCompacta(ordenadas); }
+
+        function configurarBotaoLocalizar() {
+            const btn = document.getElementById('btnLocalizar');
+            if (!btn) return;
+            btn.addEventListener('click', () => {
+                const resultadoDiv = document.getElementById('resultadoProxima');
+                if (!resultadoDiv) return;
+                resultadoDiv.classList.remove('hidden');
+                resultadoDiv.innerHTML = `<p class="text-center text-gray-500"><i class="fa fa-spinner fa-spin"></i> Obtendo sua localização...</p>`;
+                if (!navigator.geolocation) {
+                    resultadoDiv.innerHTML = `<p class="text-red-500 text-center">Seu navegador não suporta localização.</p>`;
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (posicao) => {
+                        posicaoUsuario = { lat: posicao.coords.latitude, lng: posicao.coords.longitude };
+                        if (typeof google !== 'undefined' && google.maps && mapa) {
+                            new google.maps.Marker({
+                                position: posicaoUsuario,
+                                map: mapa,
+                                title: "Você está aqui",
+                                icon: { url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png', scaledSize: new google.maps.Size(32, 32) }
+                            });
+                            mapa.setCenter(posicaoUsuario);
+                            mapa.setZoom(13);
+                        }
+                        const comDistancia = celulas.map((c, idx) => {
+                            const R = 6371;
+                            const dLat = (c.lat - posicaoUsuario.lat) * Math.PI / 180;
+                            const dLng = (c.lng - posicaoUsuario.lng) * Math.PI / 180;
+                            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                      Math.cos(posicaoUsuario.lat * Math.PI / 180) * Math.cos(c.lat * Math.PI / 180) *
+                                      Math.sin(dLng/2) * Math.sin(dLng/2);
+                            const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                            return Object.assign({}, c, {
+                                idx: idx,
+                                distanciaKm: km,
+                                distanciaTexto: calcularDistancia(posicaoUsuario.lat, posicaoUsuario.lng, c.lat, c.lng)
+                            });
+                        }).sort((a, b) => a.distanciaKm - b.distanciaKm);
+                        const maisProxima = comDistancia[0];
+                        if (marcadores[maisProxima.idx] && typeof google !== 'undefined') {
+                            marcadores[maisProxima.idx].setIcon({
+                                url: 'https://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
+                                scaledSize: new google.maps.Size(40, 40)
+                            });
+                        }
+                        resultadoDiv.innerHTML = `
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div>
+                                    <p class="font-bold text-primary mb-1">⭐ Célula mais próxima de você:</p>
+                                    <p class="font-bold text-lg text-secondary">${maisProxima.nome}</p>
+                                    <p class="text-sm text-gray-600">${maisProxima.enderecoCompleto || maisProxima.endereco}</p>
+                                    <p class="text-sm font-semibold text-green-600 mt-1">
+                                        <i class="fa fa-location-arrow"></i> Distância: ${maisProxima.distanciaTexto}
+                                    </p>
+                                </div>
+                                <a href="${linkComoChegar(maisProxima, posicaoUsuario)}" 
+                                   target="_blank" class="bg-secondary text-primary px-5 py-2 rounded-md font-bold hover:bg-yellow-400 whitespace-nowrap text-center">
+                                    <i class="fa fa-map-marker mr-1"></i> Traçar Rota
+                                </a>
+                            </div>
+                        `;
+                        atualizarListaComDistancias(comDistancia);
+                    },
+                    (erro) => {
+                        resultadoDiv.innerHTML = `<p class="text-red-500 text-center">Não foi possível acessar sua localização.</p>`;
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            });
+        }
+
+        // ==================================================
+        // 📺 YOUTUBE — CORRIGIDO (playlist de uploads)
+        // ==================================================
+        const API_KEY = "AIzaSyAYZpzdj26wl8lob7ZX3VBxilRyCTpZ3x4";
+        const CANAL_IBN = "UCx7IoJcS8Bme6q7UDszjyZQ";
+        const UPLOADS_PLAYLIST = "UUx7IoJcS8Bme6q7UDszjyZQ";
+        const STREAMS_URL = "https://www.youtube.com/@ibndiamantino/streams";
+
+        let estaAoVivo = false;
+        let todosVideos = [];
+        let nextPageToken = null;
+        let carregueiTudo = false;
+        const QTD_POR_CARGA = 15;
+
+        function fetchComTimeout(url, ms = 7000) {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), ms);
+            return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+        }
+
+        function mesAno(dataStr) {
+            const data = new Date(dataStr);
+            const m = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+            return `${m[data.getMonth()]} de ${data.getFullYear()}`;
+        }
+
+        function atualizarDestaque(videoId, titulo, aoVivo, dataStr) {
+            const dest = document.getElementById('destaqueVideo');
+            if (!dest) return;
+            if (!videoId) {
+                dest.innerHTML = `
+                    <p class="text-gray-200 mb-3">Assista aos cultos e lives da IBN</p>
+                    <a href="${STREAMS_URL}" target="_blank" rel="noopener"
+                       class="inline-block bg-red-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-red-700">
+                        <i class="fa fa-youtube-play mr-2"></i> Ver no YouTube
+                    </a>`;
+                return;
+            }
+            const badge = aoVivo
+                ? '<span class="text-red-400 font-bold live-indicator">🔴 TRANSMISSÃO AO VIVO AGORA!</span>'
+                : `<span class="text-gray-300">Última transmissão — ${dataStr || ''}</span>`;
+            const btnTexto = aoVivo ? 'Assistir Agora' : 'Ver Último Culto';
+            const btnIcone = aoVivo ? 'fa-broadcast-tower' : 'fa-play';
+            dest.innerHTML = `
+                ${badge}
+                <a href="https://youtu.be/${videoId}" target="_blank" rel="noopener" class="block mt-4">
+                    <img src="https://i.ytimg.com/vi/${videoId}/hqdefault.jpg"
+                         alt="${(titulo || '').replace(/"/g, '')}"
+                         class="w-full max-w-md mx-auto rounded-lg shadow-lg">
+                    <p class="mt-3 font-bold text-lg text-white">${titulo || ''}</p>
+                    <span class="inline-block mt-2 bg-secondary text-primary px-5 py-2.5 rounded-md font-bold hover:bg-yellow-400 transition">
+                        <i class="fa ${btnIcone} mr-2"></i> ${btnTexto}
+                    </span>
+                </a>`;
+        }
+
+        function agruparEMostrar() {
+            const c = document.getElementById('lista-meses');
+            if (!c) return;
+            if (!todosVideos.length) {
+                c.innerHTML = `
+                    <div class="text-center py-6 space-y-3">
+                        <p class="text-gray-500">Não foi possível carregar a lista no momento.</p>
+                        <a href="${STREAMS_URL}" target="_blank" class="inline-block bg-primary text-white px-5 py-2 rounded-lg font-bold">
+                            <i class="fa fa-youtube-play mr-2"></i> Abrir lives no YouTube
+                        </a>
+                    </div>`;
+                return;
+            }
+            const grupos = {};
+            todosVideos.forEach(v => {
+                const k = mesAno(v.data);
+                if (!grupos[k]) grupos[k] = [];
+                grupos[k].push(v);
+            });
+            // Dentro de cada mês: mais recente primeiro
+            Object.keys(grupos).forEach(k => {
+                grupos[k].sort((a, b) => new Date(b.data) - new Date(a.data));
+            });
+            const mesesOrdenados = Object.keys(grupos).sort((a, b) => {
+                const [ma, aa] = a.split(' de ');
+                const [mb, ab] = b.split(' de ');
+                const m = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+                return new Date(ab, m.indexOf(mb), 1) - new Date(aa, m.indexOf(ma), 1);
+            });
+            let html = '';
+            mesesOrdenados.forEach((mes, i) => {
+                const id = mes.replace(/\s/g, '-');
+                const aberto = i === 0;
+                html += `<div class="border rounded-lg overflow-hidden bg-white">
+                    <button type="button" class="month-toggle w-full flex justify-between items-center p-4 font-bold text-left hover:bg-gray-50" data-mes="${mes}">
+                        <span>${mes} <span class="text-gray-400 font-normal text-sm">(${grupos[mes].length})</span></span>
+                        <i id="ic-${id}" class="fa fa-chevron-down transition-transform ${aberto ? 'rotate-180' : ''}"></i>
+                    </button>
+                    <div id="ct-${id}" class="month-videos ${aberto ? 'expanded' : 'collapsed'} px-4 pb-4">
+                        <div class="grid sm:grid-cols-2 gap-3">
+                            ${grupos[mes].map(v => `
+                                <a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener"
+                                   class="flex gap-3 p-2 rounded-lg hover:bg-gray-50 border border-gray-100">
+                                    <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt="" class="w-28 h-16 object-cover rounded flex-shrink-0">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-primary line-clamp-2">${v.titulo}</p>
+                                        <p class="text-xs text-gray-500 mt-1">${v.dataStr}</p>
+                                    </div>
+                                </a>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            });
+            if (!carregueiTudo) {
+                html += `<div class="pt-4 text-center">
+                    <button type="button" id="btnMais" class="bg-secondary text-primary px-6 py-2 rounded font-bold hover:bg-yellow-400">Carregar mais</button>
+                    <a href="${STREAMS_URL}" target="_blank" class="block mt-3 text-sm text-red-600 hover:underline">
+                        <i class="fa fa-youtube-play"></i> Ver todas no YouTube
+                    </a>
+                </div>`;
+            } else {
+                html += `<p class="text-center text-gray-400 text-sm pt-4">
+                    <a href="${STREAMS_URL}" target="_blank" class="text-red-600 hover:underline">Ver canal completo no YouTube →</a>
+                </p>`;
+            }
+            c.innerHTML = html;
+            document.querySelectorAll('.month-toggle').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.mes.replace(/\s/g, '-');
+                    const ct = document.getElementById('ct-' + id);
+                    const ic = document.getElementById('ic-' + id);
+                    if (!ct) return;
+                    ct.classList.toggle('expanded');
+                    ct.classList.toggle('collapsed');
+                    if (ic) ic.classList.toggle('rotate-180');
+                });
+            });
+            const btnMais = document.getElementById('btnMais');
+            if (btnMais) {
+                btnMais.addEventListener('click', async () => {
+                    btnMais.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+                    btnMais.disabled = true;
+                    await carregarMaisVideos();
+                });
+            }
+        }
+
+        async function verificarAoVivo() {
+            try {
+                const resLive = await fetchComTimeout(
+                    `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${CANAL_IBN}&eventType=live&type=video&key=${API_KEY}`
+                );
+                const live = await resLive.json();
+                if (live.items && live.items.length) {
+                    estaAoVivo = true;
+                    const it = live.items[0];
+                    atualizarDestaque(it.id.videoId, it.snippet.title, true, 'AO VIVO');
+                    return;
+                }
+                const resUlt = await fetchComTimeout(
+                    `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${UPLOADS_PLAYLIST}&maxResults=1&key=${API_KEY}`
+                );
+                const ult = await resUlt.json();
+                if (ult.items && ult.items.length) {
+                    const it = ult.items[0];
+                    const dataStr = new Date(it.snippet.publishedAt).toLocaleDateString('pt-BR');
+                    atualizarDestaque(it.snippet.resourceId.videoId, it.snippet.title, false, dataStr);
+                } else {
+                    atualizarDestaque(null);
+                }
+            } catch (e) {
+                console.warn('verificarAoVivo', e);
+                atualizarDestaque('2kOBSVtDEpM', 'VERDADEIROS AMIGOS - Pr Maxsoel Guilhen', false, '22/09/2026');
+            }
+        }
+
+        async function carregarMaisVideos() {
+            try {
+                let url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${UPLOADS_PLAYLIST}&maxResults=${QTD_POR_CARGA}&key=${API_KEY}`;
+                if (nextPageToken) url += `&pageToken=${nextPageToken}`;
+                const res = await fetchComTimeout(url, 12000);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error.message || 'API error');
+                const novos = (data.items || []).map(it => ({
+                    id: it.snippet.resourceId.videoId,
+                    titulo: it.snippet.title,
+                    data: it.snippet.publishedAt,
+                    dataStr: new Date(it.snippet.publishedAt).toLocaleDateString('pt-BR')
+                })).filter(v => v.id);
+                todosVideos = todosVideos.concat(novos);
+                nextPageToken = data.nextPageToken || null;
+                if (!nextPageToken) carregueiTudo = true;
+                agruparEMostrar();
+            } catch (e) {
+                console.warn('carregarMaisVideos', e);
+                if (!todosVideos.length) {
+                    aplicarFallbackYouTube();
+                } else {
+                    carregueiTudo = true;
+                    agruparEMostrar();
+                }
+            }
+        }
+
+        function aplicarFallbackYouTube() {
+            // Vídeos mais recentes conhecidos (atualize de vez em quando)
+            if (!todosVideos.length) {
+                todosVideos = [
+                    { id: '2kOBSVtDEpM', titulo: 'VERDADEIROS AMIGOS - Pr Maxsoel Guilhen', data: '2026-09-22', dataStr: '22/09/2026' },
+                    { id: 'yb269GCKtWc', titulo: 'NÃO SE DEIXE VENCER PELA INTIMIDAÇÃO - Missionária Roseli', data: '2026-09-15', dataStr: '15/09/2026' },
+                    { id: '3VxCgJf4_Xc', titulo: 'NAO DEIXE O AMOR ESFRIAR - Pr Maxsoel Guilhen', data: '2026-09-08', dataStr: '08/09/2026' }
+                ];
+            }
+            carregueiTudo = true;
+            atualizarDestaque(todosVideos[0].id, todosVideos[0].titulo, false, todosVideos[0].dataStr);
+            agruparEMostrar();
+        }
+
+        async function iniciarYouTube() {
+            // Se abriu como arquivo local (file://), a API do Google costuma falhar → usa fallback rápido
+            const isLocal = location.protocol === 'file:';
+            if (isLocal) {
+                console.info('Modo local detectado — usando lista de fallback (API do YouTube não funciona em file://)');
+                aplicarFallbackYouTube();
+                return;
+            }
+
+            // Timeout geral de segurança (não deixa "Carregando..." para sempre)
+            const timeoutGeral = setTimeout(() => {
+                if (!todosVideos.length) {
+                    console.warn('Timeout da API — aplicando fallback');
+                    aplicarFallbackYouTube();
+                }
+            }, 8000);
+
+            try {
+                await Promise.all([
+                    verificarAoVivo(),
+                    carregarMaisVideos()
+                ]);
+            } catch (e) {
+                console.error(e);
+                if (!todosVideos.length) aplicarFallbackYouTube();
+            } finally {
+                clearTimeout(timeoutGeral);
+                // Se ainda não tiver nada, força o fallback
+                if (!todosVideos.length) aplicarFallbackYouTube();
+            }
+        }
+
+        function copiarPix() {
+            navigator.clipboard.writeText("36158983000136");
+            const m = document.getElementById('msgPix'); 
+            m.classList.remove('hidden'); 
+            setTimeout(() => m.classList.add('hidden'), 3000);
+        }
+
+        // Form oração — grava na nuvem + avisa no WhatsApp da intercessão
+        (function() {
+            var formOracao = document.getElementById('formOracao');
+            if (!formOracao) return;
+
+            // Membro logado: preenche nome e e-mail
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (u) {
+                    var elN = document.getElementById('oracaoNome');
+                    var elE = document.getElementById('oracaoEmail');
+                    if (elN && !elN.value) elN.value = u.nome || '';
+                    if (elE && !elE.value) elE.value = u.email || u.telefone || '';
+                }
+            } catch (e) {}
+
+            formOracao.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var fd = new FormData(formOracao);
+                var dados = {
+                    nome: (fd.get('nome') || '').toString().trim(),
+                    email: (fd.get('email') || '').toString().trim(),
+                    pedido: (fd.get('pedido') || '').toString().trim()
+                };
+                if (!dados.nome || dados.nome.length < 2) {
+                    alert('Informe pelo menos o primeiro nome ou um apelido.');
+                    return;
+                }
+                var r = (typeof registrarPedidoOracao === 'function')
+                    ? registrarPedidoOracao(dados)
+                    : { sucesso: false };
+                if (r && r.sucesso) {
+                    formOracao.reset();
+                    // Reabre pré-preenchimento se ainda logado
+                    try {
+                        var u2 = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                        if (u2) {
+                            var n2 = document.getElementById('oracaoNome');
+                            var e2 = document.getElementById('oracaoEmail');
+                            if (n2) n2.value = u2.nome || '';
+                            if (e2) e2.value = u2.email || u2.telefone || '';
+                        }
+                    } catch (err) {}
+                    var abrirWa = confirm(
+                        '🙏 Pedido registrado para a Intercessão!\n\n' +
+                        'Deseja também enviar este pedido pelo WhatsApp da igreja agora?\n' +
+                        '(Recomendado — avisa na hora quem intercede.)'
+                    );
+                    if (abrirWa && r.whatsappUrl) {
+                        window.open(r.whatsappUrl, '_blank');
+                    } else {
+                        alert('Deus te abençoe! Seu pedido já está na lista da Intercessão.');
+                    }
+                } else {
+                    alert((r && r.mensagem) || 'Não foi possível enviar. Tente novamente.');
+                }
+            });
+        })();
+
+
+        // Prévia de fotos na home (membros veem reais; visitante vê logos + convite ao cadastro)
+        (async function previewGaleriasHome() {
+            var boxC = document.getElementById('previewFotosCelulas');
+            var boxM = document.getElementById('previewFotosMinisterios');
+            if (!boxC || !boxM) return;
+
+            function srcFoto(f) {
+                if (!f) return '';
+                var s = f.imagem || f.imagemUrl || f.url || '';
+                if (s && String(s).length > 10) return s;
+                return '';
+            }
+
+            function logosVisitante() {
+                var html = '';
+                for (var i = 0; i < 4; i++) {
+                    html += '<button type="button" class="btn-foto-exclusiva aspect-square rounded-lg overflow-hidden border border-white/20 bg-black/20">' +
+                        '<img src="icon-192.png" alt="IBN" class="w-full h-full object-cover opacity-90">' +
+                        '</button>';
+                }
+                return html;
+            }
+
+            function vazioLogado(destino) {
+                return '<a href="' + destino + '" class="col-span-4 text-center text-xs text-white/60 py-4 border border-dashed border-white/20 rounded-lg block">Nenhuma foto na nuvem ainda — abrir galeria</a>';
+            }
+
+            function thumbs(lista, destino) {
+                var comImg = (lista || []).filter(function (f) { return !!srcFoto(f); });
+                if (!comImg.length) return null;
+                return comImg.slice(0, 4).map(function (f) {
+                    var src = srcFoto(f);
+                    return '<a href="' + destino + '" class="aspect-square rounded-lg overflow-hidden border border-white/20 block bg-black/20">' +
+                        '<img src="' + src + '" alt="" class="w-full h-full object-cover" loading="lazy">' +
+                        '</a>';
+                }).join('');
+            }
+
+            var logado = null;
+            try {
+                if (typeof getUsuarioLogado === 'function') logado = getUsuarioLogado();
+                if (!logado) {
+                    var raw = localStorage.getItem('ibn_sessao_atual') || localStorage.getItem('usuarioLogado');
+                    if (raw) logado = JSON.parse(raw);
+                }
+            } catch (e) {}
+
+            if (!logado) {
+                boxC.innerHTML = logosVisitante();
+                boxM.innerHTML = logosVisitante();
+                function conviteMembro(e) {
+                    if (e) e.preventDefault();
+                    alert('🔒 Conteúdo exclusivo para membros.\n\nPara ver as fotos, entre na sua conta ou inscreva-se para ter acesso ao conteúdo.');
+                    window.location.href = 'cadastro.html';
+                }
+                document.querySelectorAll('.btn-foto-exclusiva').forEach(function (btn) {
+                    btn.addEventListener('click', conviteMembro);
+                });
+                var l1 = document.getElementById('linkGaleriaCelulas');
+                var l2 = document.getElementById('linkGaleriaMinisterios');
+                if (l1) { l1.href = 'cadastro.html'; l1.addEventListener('click', conviteMembro); }
+                if (l2) { l2.href = 'cadastro.html'; l2.addEventListener('click', conviteMembro); }
+                return;
+            }
+
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.iniciar) IBNNuvem.iniciar();
+                if (typeof IBNNuvem !== 'undefined') {
+                    if (IBNNuvem.puxarFotosCelulasParaLocal) await IBNNuvem.puxarFotosCelulasParaLocal();
+                    if (IBNNuvem.puxarFotosParaLocal) await IBNNuvem.puxarFotosParaLocal();
+                }
+            } catch (e) { console.warn('preview nuvem', e); }
+
+            var cel = [];
+            var min = [];
+            try { cel = JSON.parse(localStorage.getItem('ibn_fotos_celulas') || '[]'); } catch (e) {}
+            try { min = JSON.parse(localStorage.getItem('ibn_fotos') || '[]'); } catch (e) {}
+
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.buscarFotos) {
+                    var rM = await IBNNuvem.buscarFotos();
+                    if (rM && rM.sucesso && rM.lista && rM.lista.length) min = rM.lista;
+                }
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.buscarFotosCelulas) {
+                    var rC = await IBNNuvem.buscarFotosCelulas();
+                    if (rC && rC.sucesso && rC.lista && rC.lista.length) cel = rC.lista;
+                }
+            } catch (e2) { console.warn(e2); }
+
+            var htmlC = thumbs(cel, 'fotos-celulas.html');
+            var htmlM = thumbs(min, 'fotos.html');
+            boxC.innerHTML = htmlC || vazioLogado('fotos-celulas.html');
+            boxM.innerHTML = htmlM || vazioLogado('fotos.html');
+        })();
+
+        // ==================================================
+        // 📅 ALERTA DO DIA (programação automática)
+        // ==================================================
+        function mostrarAlertaDoDia() {
+            const agora = new Date();
+            const diaSemana = agora.getDay(); // 0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sab
+            const diaMes = agora.getDate();
+            // Vigília = sexta que antecede o primeiro domingo do mês (não a última sexta)
+            const isSextaVigilia = (function() {
+                if (diaSemana !== 5) return false;
+                const domingo = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 2);
+                return domingo.getDay() === 0 && domingo.getDate() <= 7;
+            })();
+            const isPrimeiroDomingo = diaSemana === 0 && diaMes <= 7;
+
+            let texto = '';
+            let link = '';
+            let href = '#eventos';
+
+            // 40 dias de jejum e oração — 1º dia = segunda 05/10/2026
+            const inicio40 = new Date(2026, 9, 5); // mês 0-index: 9 = outubro
+            inicio40.setHours(0, 0, 0, 0);
+            const hoje0 = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+            const diff40 = Math.floor((hoje0 - inicio40) / 86400000);
+            const dia40 = diff40 + 1; // dia 1 no início
+            const emCampanha40 = dia40 >= 1 && dia40 <= 40;
+            const antes40 = diff40 < 0;
+            let texto40 = '';
+            if (emCampanha40) {
+                // Seg–sex: encontro na igreja 05:30 e 18:00 | Sáb–dom: jejum em casa
+                if (diaSemana >= 1 && diaSemana <= 5) {
+                    texto40 = '🙏 40 Dias de Jejum e Oração — ' + dia40 + 'º dia · hoje às 05:30 e 18:00 na Igreja.';
+                } else {
+                    texto40 = '🙏 40 Dias de Jejum e Oração — ' + dia40 + 'º dia · o jejum continua em casa.';
+                }
+            } else if (antes40) {
+                const faltam = Math.abs(diff40);
+                texto40 = '🙏 Em breve: 40 Dias de Jejum e Oração (início 05/10) · seg a sex 05:30 e 18:00 na Igreja · sáb e dom em casa' +
+                    (faltam === 1 ? ' · começa amanhã!' : ' · faltam ' + faltam + ' dias.');
+            }
+            const cont40 = document.getElementById('contador40Dias');
+            if (cont40) {
+                if (emCampanha40) cont40.textContent = 'Hoje é o ' + dia40 + 'º dia dos 40.';
+                else if (antes40) cont40.textContent = 'Começa em ' + Math.abs(diff40) + ' dia(s) — 05/10/2026.';
+                else cont40.textContent = 'Campanha concluída. Glória a Deus!';
+            }
+
+            if (diaSemana === 1) { // Segunda
+                texto = '⚽ Hoje: Futebol dos Homens — comunhão e esporte!';
+                link = 'Ver programação →';
+                href = '#eventos';
+            } else if (diaSemana === 2) { // Terça
+                texto = emCampanha40
+                    ? texto40 + ' Também tem Célula à noite.'
+                    : '📍 Hoje tem Célula! Procure a mais próxima de você.';
+                link = 'Ver programação →';
+                href = '#eventos';
+            } else if (diaSemana === 4) { // Quinta
+                texto = '🙏 Hoje: Culto da Fé às 19:30 na igreja.';
+                link = 'Ver programação →';
+                href = '#eventos';
+            } else if (diaSemana === 6) { // Sábado
+                texto = '🔥 Hoje: Célula de Adolescentes (18h) e Jovens (20h) — local definido pelo líder (consulte a célula ou o líder).';
+                link = 'Ver programação →';
+                href = '#eventos';
+            } else if (diaSemana === 0) { // Domingo
+                if (isPrimeiroDomingo) {
+                    texto = '🍞 Hoje: Culto de Celebração + Culto de Ceia às 19:00.';
+                } else {
+                    texto = '⛪ Hoje: Culto de Celebração às 19:00 — transmissão ao vivo!';
+                }
+                link = 'Ver transmissões →';
+                href = '#transmissoes';
+            } else if (isSextaVigilia) {
+                texto = '🕯️ Hoje: Vigília (sexta que antecede o 1º domingo do mês).';
+                link = 'Ver programação →';
+                href = '#eventos';
+            }
+
+            // Durante os 40 dias: prioriza ou complementa o anúncio da campanha
+            if (emCampanha40) {
+                if (!texto) {
+                    texto = texto40;
+                    link = 'Ver programação →';
+                    href = '#eventos';
+                } else if (diaSemana !== 2) {
+                    // terça já inclui célula + 40 dias
+                    texto = texto40 + ' · ' + texto.replace(/^[^:]+:\s*/, '').replace(/^⚽\s*Hoje:\s*/,'');
+                    // mais simples: campanha + programação do dia
+                    if (diaSemana === 1) texto = texto40 + ' · Também: Futebol dos Homens.';
+                    else if (diaSemana === 4) texto = texto40 + ' · Também: Culto da Fé 19:30.';
+                    else if (diaSemana === 6) texto = texto40 + ' · À noite: células de Adolescentes e Jovens.';
+                    else if (diaSemana === 0) texto = texto40 + ' · À noite: Culto de Celebração 19:00.';
+                    else if (isSextaVigilia) texto = texto40 + ' · Também: Vigília.';
+                    else texto = texto40;
+                    link = 'Ver programação →';
+                    href = '#eventos';
+                }
+            } else if (antes40 && !texto) {
+                texto = texto40;
+                link = 'Ver programação →';
+                href = '#eventos';
+            }
+
+            // Avisos extras do quadro (admin/gestor) — do dia de hoje
+            (function anexarAvisosCustom() {
+                try {
+                    var lista = JSON.parse(localStorage.getItem('ibn_avisos_dia') || '[]');
+                    var agora = new Date();
+                    var iso = agora.getFullYear() + '-' + String(agora.getMonth()+1).padStart(2,'0') + '-' + String(agora.getDate()).padStart(2,'0');
+                    var doDia = lista.filter(function(a){ return a && String(a.data).slice(0,10) === iso && a.texto; });
+                    if (doDia.length) {
+                        var extra = doDia.map(function(a){ return a.texto; }).join(' · ');
+                        if (texto) texto = texto + ' · ' + extra;
+                        else {
+                            texto = '📢 ' + extra;
+                            link = 'Ver programação →';
+                            href = '#eventos';
+                        }
+                    }
+                } catch (e) {}
+            })();
+
+            if (texto) {
+                const box = document.getElementById('alertaDoDia');
+                const txt = document.getElementById('textoAlertaDia');
+                const lnk = document.getElementById('linkAlertaDia');
+                if (box && txt) {
+                    txt.textContent = texto;
+                    if (lnk) {
+                        lnk.textContent = link;
+                        lnk.href = href;
+                    }
+                    box.classList.remove('hidden');
+                }
+            }
+        }
+
+        // ==================================================
+        // 📱 PWA — INSTALAR APP (iPhone + Android)
+        // ==================================================
+        let promptInstalacao = null;
+
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+        function isAndroid() {
+            return /Android/i.test(navigator.userAgent);
+        }
+        function isStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+        }
+
+        function abrirModalInstalar() {
+            const modal = document.getElementById('modalInstalar');
+            if (!modal) return;
+            // Esconde todas as instruções e mostra a correta
+            ['instrucoesIOS', 'instrucoesAndroid', 'instrucoesDesktop'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            if (isIOS()) {
+                var ios = document.getElementById('instrucoesIOS');
+                if (ios) ios.classList.remove('hidden');
+            } else if (isAndroid()) {
+                var and = document.getElementById('instrucoesAndroid');
+                if (and) and.classList.remove('hidden');
+            } else {
+                var desk = document.getElementById('instrucoesDesktop');
+                if (desk) desk.classList.remove('hidden');
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function fecharModalInstalar() {
+            const modal = document.getElementById('modalInstalar');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        async function tentarInstalarApp() {
+            // Já está instalado / rodando como app
+            if (isStandalone()) {
+                alert('✅ O App IBN já está instalado!');
+                return;
+            }
+            // Chrome / Android / Edge — prompt nativo
+            if (promptInstalacao) {
+                try {
+                    const res = await promptInstalacao.prompt();
+                    if (res && res.outcome === 'accepted') {
+                        alert('✅ App IBN instalado com sucesso!');
+                    }
+                    promptInstalacao = null;
+                    var ban = document.getElementById('installBanner');
+                    if (ban) ban.style.display = 'none';
+                    return;
+                } catch (e) {
+                    console.warn('Prompt instalação:', e);
+                }
+            }
+            // iOS ou navegador sem prompt → mostra instruções
+            abrirModalInstalar();
+        }
+
+        function configurarInstalacaoPWA() {
+            // Captura o evento do Chrome/Android
+            window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                promptInstalacao = e;
+                // Mostra o banner flutuante após alguns segundos (só se não estiver instalado)
+                if (!isStandalone()) {
+                    setTimeout(function() {
+                        var ban = document.getElementById('installBanner');
+                        if (ban) ban.style.display = 'block';
+                    }, 2500);
+                }
+            });
+
+            // Botão do banner
+            var btnInst = document.getElementById('btnInstalar');
+            if (btnInst) btnInst.addEventListener('click', tentarInstalarApp);
+
+            // Botão do topo "Baixar / Instalar App"
+            var btnTop = document.getElementById('btnBaixarApp');
+            if (btnTop) btnTop.addEventListener('click', tentarInstalarApp);
+
+            // Fechar banner
+            var btnFechar = document.getElementById('btnFecharAviso');
+            if (btnFechar) btnFechar.addEventListener('click', function() {
+                var ban = document.getElementById('installBanner');
+                if (ban) ban.style.display = 'none';
+            });
+
+            // Fechar modal
+            var btnFecharModal = document.getElementById('btnFecharModalInstalar');
+            var btnOkModal = document.getElementById('btnOkModalInstalar');
+            if (btnFecharModal) btnFecharModal.addEventListener('click', fecharModalInstalar);
+            if (btnOkModal) btnOkModal.addEventListener('click', fecharModalInstalar);
+            var modal = document.getElementById('modalInstalar');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) fecharModalInstalar();
+                });
+            }
+
+            // Se já estiver rodando como app, esconde o botão de instalar
+            if (isStandalone()) {
+                var ban = document.getElementById('installBanner');
+                if (ban) ban.style.display = 'none';
+                if (btnTop) btnTop.style.display = 'none';
+            }
+        }
+
+        // ==================================================
+        // 🚀 INICIALIZAR TUDO
+        // ==================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 0) PWA install (o quanto antes)
+            try { configurarInstalacaoPWA(); } catch (e) { console.warn('PWA:', e); }
+
+            // 1) YouTube PRIMEIRO (não depende de nada)
+            try {
+                iniciarYouTube();
+            } catch (e) {
+                console.error('Erro YouTube:', e);
+                aplicarFallbackYouTube();
+            }
+            // Segurança extra: se em 3s ainda estiver "Carregando...", força fallback
+            setTimeout(function() {
+                var dest = document.getElementById('destaqueVideo');
+                if (dest && dest.innerHTML.indexOf('Carregando') !== -1) {
+                    console.warn('Ainda carregando após 3s — forçando fallback');
+                    aplicarFallbackYouTube();
+                }
+            }, 3000);
+
+            // 2) Resto do site (protegido para não quebrar o YouTube)
+            try {
+                verificarSessao();
+                mostrarAlertaDoDia();
+
+        // Puxa quadro de avisos da nuvem (se houver)
+        (async function puxarAvisosDia() {
+            try {
+                if (typeof firebase === 'undefined' || !firebase.firestore) return;
+                var db = firebase.firestore();
+                var snap = await db.collection('config').doc('avisos_dia').get();
+                if (snap.exists) {
+                    var data = snap.data() || {};
+                    if (Array.isArray(data.lista)) {
+                        localStorage.setItem('ibn_avisos_dia', JSON.stringify(data.lista));
+                        if (typeof mostrarAlertaDoDia === 'function') mostrarAlertaDoDia();
+                    }
+                }
+            } catch (e) {}
+        })();
+
+                configurarBotaoLocalizar();
+                // Lista de células sempre aparece (mesmo se o mapa falhar)
+                try { renderizarListaCompacta(); } catch (e) {}
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('sw.js').catch(function() {});
+                }
+
+                // Controles do player
+                if (typeof player !== 'undefined' && player.garantirAudio) {
+                    player.garantirAudio();
+                    player.volume(70);
+                }
+                var btnPlay = document.getElementById('btnPlay');
+                if (btnPlay) {
+                    var playHandler = function(e) { e.preventDefault(); player.toggle(); };
+                    btnPlay.addEventListener('click', playHandler);
+                    btnPlay.addEventListener('touchend', playHandler, { passive: false });
+                }
+                var btnProx = document.getElementById('btnProximo');
+                if (btnProx) btnProx.addEventListener('click', function() {
+                    if (!player.lista.length) { player.estaTocando = true; player.recarregarEReiniciar(); }
+                    else player.proxima();
+                });
+                var btnAnt = document.getElementById('btnAnterior');
+                if (btnAnt) btnAnt.addEventListener('click', function() { player.anterior(); });
+                var vol = document.getElementById('volume');
+                if (vol) vol.addEventListener('input', function(e) { player.volume(e.target.value); });
+
+                var linkAdmin = document.getElementById('linkAdmin');
+                if (linkAdmin) linkAdmin.addEventListener('click', function() {
+                    window.open('admin-playlist.html', '_blank');
+                });
+
+                var playerFixo = document.getElementById('playerFixo');
+                if (playerFixo) {
+                    playerFixo.addEventListener('touchstart', function() {
+                        if (player && player.garantirAudio) player.garantirAudio();
+                    }, { passive: true });
+                }
+
+                // Mapa — tenta agora; se a API ainda não carregou, o callback onGoogleMapsReady cuida
+                if (typeof google !== 'undefined' && google.maps) {
+                    initMap();
+                } else if (window.__mapaPronto) {
+                    initMap();
+                }
+                // Fallback garantido: lista sempre aparece, e se o mapa não carregar em 5s mostra aviso
+                setTimeout(function() {
+                    if (!mapa) {
+                        mostrarMapaFallback('Mapa interativo indisponível no momento. Use a lista abaixo com os endereços e links do Google Maps.');
+                    }
+                    renderizarListaCompacta();
+                }, 5000);
+            } catch (err) {
+                console.error('Erro na inicialização geral:', err);
+            }
+        });
+    </script>
+
+<script>
+(function(){
+    function fmtBR(iso) {
+        if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(String(iso))) return iso || '';
+        var p = String(iso).slice(0,10).split('-');
+        return p[2] + '/' + p[1] + '/' + p[0];
+    }
+    function isoHoje() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function abrirAgenda() {
+        var modal = document.getElementById('modalAgenda');
+        if (!modal) return;
+        // avisos
+        var boxA = document.getElementById('agendaAvisosLista');
+        try {
+            var lista = JSON.parse(localStorage.getItem('ibn_avisos_dia') || '[]');
+            var hoje = isoHoje();
+            var fut = lista.filter(function(a){ return a && String(a.data).slice(0,10) >= hoje; })
+                .sort(function(a,b){ return String(a.data).localeCompare(String(b.data)); });
+            if (!fut.length) boxA.innerHTML = '<p class="text-gray-400">Nenhum aviso extra nos próximos dias.</p>';
+            else boxA.innerHTML = fut.map(function(a){
+                return '<div class="border rounded-lg px-3 py-2 bg-amber-50/60"><strong>' + fmtBR(a.data) + '</strong> — ' +
+                    String(a.texto||'').replace(/</g,'&lt;') + '</div>';
+            }).join('');
+        } catch(e) {
+            boxA.innerHTML = '<p class="text-gray-400">Não foi possível carregar avisos.</p>';
+        }
+        // eventos
+        var boxE = document.getElementById('agendaEventosLista');
+        try {
+            var evs = JSON.parse(localStorage.getItem('eventos') || '[]');
+            if (!evs.length) {
+                boxE.innerHTML = '<p class="text-gray-400">Nenhum evento com inscrição no momento. <a href="eventos.html" class="text-secondary font-bold underline">Ver página de eventos</a></p>';
+            } else {
+                boxE.innerHTML = evs.map(function(e){
+                    var nome = e.nome || e.titulo || 'Evento';
+                    var data = e.data || '';
+                    var local = e.local || '';
+                    return '<a href="eventos.html" class="block border rounded-lg px-3 py-2 hover:bg-gray-50">' +
+                        '<strong>' + String(nome).replace(/</g,'&lt;') + '</strong>' +
+                        (data ? ' · ' + data : '') +
+                        (local ? ' · ' + String(local).replace(/</g,'&lt;') : '') +
+                        ' <span class="text-secondary text-xs font-bold">Inscrever-se →</span></a>';
+                }).join('');
+            }
+        } catch(e) {
+            boxE.innerHTML = '<p class="text-gray-400"><a href="eventos.html" class="text-secondary font-bold underline">Ver eventos</a></p>';
+        }
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+    function fecharAgenda() {
+        var modal = document.getElementById('modalAgenda');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+        var b = document.getElementById('btnVerAgenda');
+        if (b) b.addEventListener('click', abrirAgenda);
+        var f = document.getElementById('btnFecharAgenda');
+        if (f) f.addEventListener('click', fecharAgenda);
+        var modal = document.getElementById('modalAgenda');
+        if (modal) modal.addEventListener('click', function(ev){
+            if (ev.target === modal) fecharAgenda();
+        });
+    });
+})();
+</script>
+
+
+<script>
+(function(){
+    var destAtual = null;
+    function soMembros() {
+        if (typeof getUsuarioLogado !== 'function') return null;
+        return getUsuarioLogado();
+    }
+    window.abrirModalAniv = function abrirModalAniv() {
+        var m = document.getElementById('modalAniversariantes');
+        if (!m) return;
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+        renderAniv();
+    }
+    function fecharModalAniv() {
+        var m = document.getElementById('modalAniversariantes');
+        if (!m) return;
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+    }
+    function selecionarDest(a) {
+        destAtual = a;
+        var box = document.getElementById('boxEnviarAniv');
+        var u = soMembros();
+        if (!box || !u) return;
+        box.classList.remove('hidden');
+        document.getElementById('nomeDestAniv').textContent = a.nome + (a.idade ? ' (' + a.idade + ' anos)' : '');
+        document.getElementById('textoMsgAniv').value = mensagemAniversarioPadrao(a.nome, u.nome);
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function renderAniv() {
+        var u = soMembros();
+        if (!u || typeof listarAniversariantesHoje !== 'function') return;
+        var hoje = listarAniversariantesHoje();
+        var prox = listarProximosAniversariantes(8);
+        var boxHoje = document.getElementById('listaAnivHoje');
+        var boxProx = document.getElementById('listaAnivProx');
+        var boxProp = document.getElementById('boxAnivProprio');
+        if (ehAniversarioHojeMembro(u)) {
+            boxProp.classList.remove('hidden');
+            document.getElementById('nomeAnivProprio').textContent = (u.nome || '').split(' ')[0];
+        } else {
+            boxProp.classList.add('hidden');
+        }
+        if (!hoje.length) {
+            boxHoje.innerHTML = '<p class="text-gray-400">Nenhum aniversariante hoje.</p>';
+        } else {
+            boxHoje.innerHTML = hoje.map(function(a){
+                var eu = String(a.id) === String(u.id);
+                return '<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg px-3 py-2 bg-pink-50/80">' +
+                    '<div><span class="font-bold text-primary">' + (a.nome||'').replace(/</g,'&lt;') + '</span>' +
+                    (a.idade ? ' <span class="text-xs text-gray-500">· ' + a.idade + ' anos</span>' : '') +
+                    (eu ? ' <span class="text-xs font-bold text-pink-600">· é você!</span>' : '') +
+                    '</div>' +
+                    (eu ? '' : '<button type="button" data-id="'+a.id+'" class="btnHomenagear text-xs font-bold bg-pink-600 text-white px-3 py-1.5 rounded-lg hover:bg-pink-700">Homenagear</button>') +
+                    '</div>';
+            }).join('');
+        }
+        // próximos (exceto só hoje já listado — mostrar todos os dias com label)
+        var dias = prox.filter(function(d){ return d.diasAte > 0; });
+        if (!dias.length) {
+            boxProx.innerHTML = '<p class="text-gray-400">Nenhum aniversariante nos próximos 8 dias.</p>';
+        } else {
+            boxProx.innerHTML = dias.map(function(d){
+                return '<div class="border rounded-lg px-3 py-2">' +
+                    '<p class="text-xs font-bold text-secondary mb-1">' + d.dataBR + (d.diasAte === 1 ? ' (amanhã)' : ' (em ' + d.diasAte + ' dias)') + '</p>' +
+                    d.aniversariantes.map(function(a){
+                        return '<div class="flex flex-wrap items-center justify-between gap-2 py-1">' +
+                            '<span class="font-semibold text-primary">' + (a.nome||'').replace(/</g,'&lt;') + '</span>' +
+                            '<button type="button" data-id="'+a.id+'" data-nome="'+String(a.nome||'').replace(/"/g,'&quot;')+'" class="btnHomenagear text-xs font-bold border border-pink-500 text-pink-700 px-2 py-1 rounded hover:bg-pink-50">Homenagear</button>' +
+                            '</div>';
+                    }).join('') +
+                    '</div>';
+            }).join('');
+        }
+        document.querySelectorAll('.btnHomenagear').forEach(function(btn){
+            btn.addEventListener('click', function(){
+                var id = btn.getAttribute('data-id');
+                var all = listarProximosAniversariantes(8);
+                var found = null;
+                all.forEach(function(d){
+                    d.aniversariantes.forEach(function(a){ if (String(a.id) === String(id)) found = a; });
+                });
+                if (found) selecionarDest(found);
+            });
+        });
+        // mensagem modelo sempre visível
+        var boxEnv = document.getElementById('boxEnviarAniv');
+        if (boxEnv) {
+            boxEnv.classList.remove('hidden');
+            if (!destAtual) {
+                var u0 = soMembros();
+                document.getElementById('textoMsgAniv').value = mensagemAniversarioPadrao('irmão(ã)', u0 && u0.nome);
+                var nd = document.getElementById('nomeDestAniv');
+                if (nd) nd.textContent = '(escolha alguém na lista quando houver)';
+            }
+        }
+    }
+    function initAniv() {
+        var u = soMembros();
+        if (!u || typeof listarAniversariantesHoje !== 'function') return;
+        var hoje = listarAniversariantesHoje();
+        var banner = document.getElementById('bannerAniversario');
+        var txt = document.getElementById('textoBannerAniv');
+        if (ehAniversarioHojeMembro(u)) {
+            banner.classList.remove('hidden');
+            txt.textContent = '🎉 Feliz aniversário, ' + (u.nome||'').split(' ')[0] + '! A IBN celebra com você.';
+            // auto-abre uma vez ao dia
+            try {
+                var k = 'ibn_aniv_visto_' + new Date().toISOString().slice(0,10) + '_' + u.id;
+                if (!localStorage.getItem(k)) {
+                    localStorage.setItem(k, '1');
+                    setTimeout(abrirModalAniv, 800);
+                }
+            } catch(e) {}
+        } else if (hoje.length) {
+            banner.classList.remove('hidden');
+            if (hoje.length === 1) txt.textContent = '🎂 Hoje é aniversário de ' + hoje[0].nome.split(' ')[0] + '!';
+            else txt.textContent = '🎂 Hoje temos ' + hoje.length + ' aniversariantes na família IBN!';
+        } else {
+            var prox = listarProximosAniversariantes(8).filter(function(d){ return d.diasAte > 0; });
+            if (prox.length) {
+                banner.classList.remove('hidden');
+                banner.classList.remove('from-pink-500', 'to-rose-500');
+                banner.classList.add('from-primary', 'to-primary');
+                var n = 0; prox.forEach(function(d){ n += d.aniversariantes.length; });
+                txt.textContent = '📅 ' + n + ' aniversariante(s) nos próximos 8 dias';
+            }
+        }
+        document.getElementById('btnAbrirAniv') && document.getElementById('btnAbrirAniv').addEventListener('click', function(e){ e.stopPropagation(); abrirModalAniv(); });
+        banner && banner.addEventListener('click', abrirModalAniv);
+        document.getElementById('btnFecharAniv') && document.getElementById('btnFecharAniv').addEventListener('click', fecharModalAniv);
+        var modal = document.getElementById('modalAniversariantes');
+        if (modal) modal.addEventListener('click', function(ev){ if (ev.target === modal) fecharModalAniv(); });
+
+        document.getElementById('btnWaAniv') && document.getElementById('btnWaAniv').addEventListener('click', function(){
+            if (!destAtual) return;
+            var u = soMembros();
+            var texto = document.getElementById('textoMsgAniv').value.trim();
+            if (!texto) return alert('Escreva uma mensagem.');
+            registrarMensagemAniversarioLocal(u && u.id, u && u.nome, destAtual.id, destAtual.nome, texto);
+            var link = linkWhatsAppAniversario(destAtual.telefone, texto);
+            var st = document.getElementById('msgAnivStatus');
+            if (!link) {
+                st.textContent = 'Este membro não tem telefone cadastrado. Use "Copiar mensagem".';
+                st.className = 'text-xs text-center text-amber-700';
+                st.classList.remove('hidden');
+                return;
+            }
+            st.textContent = 'Abrindo WhatsApp...';
+            st.className = 'text-xs text-center text-green-600';
+            st.classList.remove('hidden');
+            window.open(link, '_blank');
+        });
+        document.getElementById('btnCopiarAniv') && document.getElementById('btnCopiarAniv').addEventListener('click', function(){
+            var texto = document.getElementById('textoMsgAniv').value.trim();
+            var u = soMembros();
+            if (destAtual && u) registrarMensagemAniversarioLocal(u.id, u.nome, destAtual.id, destAtual.nome, texto);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(texto).then(function(){
+                    var st = document.getElementById('msgAnivStatus');
+                    st.textContent = 'Mensagem copiada!';
+                    st.className = 'text-xs text-center text-green-600';
+                    st.classList.remove('hidden');
+                });
+            } else {
+                alert('Copie a mensagem manualmente.');
+            }
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){
+        initAniv();
+        if (location.hash && location.hash.indexOf('aniversariantes') !== -1) setTimeout(abrirModalAniv, 600);
+    }, 400); });
+    else setTimeout(initAniv, 400);
+})();
+</script>
+
+
+<script>
+(function(){
+    // Ao abrir o site logado: envia dados/fotos do membro para a nuvem (automático)
+    function trySync() {
+        try {
+            if (typeof IBNNuvem === 'undefined') return;
+            // 1) Baixa membros da nuvem (cargos/lideranças atualizados no outro aparelho)
+            if (IBNNuvem.puxarMembrosParaLocal) {
+                IBNNuvem.puxarMembrosParaLocal().then(function () {
+                    try { if (typeof atualizarSessaoDoCadastro === 'function') atualizarSessaoDoCadastro(); } catch (e2) {}
+                }).catch(function () {});
+            }
+            // 2) Sobe dados/fotos da sessão atual
+            if (IBNNuvem.agendarSyncSessao) {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (u && u.id) IBNNuvem.agendarSyncSessao(u, 1500);
+            }
+        } catch (e) {}
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', trySync);
+    else trySync();
+})();
+</script>
+
+
+<script>
+(function(){
+    function mostrarEscala() {
+        var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+        if (!u || typeof escalaAvisosUrgentes !== 'function') return;
+        var avisos = escalaAvisosUrgentes(u);
+        var banner = document.getElementById('bannerEscalaServico');
+        var txt = document.getElementById('textoBannerEscala');
+        if (!banner || !txt) return;
+        if (!avisos.length) {
+            banner.classList.add('hidden');
+            return;
+        }
+        var a = avisos[0];
+        var quando = a.diasAte === 0 ? 'HOJE' : 'AMANHÃ';
+        var funcoes = (a.funcoes || []).join(', ');
+        var urg = a.urgente4h ? ' ⏰ Em breve! ' : '';
+        txt.textContent = urg + '📋 Escala IBN ' + quando + ' (' + a.dataLabel + '): ' + funcoes +
+            (a.ministerio ? ' — ' + a.ministerio : '') +
+            '. Esteja 30 min antes na igreja.' +
+            (a.observacao ? ' · ' + a.observacao : '');
+        banner.classList.remove('hidden');
+        var btnC = document.getElementById('btnConfirmarEscalaBanner');
+        if (btnC) {
+            if (typeof membroConfirmouEscala === 'function' && membroConfirmouEscala(a.ministerio, a.dataIso, u.id)) {
+                btnC.textContent = '✓ Já confirmado';
+                btnC.disabled = true;
+                btnC.classList.add('opacity-70');
+            } else {
+                btnC.textContent = '✓ Confirmei que recebi';
+                btnC.disabled = false;
+                btnC.classList.remove('opacity-70');
+                btnC.onclick = function() {
+                    if (typeof confirmarRecebimentoEscala !== 'function') return;
+                    var r = confirmarRecebimentoEscala(a.ministerio, a.dataIso, u);
+                    alert(r.mensagem || 'Confirmado');
+                    if (r.sucesso) {
+                        btnC.textContent = '✓ Já confirmado';
+                        btnC.disabled = true;
+                    }
+                };
+            }
+        }
+        try {
+            var k = 'ibn_escala_visto_' + a.dataIso + '_' + (u.id || '');
+            if (!sessionStorage.getItem(k) && a.diasAte <= 1) {
+                sessionStorage.setItem(k, '1');
+            }
+        } catch(e) {}
+    }
+    document.getElementById('btnDetalheEscala') && document.getElementById('btnDetalheEscala').addEventListener('click', function(){
+        var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+        if (!u || typeof escalaProximasDoMembro !== 'function') return;
+        var lista = escalaProximasDoMembro(u, 21);
+        if (!lista.length) return alert('Nenhuma escala próxima com o seu nome.');
+        var msg = 'Suas próximas escalas:\n\n';
+        lista.forEach(function(a){
+            msg += '• ' + a.dataLabel + ' (' + (a.diasAte===0?'hoje':a.diasAte===1?'amanhã':'em '+a.diasAte+' dias') + ')\n';
+            msg += '  Função: ' + (a.funcoes||[]).join(', ') + ' — ' + (a.ministerio||'') + '\n';
+            if (a.observacao) msg += '  Obs: ' + a.observacao + '\n';
+            msg += '\n';
+        });
+        alert(msg);
+    });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(mostrarEscala, 500);
+        setTimeout(function(){
+            if (typeof processarNotificacoesEscalaAoAbrir === 'function') {
+                processarNotificacoesEscalaAoAbrir();
+            }
+        }, 1200); });
+    else setTimeout(mostrarEscala, 500);
+        setTimeout(function(){
+            if (typeof processarNotificacoesEscalaAoAbrir === 'function') {
+                processarNotificacoesEscalaAoAbrir();
+            }
+        }, 1200);
+})();
+</script>
+
+
+    <script>
+    <script>
+    (function () {
+        var selV = document.getElementById('bibHomeVersao');
+        var selL = document.getElementById('bibHomeLivro');
+        var selC = document.getElementById('bibHomeCap');
+        var selR = document.getElementById('bibHomeVer');
+        var elStatus = document.getElementById('bibHomeStatus');
+        var elRef = document.getElementById('bibHomeRef');
+        var elTexto = document.getElementById('bibHomeTexto');
+        var elMsg = document.getElementById('bibHomeMsg');
+        var elNav = document.getElementById('bibHomeNav');
+        var btnAnt = document.getElementById('bibHomeAnt');
+        var btnProx = document.getElementById('bibHomeProx');
+        var btnCont = document.getElementById('bibHomeCont');
+        if (!selV || !selL) return;
+
+        var bibData = null;
+        var carregando = false;
+        // posição atual da leitura contínua
+        var pos = { livroIdx: 0, cap: 1, ver: 1 };
+
+        function setStatus(t, ok) {
+            if (elStatus) {
+                elStatus.classList.remove('hidden');
+                elStatus.textContent = t;
+                elStatus.className = 'text-sm ' + (ok === false ? 'text-red-600' : 'text-gray-500');
+            }
+            if (elRef) elRef.classList.add('hidden');
+            if (elTexto) {
+                elTexto.classList.add('hidden');
+                elTexto.innerHTML = '';
+            }
+            if (elNav) elNav.classList.add('hidden');
+        }
+
+        function nomeLivro(ab) {
+            var nomes = (typeof BIBLIA_NOME_LIVRO !== 'undefined') ? BIBLIA_NOME_LIVRO : {};
+            return nomes[ab] || (ab || '').toUpperCase();
+        }
+
+        function getTexto(livroIdx, cap, ver) {
+            if (!bibData || !bibData[livroIdx]) return null;
+            var caps = bibData[livroIdx].chapters || [];
+            var versos = caps[cap - 1];
+            if (!versos) return null;
+            var t = versos[ver - 1];
+            return t ? String(t).trim() : null;
+        }
+
+        function maxCap(livroIdx) {
+            return (bibData[livroIdx] && bibData[livroIdx].chapters) ? bibData[livroIdx].chapters.length : 0;
+        }
+        function maxVer(livroIdx, cap) {
+            var c = (bibData[livroIdx] && bibData[livroIdx].chapters) ? bibData[livroIdx].chapters[cap - 1] : null;
+            return c ? c.length : 0;
+        }
+
+        /** Avança 1 versículo; se acabar o capítulo, vai ao próximo; se acabar o livro, próximo livro */
+        function avancarPos(p) {
+            var n = { livroIdx: p.livroIdx, cap: p.cap, ver: p.ver + 1 };
+            if (n.ver <= maxVer(n.livroIdx, n.cap)) return n;
+            n.ver = 1;
+            n.cap += 1;
+            if (n.cap <= maxCap(n.livroIdx)) return n;
+            n.cap = 1;
+            n.livroIdx += 1;
+            if (n.livroIdx < bibData.length) return n;
+            return null; // fim da Bíblia
+        }
+
+        function voltarPos(p) {
+            var n = { livroIdx: p.livroIdx, cap: p.cap, ver: p.ver - 1 };
+            if (n.ver >= 1) return n;
+            n.cap -= 1;
+            if (n.cap >= 1) {
+                n.ver = maxVer(n.livroIdx, n.cap);
+                return n;
+            }
+            n.livroIdx -= 1;
+            if (n.livroIdx >= 0) {
+                n.cap = maxCap(n.livroIdx);
+                n.ver = maxVer(n.livroIdx, n.cap);
+                return n;
+            }
+            return null;
+        }
+
+        function sincronizarSelects(p) {
+            if (!p) return;
+            selL.value = String(p.livroIdx);
+            // repovoa capítulos se mudou livro
+            preencherCapitulos(true);
+            selC.value = String(p.cap);
+            preencherVersiculos(true);
+            selR.value = String(p.ver);
+        }
+
+        function mostrarLeitura(p, qtdExtra) {
+            qtdExtra = qtdExtra || 0;
+            if (!p) {
+                setStatus('Fim da Bíblia nesta versão.', false);
+                return;
+            }
+            pos = p;
+            var versao = (selV.value || 'nvi').toUpperCase();
+            var livro = bibData[p.livroIdx];
+            var ab = livro.abbrev || '';
+            var ref = nomeLivro(ab) + ' ' + p.cap + ':' + p.ver + ' (' + versao + ')';
+
+            var html = '';
+            var cur = { livroIdx: p.livroIdx, cap: p.cap, ver: p.ver };
+            var total = 1 + qtdExtra;
+            for (var i = 0; i < total; i++) {
+                if (!cur) break;
+                var tx = getTexto(cur.livroIdx, cur.cap, cur.ver);
+                if (!tx) break;
+                var ab2 = bibData[cur.livroIdx].abbrev || '';
+                var r2 = nomeLivro(ab2) + ' ' + cur.cap + ':' + cur.ver;
+                var destaque = (i === 0) ? 'font-semibold text-gray-900' : 'text-gray-700';
+                html += '<p class="' + destaque + '"><span class="text-primary font-bold text-sm mr-1">' + r2 + '</span> ' + tx + '</p>';
+                if (i < total - 1) cur = avancarPos(cur);
+            }
+
+            if (elStatus) elStatus.classList.add('hidden');
+            if (elRef) {
+                elRef.classList.remove('hidden');
+                elRef.textContent = ref + (qtdExtra > 0 ? ' · e seguintes' : '');
+            }
+            if (elTexto) {
+                elTexto.classList.remove('hidden');
+                elTexto.innerHTML = html;
+            }
+            if (elNav) elNav.classList.remove('hidden');
+            if (btnAnt) btnAnt.disabled = !voltarPos(pos);
+            if (btnProx) btnProx.disabled = !avancarPos(pos);
+            sincronizarSelects(pos);
+        }
+
+        function preencherLivros() {
+            if (!bibData || !Array.isArray(bibData)) return;
+            selL.innerHTML = '<option value="">Selecione o livro…</option>';
+            bibData.forEach(function (b, idx) {
+                selL.innerHTML += '<option value="' + idx + '">' + nomeLivro(b.abbrev || '') + '</option>';
+            });
+            selL.disabled = false;
+            selC.innerHTML = '<option value="">—</option>';
+            selR.innerHTML = '<option value="">—</option>';
+            selC.disabled = true;
+            selR.disabled = true;
+        }
+
+        function preencherCapitulos(silent) {
+            var idx = parseInt(selL.value, 10);
+            var keep = selC.value;
+            selC.innerHTML = '<option value="">Selecione o capítulo…</option>';
+            selR.innerHTML = '<option value="">—</option>';
+            if (!silent) selR.disabled = true;
+            if (isNaN(idx) || !bibData[idx]) {
+                selC.disabled = true;
+                return;
+            }
+            var caps = bibData[idx].chapters || [];
+            for (var i = 1; i <= caps.length; i++) {
+                selC.innerHTML += '<option value="' + i + '">' + i + '</option>';
+            }
+            selC.disabled = false;
+            if (silent && keep) selC.value = keep;
+            if (!silent) setStatus('Escolha o capítulo.');
+        }
+
+        function preencherVersiculos(silent) {
+            var idx = parseInt(selL.value, 10);
+            var cap = parseInt(selC.value, 10);
+            var keep = selR.value;
+            selR.innerHTML = '<option value="">Selecione o versículo…</option>';
+            if (isNaN(idx) || isNaN(cap) || !bibData[idx]) {
+                selR.disabled = true;
+                return;
+            }
+            var versos = (bibData[idx].chapters || [])[cap - 1] || [];
+            for (var i = 1; i <= versos.length; i++) {
+                selR.innerHTML += '<option value="' + i + '">' + i + '</option>';
+            }
+            selR.disabled = false;
+            if (silent && keep) selR.value = keep;
+            if (!silent) setStatus('Escolha o versículo.');
+        }
+
+        function mostrarSelecionado() {
+            var idx = parseInt(selL.value, 10);
+            var cap = parseInt(selC.value, 10);
+            var ver = parseInt(selR.value, 10);
+            if (isNaN(idx) || isNaN(cap) || isNaN(ver)) return;
+            mostrarLeitura({ livroIdx: idx, cap: cap, ver: ver }, 0);
+        }
+
+        function carregar(versao) {
+            if (typeof carregarBibliaCompleta !== 'function') {
+                setStatus('Recursos da Bíblia não carregaram. Atualize a página (Ctrl+F5).', false);
+                return;
+            }
+            if (carregando) return;
+            carregando = true;
+            selL.disabled = true;
+            selC.disabled = true;
+            selR.disabled = true;
+            setStatus('Carregando Bíblia ' + (versao || 'nvi').toUpperCase() + '…');
+            if (elMsg) elMsg.textContent = 'Baixando (só na primeira vez por versão)…';
+            carregarBibliaCompleta(versao || 'nvi').then(function (data) {
+                carregando = false;
+                bibData = data;
+                preencherLivros();
+                setStatus('Selecione o livro, depois o capítulo e o versículo.');
+                if (elMsg) elMsg.textContent = 'Bíblia pronta neste aparelho. Use Anterior / Próximo ou Continuar lendo.';
+            }).catch(function (err) {
+                carregando = false;
+                setStatus('Não foi possível carregar a Bíblia. Verifique a internet.', false);
+                if (elMsg) elMsg.textContent = (err && err.message) || 'Erro de rede';
+            });
+        }
+
+        selV.addEventListener('change', function () {
+            bibData = null;
+            carregar(selV.value);
+        });
+        selL.addEventListener('change', function () { preencherCapitulos(false); });
+        selC.addEventListener('change', function () { preencherVersiculos(false); });
+        selR.addEventListener('change', mostrarSelecionado);
+
+        if (btnProx) btnProx.addEventListener('click', function () {
+            var n = avancarPos(pos);
+            if (n) mostrarLeitura(n, 0);
+        });
+        if (btnAnt) btnAnt.addEventListener('click', function () {
+            var n = voltarPos(pos);
+            if (n) mostrarLeitura(n, 0);
+        });
+        if (btnCont) btnCont.addEventListener('click', function () {
+            // mostra o atual + 3 seguintes e avança a posição para o último mostrado
+            var inicio = pos;
+            mostrarLeitura(inicio, 3);
+            var cur = inicio;
+            for (var i = 0; i < 3; i++) {
+                var n = avancarPos(cur);
+                if (!n) break;
+                cur = n;
+            }
+            pos = cur;
+            sincronizarSelects(pos);
+            if (btnAnt) btnAnt.disabled = !voltarPos(pos);
+            if (btnProx) btnProx.disabled = !avancarPos(pos);
+        });
+
+        function iniciar() {
+            if (bibData || carregando) return;
+            if (typeof location !== 'undefined' && location.protocol === 'file:') {
+                setStatus('Abra o site pelo GitHub (https) ou por um servidor local. Arquivo aberto direto do PC não carrega a Bíblia.', false);
+                if (elMsg) elMsg.textContent = 'Dica: no GitHub Pages funciona. No PC use: npx serve na pasta do site.';
+                // ainda tenta caminhos relativos (se o navegador permitir)
+            }
+            carregar(selV.value || 'nvi');
+        }
+        if ('IntersectionObserver' in window) {
+            var obs = new IntersectionObserver(function (entries) {
+                entries.forEach(function (e) {
+                    if (e.isIntersecting) {
+                        iniciar();
+                        obs.disconnect();
+                    }
+                });
+            }, { rootMargin: '100px' });
+            var sec = document.getElementById('biblia');
+            if (sec) obs.observe(sec);
+            else setTimeout(iniciar, 500);
+        } else {
+            setTimeout(iniciar, 500);
+        }
+        setTimeout(iniciar, 1200);
+        selL.addEventListener('focus', iniciar);
+        selV.addEventListener('focus', iniciar);
+        selL.addEventListener('click', iniciar);
+    })();
+    </script>
+
+</body>
+</html>
