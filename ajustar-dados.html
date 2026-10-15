@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Dados — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#0A1A3F', secondary: '#D4AF37', light: '#F8F9FC' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light min-h-screen py-8 px-4">
+    <div class="max-w-lg mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-primary">📋 Meus Dados Cadastrais</h1>
+            <p class="text-gray-600 mt-2">Atualize suas informações sempre que precisar</p>
+        </div>
+
+        <div class="bg-white p-8 rounded-xl shadow-lg">
+            <form id="formDados" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nome Completo</label>
+                    <input type="text" id="nome" required class="w-full p-3 border rounded-lg bg-gray-50" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Telefone</label>
+                    <input type="tel" id="telefone" required class="w-full p-3 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">E-mail</label>
+                    <input type="email" id="email" required class="w-full p-3 border rounded-lg">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Sexo</label>
+                        <select id="sexo" class="w-full p-3 border rounded-lg">
+                            <option value="">Selecione...</option>
+                            <option value="masculino">Masculino</option>
+                            <option value="feminino">Feminino</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Data de Nascimento</label>
+                        <input type="date" id="nascimento" class="w-full p-3 border rounded-lg">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Estado Civil</label>
+                        <select id="estadoCivil" class="w-full p-3 border rounded-lg">
+                            <option value="">Selecione...</option>
+                            <option value="solteiro">Solteiro(a)</option>
+                            <option value="casado">Casado(a)</option>
+                            <option value="divorciado">Divorciado(a)</option>
+                            <option value="viuvo">Viúvo(a)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Endereço (rua, número, bairro)</label>
+                        <input type="text" id="endereco" class="w-full p-3 border rounded-lg" placeholder="Rua, número, bairro">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Município / Cidade</label>
+                        <input type="text" id="municipio" class="w-full p-3 border rounded-lg" placeholder="Ex.: Diamantino">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">UF</label>
+                        <input type="text" id="uf" maxlength="2" class="w-full p-3 border rounded-lg uppercase" placeholder="MT">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Origem / Outra Igreja</label>
+                    <textarea id="origem" rows="2" class="w-full p-3 border rounded-lg"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Batizado(a)?</label>
+                        <select id="batizado" class="w-full p-3 border rounded-lg">
+                            <option value="">Selecione...</option>
+                            <option value="sim">Sim</option>
+                            <option value="nao">Não</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Data do Batismo</label>
+                        <input type="date" id="dataBatismo" class="w-full p-3 border rounded-lg">
+                    </div>
+                </div>
+
+                <div class="border rounded-xl p-4 bg-gray-50 space-y-3">
+                    <h3 class="font-bold text-primary text-sm"><i class="fa fa-home mr-1"></i> Células (máx. 2)</h3>
+                    <p class="text-xs text-gray-500">1 na terça e/ou 1 no sábado</p>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Célula de Terça</label>
+                        <select id="celulaTerca" class="w-full p-3 border rounded-lg bg-white">
+                            <option value="">— Nenhuma —</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Célula de Sábado</label>
+                        <select id="celulaSabado" class="w-full p-3 border rounded-lg bg-white">
+                            <option value="">— Nenhuma —</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="border rounded-xl p-4 bg-gray-50 space-y-3">
+                    <h3 class="font-bold text-primary text-sm"><i class="fa fa-users mr-1"></i> Ministérios</h3>
+                    <p class="text-xs text-gray-500">Marque os que participa</p>
+                    <div id="listaMinisterios" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Funções que exerce / deseja (pode marcar várias)</label>
+                        <p class="text-xs text-gray-500 mb-2">Novas funções ficam <strong>pendentes</strong> até o gestor ou admin aprovar.</p>
+                        <div id="boxFuncoesMembro" class="grid grid-cols-1 sm:grid-cols-2 gap-2 border rounded-lg p-3 bg-gray-50 text-sm">
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Membro(a)" class="accent-secondary" checked> Membro(a)</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Líder de Célula" class="accent-secondary"> Líder de Célula</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Líder de Ministério" class="accent-secondary"> Líder de Ministério</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Líder em treinamento" class="accent-secondary"> Líder em treinamento</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Discipulador(a)" class="accent-secondary"> Discipulador(a)</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Pastor(a)" class="accent-secondary"> Pastor(a)</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Missionário(a)" class="accent-secondary"> Missionário(a)</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Voluntário(a)" class="accent-secondary"> Voluntário(a)</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="fnMembro" value="Outro" class="accent-secondary"> Outro</label>
+                        </div>
+                        <p id="funcoesPendInfo" class="text-xs text-amber-700 mt-1 hidden"></p>
+
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Função específica</label>
+                        <input type="text" id="funcaoEspecifica" class="w-full p-3 border rounded-lg" placeholder="Ex.: Anfitrião, Líder em treinamento">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Observações</label>
+                    <textarea id="observacoes" rows="2" class="w-full p-3 border rounded-lg"></textarea>
+                </div>
+
+                <div id="msg" class="text-sm hidden"></div>
+
+                <button type="submit" class="w-full bg-primary text-white p-3 rounded-lg font-bold hover:bg-accent">
+                    <i class="fa fa-save mr-2"></i> Salvar Alterações
+                </button>
+
+                <div class="border-t pt-4 mt-4">
+                    <button type="button" id="btnAbrirAlterarSenha" class="text-sm font-bold text-primary border border-primary px-4 py-2 rounded-lg hover:bg-primary hover:text-white">
+                        <i class="fa fa-key"></i> Alterar senha
+                    </button>
+                    <p class="text-xs text-gray-400 mt-1">Opcional. Só use se quiser trocar a senha de acesso.</p>
+                </div>
+            </form>
+
+            <!-- Modal alterar senha (fora do form) -->
+            <div id="modalAlterarSenha" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-2xl max-w-md w-full p-6">
+                    <h3 class="font-bold text-primary text-lg mb-1">Alterar senha</h3>
+                    <p class="text-xs text-gray-500 mb-4">Informe a senha atual e a nova senha duas vezes.</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Senha atual</label>
+                            <div class="relative">
+                                <input type="password" id="adSenhaAtual" class="w-full border rounded-lg px-3 py-2 text-sm pr-10" autocomplete="current-password">
+                                <button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" data-target="adSenhaAtual"><i class="fa fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Nova senha</label>
+                            <div class="relative">
+                                <input type="password" id="adSenhaNova" class="w-full border rounded-lg px-3 py-2 text-sm pr-10" autocomplete="new-password">
+                                <button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" data-target="adSenhaNova"><i class="fa fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Confirmar nova senha</label>
+                            <div class="relative">
+                                <input type="password" id="adSenhaNova2" class="w-full border rounded-lg px-3 py-2 text-sm pr-10" autocomplete="new-password">
+                                <button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" data-target="adSenhaNova2"><i class="fa fa-eye"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="adSenhaMsg" class="text-sm mt-3 hidden text-center"></p>
+                    <div class="flex gap-2 mt-4">
+                        <button type="button" id="btnTrocarSenhaDados" class="flex-1 bg-primary text-white py-2 rounded-lg font-bold">Salvar nova senha</button>
+                        <button type="button" id="btnFecharSenhaModal" class="flex-1 border py-2 rounded-lg font-bold">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-center mt-6 space-y-2">
+                <a href="area-membro.html" class="text-secondary font-bold hover:underline block">← Voltar à Área do Membro</a>
+                <a href="index.html" class="text-gray-500 text-sm hover:underline">Página principal</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        // Exige login (chave oficial ibn_sessao_atual)
+        if (typeof exigirLogin === 'function' && !exigirLogin()) { /* redireciona */ }
+
+        const usuario = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+        if (!usuario) {
+            alert('Faça login primeiro.');
+            window.location.href = 'login.html?destino=ajustar-dados.html';
+        }
+
+        // Preenche formulário com dados da sessão / cadastro
+        document.getElementById('nome').value = usuario.nome || '';
+        document.getElementById('telefone').value = usuario.telefone || '';
+        document.getElementById('email').value = usuario.email || '';
+        document.getElementById('sexo').value = usuario.sexo || '';
+        document.getElementById('nascimento').value = (typeof normalizarDataParaISO === 'function')
+            ? normalizarDataParaISO(usuario.nascimento || '')
+            : (usuario.nascimento || '');
+        document.getElementById('estadoCivil').value = usuario.estadoCivil || '';
+        document.getElementById('endereco').value = usuario.endereco || '';
+        document.getElementById('municipio').value = usuario.municipio || '';
+        document.getElementById('uf').value = usuario.uf || 'MT';
+        document.getElementById('origem').value = usuario.origem || '';
+        // batizado pode vir como batizado ou batismo (cadastro antigo)
+        const bat = usuario.batizado !== undefined && usuario.batizado !== '' ? usuario.batizado : usuario.batismo;
+        if (bat === true || bat === 'sim' || bat === 'Sim') {
+            document.getElementById('batizado').value = 'sim';
+        } else if (bat === false || bat === 'nao' || bat === 'Não' || bat === 'nao') {
+            document.getElementById('batizado').value = 'nao';
+        } else {
+            document.getElementById('batizado').value = bat || '';
+        }
+        document.getElementById('dataBatismo').value = (typeof normalizarDataParaISO === 'function')
+            ? normalizarDataParaISO(usuario.dataBatismo || '')
+            : (usuario.dataBatismo || '');
+        document.getElementById('observacoes').value = usuario.observacoes || '';
+
+        // Preenche células e ministérios (mesmas listas do cadastro)
+        (function preencherCelulasMinisterios() {
+            var selT = document.getElementById('celulaTerca');
+            var selS = document.getElementById('celulaSabado');
+            var listaMin = document.getElementById('listaMinisterios');
+            if (typeof LISTA_CELULAS !== 'undefined') {
+                LISTA_CELULAS.forEach(function(c) {
+                    if ((c.dia || '') === 'terca') {
+                        selT.innerHTML += '<option value="' + c.id + '">' + c.nome + '</option>';
+                    }
+                    if ((c.dia || '') === 'sabado') {
+                        selS.innerHTML += '<option value="' + c.id + '">' + c.nome + '</option>';
+                    }
+                });
+            }
+            var minhas = Array.isArray(usuario.celulas) ? usuario.celulas : [];
+            minhas.forEach(function(c) {
+                var id = c.id || c;
+                var ref = (typeof LISTA_CELULAS !== 'undefined') ? LISTA_CELULAS.find(function(x){ return x.id === id; }) : null;
+                var dia = (c.dia || (ref && ref.dia) || '');
+                if (dia === 'terca') selT.value = id;
+                if (dia === 'sabado') selS.value = id;
+            });
+            var minsUser = Array.isArray(usuario.ministerios) ? usuario.ministerios : [];
+            if (typeof LISTA_MINISTERIOS !== 'undefined' && listaMin) {
+                listaMin.innerHTML = LISTA_MINISTERIOS.map(function(m) {
+                    var checked = minsUser.indexOf(m) >= 0 ? ' checked' : '';
+                    return '<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="ministerio" value="' + m + '" class="accent-secondary"' + checked + '> <span>' + m + '</span></label>';
+                }).join('');
+            }
+            document.getElementById('funcaoEspecifica').value = usuario.funcaoEspecifica || '';
+            // marca funções aprovadas / solicitadas
+            (function(){
+                var marcadas = [];
+                if (Array.isArray(usuario.funcoesAprovadas) && usuario.funcoesAprovadas.length) {
+                    marcadas = usuario.funcoesAprovadas.slice();
+                } else if (usuario.cargo) {
+                    marcadas = [usuario.cargo];
+                }
+                if (Array.isArray(usuario.funcoesSolicitadas)) {
+                    usuario.funcoesSolicitadas.forEach(function(f){
+                        if (marcadas.indexOf(f) === -1) marcadas.push(f);
+                    });
+                }
+                document.querySelectorAll('input[name="fnMembro"]').forEach(function(cb){
+                    cb.checked = marcadas.indexOf(cb.value) !== -1 ||
+                        (cb.value.indexOf('Membro') === 0 && marcadas.length === 0);
+                });
+                if (usuario.funcoesSolicitadas && usuario.funcoesSolicitadas.length) {
+                    var info = document.getElementById('funcoesPendInfo');
+                    if (info) {
+                        info.textContent = 'Aguardando aprovação da gestão: ' + usuario.funcoesSolicitadas.join(', ');
+                        info.classList.remove('hidden');
+                    }
+                }
+            })();
+        })();
+
+        // Salva alterações via conta.js
+        document.getElementById('formDados').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var celulas = [];
+            var idT = document.getElementById('celulaTerca').value;
+            var idS = document.getElementById('celulaSabado').value;
+            if (idT && typeof LISTA_CELULAS !== 'undefined') {
+                var cT = LISTA_CELULAS.find(function(x){ return x.id === idT; });
+                if (cT) celulas.push(cT);
+            }
+            if (idS && typeof LISTA_CELULAS !== 'undefined') {
+                var cS = LISTA_CELULAS.find(function(x){ return x.id === idS; });
+                if (cS) celulas.push(cS);
+            }
+            var ministerios = [];
+            document.querySelectorAll('input[name="ministerio"]:checked').forEach(function(el) {
+                ministerios.push(el.value);
+            });
+
+            const dadosNovos = {
+                telefone: document.getElementById('telefone').value.trim(),
+                email: document.getElementById('email').value.trim().toLowerCase(),
+                sexo: document.getElementById('sexo').value,
+                nascimento: document.getElementById('nascimento').value,
+                estadoCivil: document.getElementById('estadoCivil').value,
+                endereco: document.getElementById('endereco').value.trim(),
+                municipio: document.getElementById('municipio').value.trim(),
+                uf: (document.getElementById('uf').value || 'MT').trim().toUpperCase(),
+                origem: document.getElementById('origem').value.trim(),
+                batizado: document.getElementById('batizado').value === 'sim',
+                batismo: document.getElementById('batizado').value === 'sim' ? 'sim' : 'nao',
+                dataBatismo: document.getElementById('dataBatismo').value,
+                celulas: celulas,
+                ministerios: ministerios,
+                funcaoEspecifica: document.getElementById('funcaoEspecifica').value.trim(),
+                observacoes: document.getElementById('observacoes').value.trim(),
+                funcoesSolicitadas: (function(){
+                    var arr = [];
+                    document.querySelectorAll('input[name="fnMembro"]:checked').forEach(function(cb){ arr.push(cb.value); });
+                    return arr;
+                })()
+            };
+
+            const r = (typeof atualizarPerfil === 'function')
+                ? atualizarPerfil(dadosNovos)
+                : { sucesso: false, mensagem: 'Função de atualização indisponível.' };
+
+            const msg = document.getElementById('msg');
+            if (r && r.sucesso) {
+                msg.textContent = '✅ Dados atualizados com sucesso!';
+                msg.className = 'text-green-600 mt-2 text-center font-bold';
+                msg.classList.remove('hidden');
+                setTimeout(function() {
+                    window.location.href = 'area-membro.html';
+                }, 1200);
+            } else {
+                msg.textContent = (r && r.mensagem) || 'Não foi possível salvar. Tente novamente.';
+                msg.className = 'text-red-500 mt-2 text-center font-bold';
+                msg.classList.remove('hidden');
+            }
+        });
+    </script>
+
+    <script>
+    (function(){
+        var b = document.getElementById('btnTrocarSenhaDados');
+        if (!b) return;
+        b.addEventListener('click', function(){
+            var r = trocarSenha(
+                document.getElementById('adSenhaAtual').value,
+                document.getElementById('adSenhaNova').value,
+                document.getElementById('adSenhaNova2').value
+            );
+            var msg = document.getElementById('adSenhaMsg');
+            msg.classList.remove('hidden');
+            if (r.sucesso) {
+                msg.className = 'text-sm mt-2 text-green-600 font-bold';
+                msg.textContent = 'Senha alterada. Use a nova no próximo login.';
+                document.getElementById('adSenhaAtual').value = '';
+                document.getElementById('adSenhaNova').value = '';
+                document.getElementById('adSenhaNova2').value = '';
+                setTimeout(function(){
+                    var modal = document.getElementById('modalAlterarSenha');
+                    if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+                }, 900);
+            } else {
+                msg.className = 'text-sm mt-2 text-red-500 font-bold';
+                msg.textContent = r.mensagem || 'Erro ao alterar senha.';
+            }
+        });
+        // senha temporária: abre modal automaticamente
+        var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+        if (u && u.deveTrocarSenha) {
+            var modal = document.getElementById('modalAlterarSenha');
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+        }
+    })();
+    </script>
+
+<script>
+(function(){
+    document.querySelectorAll('.toggle-pass').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            var id = btn.getAttribute('data-target');
+            var inp = document.getElementById(id);
+            if (!inp) return;
+            var icon = btn.querySelector('i');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+            } else {
+                inp.type = 'password';
+                if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+            }
+        });
+    });
+})();
+</script>
+
+
+    <script>
+    (function(){
+        var btnAb = document.getElementById('btnAbrirAlterarSenha');
+        var modal = document.getElementById('modalAlterarSenha');
+        var btnFecha = document.getElementById('btnFecharSenhaModal');
+        if (btnAb && modal) {
+            btnAb.addEventListener('click', function(){
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                var msg = document.getElementById('adSenhaMsg');
+                if (msg) msg.classList.add('hidden');
+            });
+        }
+        if (btnFecha && modal) {
+            btnFecha.addEventListener('click', function(){
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            });
+        }
+        // preencher funções já aprovadas / solicitadas
+        var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+        if (u) {
+            var aprovadas = [];
+            if (u.cargo) aprovadas.push(u.cargo);
+            if (Array.isArray(u.cargos) && u.cargos.length) aprovadas = u.cargos.slice();
+            if (Array.isArray(u.funcoesSolicitadas)) {
+                // mark requested too
+            }
+            document.querySelectorAll('input[name="fnMembro"]').forEach(function(cb){
+                var val = cb.value;
+                var ok = aprovadas.indexOf(val) !== -1 ||
+                    (val.indexOf('Membro') === 0 && (!u.cargo || String(u.cargo).indexOf('Membro') === 0));
+                if (Array.isArray(u.funcoesSolicitadas) && u.funcoesSolicitadas.indexOf(val) !== -1) ok = true;
+                if (Array.isArray(u.funcoesAprovadas) && u.funcoesAprovadas.indexOf(val) !== -1) ok = true;
+                cb.checked = !!ok;
+            });
+            if (u.funcoesSolicitadas && u.funcoesSolicitadas.length) {
+                var info = document.getElementById('funcoesPendInfo');
+                if (info) {
+                    info.textContent = 'Aguardando aprovação: ' + u.funcoesSolicitadas.join(', ');
+                    info.classList.remove('hidden');
+                }
+            }
+        }
+        // ao salvar formulário, incluir funções solicitadas
+        var form = document.getElementById('formDados');
+        if (form) {
+            form.addEventListener('submit', function(){
+                var marcadas = [];
+                document.querySelectorAll('input[name="fnMembro"]:checked').forEach(function(cb){ marcadas.push(cb.value); });
+                // guarda no campo hidden se existir, ou window para o handler usar
+                window._funcoesMarcadasCadastro = marcadas;
+            }, true);
+        }
+    })();
+    </script>
+
+</body>
+</html>

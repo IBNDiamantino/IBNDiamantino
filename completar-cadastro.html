@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completar Cadastro — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#0A1A3F', secondary: '#D4AF37', light: '#F8F9FC' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light min-h-screen py-8 px-4">
+    <div class="max-w-lg mx-auto">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-primary">Completar Cadastro</h1>
+            <p class="text-gray-500">Passo 2 de 2 — Informações da igreja</p>
+            <div class="flex justify-center gap-2 mt-3">
+                <span class="w-8 h-2 rounded-full bg-secondary"></span>
+                <span class="w-8 h-2 rounded-full bg-secondary"></span>
+            </div>
+        </div>
+
+        <form id="formCompletar" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg space-y-5">
+            <!-- Dados pessoais -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Sexo *</label>
+                    <select id="sexo" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none bg-white">
+                        <option value="">Selecione...</option>
+                        <option value="masculino">Masculino</option>
+                        <option value="feminino">Feminino</option>
+                        <option value="outro">Prefiro não informar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Data de Nascimento *</label>
+                    <input type="text" id="nascimento" required placeholder="dd/mm/aaaa" maxlength="10" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Estado Civil *</label>
+                    <select id="estadoCivil" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none bg-white">
+                        <option value="">Selecione...</option>
+                        <option value="solteiro">Solteiro(a)</option>
+                        <option value="casado">Casado(a)</option>
+                        <option value="divorciado">Divorciado(a)</option>
+                        <option value="viuvo">Viúvo(a)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Foi batizado(a)? *</label>
+                    <select id="batismo" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none bg-white">
+                        <option value="">Selecione...</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Endereço (rua, número, bairro) *</label>
+                <input type="text" id="endereco" required placeholder="Ex.: Rua das Flores, 100 — Centro" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none">
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Município / Cidade *</label>
+                    <input type="text" id="municipio" required placeholder="Ex.: Diamantino" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">UF</label>
+                    <input type="text" id="uf" maxlength="2" placeholder="MT" value="MT" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none uppercase">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Origem (opcional)</label>
+                <textarea id="origem" rows="2" placeholder="Veio de outra igreja? De onde?" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none resize-none"></textarea>
+            </div>
+
+            <!-- Já é membro? -->
+            <div class="border-t pt-4">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="jaMembro" class="w-5 h-5 accent-secondary">
+                    <span class="font-bold text-primary">Já sou membro da IBN Diamantino</span>
+                </label>
+                <p class="text-xs text-gray-500 mt-1 ml-8">Marque se já participa da igreja. O gestor irá confirmar sua alocação.</p>
+            </div>
+
+            <!-- Células (máx 2) -->
+            <div id="blocoCelulas" class="hidden border rounded-xl p-4 bg-gray-50 space-y-3">
+                <h3 class="font-bold text-primary"><i class="fa fa-home mr-1"></i> Células (máx. 2)</h3>
+                <p class="text-xs text-gray-500">1 na terça-feira e/ou 1 no sábado</p>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Célula de Terça (opcional)</label>
+                    <select id="celulaTerca" class="w-full px-3 py-2 border rounded-lg bg-white">
+                        <option value="">— Nenhuma —</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Célula de Sábado (opcional)</label>
+                    <select id="celulaSabado" class="w-full px-3 py-2 border rounded-lg bg-white">
+                        <option value="">— Nenhuma —</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Ministérios -->
+            <div id="blocoMinisterios" class="hidden border rounded-xl p-4 bg-gray-50 space-y-3">
+                <h3 class="font-bold text-primary"><i class="fa fa-users mr-1"></i> Ministérios</h3>
+                <p class="text-xs text-gray-500">Selecione os que participa ou deseja participar</p>
+                <div id="listaMinisterios" class="grid grid-cols-2 gap-2 text-sm max-h-48 overflow-y-auto"></div>
+            </div>
+
+            <!-- Cargo / função -->
+            <div id="blocoCargo" class="hidden border rounded-xl p-4 bg-gray-50 space-y-3">
+                <h3 class="font-bold text-primary"><i class="fa fa-id-badge mr-1"></i> Cargo / Função</h3>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Cargo na igreja</label>
+                    <select id="cargo" class="w-full px-3 py-2 border rounded-lg bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Função específica (opcional)</label>
+                    <input type="text" id="funcaoEspecifica" placeholder="Ex: Anfitrião, Líder de louvor..." class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div id="blocoLiderCelula" class="hidden">
+                    <label class="block text-sm font-semibold mb-1">Qual célula você lidera? *</label>
+                    <select id="lideraCelulaId" class="w-full px-3 py-2 border rounded-lg bg-white">
+                        <option value="">— Selecione a célula —</option>
+                    </select>
+                </div>
+                <div id="blocoLiderMinisterio" class="hidden">
+                    <label class="block text-sm font-semibold mb-1">Qual ministério você lidera? *</label>
+                    <select id="lideraMinisterio" class="w-full px-3 py-2 border rounded-lg bg-white">
+                        <option value="">— Selecione o ministério —</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Pergunta de segurança -->
+            <div class="border-t pt-4 space-y-3">
+                <h3 class="font-bold text-primary"><i class="fa fa-shield mr-1"></i> Recuperação de senha</h3>
+                <p class="text-xs text-gray-500">Usado se você esquecer a senha</p>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Pergunta de segurança *</label>
+                    <select id="perguntaSeguranca" required class="w-full px-3 py-2 border rounded-lg bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Sua resposta *</label>
+                    <input type="text" id="respostaSeguranca" required class="w-full px-3 py-2 border rounded-lg" placeholder="Resposta secreta">
+                </div>
+            </div>
+
+            <div id="msg" class="text-sm hidden"></div>
+
+            <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:opacity-90">
+                <i class="fa fa-check mr-2"></i> Finalizar Cadastro
+            </button>
+            <a href="cadastro.html" class="block text-center text-sm text-gray-500 hover:underline">← Voltar ao passo 1</a>
+        </form>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        // Redireciona se não veio do passo 1
+        const parcial = JSON.parse(sessionStorage.getItem('ibn_cadastro_parcial') || 'null');
+        if (!parcial || !parcial.nome || !parcial.senha) {
+            window.location.href = 'cadastro.html';
+        }
+
+        // Preenche selects
+        const selTerca = document.getElementById('celulaTerca');
+        const selSabado = document.getElementById('celulaSabado');
+        LISTA_CELULAS.filter(c => c.dia === 'terca').forEach(c => {
+            selTerca.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+        });
+        LISTA_CELULAS.filter(c => c.dia === 'sabado').forEach(c => {
+            selSabado.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+        });
+
+        const listaMin = document.getElementById('listaMinisterios');
+        LISTA_MINISTERIOS.forEach(m => {
+            listaMin.innerHTML += `
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="ministerio" value="${m}" class="accent-secondary">
+                    <span>${m}</span>
+                </label>`;
+        });
+
+        const selCargo = document.getElementById('cargo');
+        LISTA_CARGOS.forEach(c => {
+            selCargo.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+        const selLiderCel = document.getElementById('lideraCelulaId');
+        LISTA_CELULAS.forEach(c => {
+            selLiderCel.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+        });
+        const selLiderMin = document.getElementById('lideraMinisterio');
+        LISTA_MINISTERIOS.forEach(m => {
+            selLiderMin.innerHTML += `<option value="${m}">${m}</option>`;
+        });
+        function atualizarCamposLider() {
+            const cargo = selCargo.value;
+            document.getElementById('blocoLiderCelula').classList.toggle('hidden', cargo !== 'Líder de Célula' && cargo !== 'Líder em treinamento');
+            document.getElementById('blocoLiderMinisterio').classList.toggle('hidden', cargo !== 'Líder de Ministério');
+        }
+        selCargo.addEventListener('change', atualizarCamposLider);
+        atualizarCamposLider();
+
+        const selPergunta = document.getElementById('perguntaSeguranca');
+        PERGUNTAS_SEGURANCA.forEach(p => {
+            selPergunta.innerHTML += `<option value="${p}">${p}</option>`;
+        });
+
+        // Mostra/esconde blocos de membro
+        document.getElementById('jaMembro').addEventListener('change', function() {
+            const show = this.checked;
+            ['blocoCelulas', 'blocoMinisterios', 'blocoCargo'].forEach(id => {
+                document.getElementById(id).classList.toggle('hidden', !show);
+            });
+        });
+
+        // Máscara data
+        document.getElementById('nascimento').addEventListener('input', function() {
+            let v = this.value.replace(/\D/g, '').slice(0, 8);
+            if (v.length >= 5) v = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4);
+            else if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
+            this.value = v;
+        });
+
+        document.getElementById('formCompletar').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const msg = document.getElementById('msg');
+            const jaMembro = document.getElementById('jaMembro').checked;
+
+            const celulas = [];
+            const idTerca = document.getElementById('celulaTerca').value;
+            const idSabado = document.getElementById('celulaSabado').value;
+            if (idTerca) {
+                const c = LISTA_CELULAS.find(x => x.id === idTerca);
+                if (c) celulas.push(c);
+            }
+            if (idSabado) {
+                const c = LISTA_CELULAS.find(x => x.id === idSabado);
+                if (c) celulas.push(c);
+            }
+
+            const ministerios = [];
+            document.querySelectorAll('input[name="ministerio"]:checked').forEach(el => {
+                ministerios.push(el.value);
+            });
+
+            const dados = {
+                ...parcial,
+                sexo: document.getElementById('sexo').value,
+                nascimento: document.getElementById('nascimento').value,
+                estadoCivil: document.getElementById('estadoCivil').value,
+                endereco: document.getElementById('endereco').value.trim(),
+                municipio: document.getElementById('municipio').value.trim(),
+                uf: (document.getElementById('uf').value || 'MT').trim().toUpperCase(),
+                origem: document.getElementById('origem').value.trim(),
+                batismo: document.getElementById('batismo').value,
+                jaMembro,
+                celulas: jaMembro ? celulas : [],
+                ministerios: jaMembro ? ministerios : [],
+                cargo: jaMembro ? document.getElementById('cargo').value : 'Membro',
+                funcaoEspecifica: jaMembro ? document.getElementById('funcaoEspecifica').value.trim() : '',
+                lideraCelulaId: jaMembro ? (document.getElementById('lideraCelulaId').value || '') : '',
+                lideraMinisterio: jaMembro ? (document.getElementById('lideraMinisterio').value || '') : '',
+                perguntaSeguranca: document.getElementById('perguntaSeguranca').value,
+                respostaSeguranca: document.getElementById('respostaSeguranca').value.trim()
+            };
+
+            const resultado = cadastrarMembro(dados);
+            if (!resultado.sucesso) {
+                msg.textContent = resultado.mensagem;
+                msg.className = 'text-red-500 text-sm';
+                msg.classList.remove('hidden');
+                return;
+            }
+
+            sessionStorage.removeItem('ibn_cadastro_parcial');
+            msg.textContent = jaMembro
+                ? 'Cadastro enviado! Aguarde a aprovação do gestor para confirmar células e funções.'
+                : 'Cadastro concluído com sucesso!';
+            msg.className = 'text-green-600 text-sm font-semibold';
+            msg.classList.remove('hidden');
+
+            setTimeout(() => {
+                window.location.href = 'area-membro.html';
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galeria de Fotos — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0A1A3F',
+                        secondary: '#D4AF37',
+                        accent: '#1E3A8A',
+                        light: '#F8F9FC',
+                        dark: '#0F172A'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: linear-gradient(135deg, #0A1A3F 0%, #0F2050 100%); }
+        .card-glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .photo-card:hover { transform: scale(1.02); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
+        .modal.aberto { display: flex; }
+    </style>
+</head>
+<body class="min-h-screen text-white py-8">
+
+    <div class="max-w-6xl mx-auto px-4">
+        <!-- Cabeçalho -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <div>
+                <a href="index.html" class="text-gray-400 hover:text-white text-sm mb-2 inline-block">
+                    ← Voltar ao Início
+                </a>
+                <h1 class="text-3xl font-bold">📸 Galeria de Fotos</h1>
+                <p class="text-gray-400 mt-1">O que acontece na igreja e nos ministérios — área exclusiva para membros</p>
+            </div>
+            <div id="area-usuario" class="text-right">
+                <!-- Preenchido por JS -->
+            </div>
+        </div>
+
+        <!-- Aviso de direitos — só ao postar -->
+        <div id="boxRegrasFoto" class="hidden card-glass rounded-xl p-5 mb-6 border-l-4 border-secondary/50">
+            <h3 class="font-bold text-lg mb-2">📋 Regras de Uso e Direito de Imagem</h3>
+            <ul class="text-sm text-gray-300 space-y-2 mb-4">
+                <li><i class="fa fa-check text-green-400 mr-2"></i> Ao publicar, você confirma que a imagem é de sua autoria ou tem permissão para compartilhar</li>
+                <li><i class="fa fa-check text-green-400 mr-2"></i> Respeite a privacidade: não publique fotos de pessoas que não autorizaram</li>
+                <li><i class="fa fa-check text-green-400 mr-2"></i> Fotos de crianças e adolescentes <strong>exigem autorização dos pais</strong></li>
+                <li><i class="fa fa-check text-green-400 mr-2"></i> Se aparecer em alguma foto e não quiser, use o botão <em>"Solicitar Remoção"</em> — será retirada em até 48h</li>
+            </ul>
+            <p class="text-xs text-gray-400">
+                Estas regras seguem a LGPD e o Estatuto da Criança e do Adolescente (ECA).
+            </p>
+        </div>
+
+        <!-- Botão Enviar + Filtros -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
+            <div class="flex flex-col gap-1">
+                <button id="btnEnviar" class="bg-secondary text-primary px-6 py-3 rounded-lg font-bold hover:bg-yellow-400 transition">
+                    <i class="fa fa-camera mr-2"></i> Poste aqui
+                </button>
+                <p id="avisoPostarMinisterio" class="text-xs text-gray-400 max-w-sm"></p>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Ministério</label>
+                    <select id="filtroMinisterio" class="bg-white text-gray-900 border border-gray-300 rounded-lg px-3 py-2 outline-none text-sm min-w-[180px]">
+                        <option value="todos">Todos os ministérios</option>
+                        <option value="atmosfera">Atmosfera</option>
+                        <option value="acolhimento">Acolhimento</option>
+                        <option value="mulheres">Mulheres</option>
+                        <option value="homens">Homens</option>
+                        <option value="intercessao">Intercessão</option>
+                        <option value="evangelismo">Evangelismo</option>
+                        <option value="danca">Dança</option>
+                        <option value="empreendedorismo">Empreendedorismo</option>
+                        <option value="batismo">Batismo</option>
+                        <option value="zeladoria">Zeladoria</option>
+                        <option value="projetos-sociais">Projetos Sociais</option>
+                        <option value="casais">Casais</option>
+                        <option value="jovens">Jovens</option>
+                        <option value="adolescentes">Adolescentes</option>
+                        <option value="louvor">Louvor</option>
+                        <option value="midias">Mídias Sociais</option>
+                        <option value="infantil">Infantil</option>
+                        <option value="artes">Artes</option>
+                        <option value="ensino">Ensino</option>
+                        <option value="cantina">Cantina</option>
+                        <option value="projeto-kids">Projeto Kids</option>
+                        <option value="geral">Geral / Outros</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Período</label>
+                    <select id="filtroMes" class="bg-white text-gray-900 border border-gray-300 rounded-lg px-3 py-2 outline-none text-sm min-w-[160px]">
+                        <option value="todos">Todos os meses</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Galeria -->
+        <div id="galeria" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <p class="text-gray-400 col-span-full text-center py-8">Carregando fotos...</p>
+        </div>
+    </div>
+
+    <!-- MODAL — Enviar Foto -->
+    <div id="modalEnviar" class="modal p-4">
+        <div class="card-glass rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Enviar Foto</h2>
+                <button class="fechar text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+            
+            <form id="formEnviar" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Selecione a imagem *</label>
+                    <input type="file" id="fotoArquivo" accept="image/*" required 
+                        class="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:bg-secondary file:text-primary file:border-0">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Título / Evento *</label>
+                    <input type="text" id="fotoTitulo" required placeholder="Ex: Culto de Domingo — 21/09/2026"
+                        class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Ministério *</label>
+                    <select id="fotoMinisterio" required class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300 outline-none">
+                        <option value="">Selecione o ministério</option>
+                        <option value="atmosfera">Atmosfera</option>
+                        <option value="acolhimento">Acolhimento</option>
+                        <option value="mulheres">Mulheres</option>
+                        <option value="homens">Homens</option>
+                        <option value="intercessao">Intercessão</option>
+                        <option value="evangelismo">Evangelismo</option>
+                        <option value="danca">Dança</option>
+                        <option value="empreendedorismo">Empreendedorismo</option>
+                        <option value="batismo">Batismo</option>
+                        <option value="zeladoria">Zeladoria</option>
+                        <option value="projetos-sociais">Projetos Sociais</option>
+                        <option value="casais">Casais</option>
+                        <option value="jovens">Jovens</option>
+                        <option value="adolescentes">Adolescentes</option>
+                        <option value="louvor">Louvor</option>
+                        <option value="midias">Mídias Sociais</option>
+                        <option value="infantil">Infantil</option>
+                        <option value="artes">Artes</option>
+                        <option value="ensino">Ensino</option>
+                        <option value="cantina">Cantina</option>
+                        <option value="projeto-kids">Projeto Kids</option>
+                        <option value="geral">Geral / Outros</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Data do evento</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <select id="fotoDia" class="bg-white/10 border border-white/20 rounded-lg px-3 py-2 outline-none">
+                            <option value="">DD</option>
+                        </select>
+                        <select id="fotoMes" class="bg-white/10 border border-white/20 rounded-lg px-3 py-2 outline-none">
+                            <option value="">Mês</option>
+                            <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+                            <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+                            <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+                            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                        </select>
+                        <select id="fotoAno" class="bg-white/10 border border-white/20 rounded-lg px-3 py-2 outline-none">
+                            <option value="">AAAA</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" id="aceitoRegras" required class="mt-1">
+                    <span class="text-sm">
+                        Declaro que esta imagem é de minha autoria ou tenho permissão para compartilhá-la, 
+                        respeitando os direitos de imagem de todas as pessoas nela presentes. 
+                        Autorizo a IBN Diamantino a exibir esta imagem na área de membros.
+                    </span>
+                </label>
+
+                <button type="submit" class="w-full bg-secondary text-primary py-3 rounded-lg font-bold hover:bg-yellow-400">
+                    Enviar Foto
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL — Ver Foto Grande -->
+    <div id="modalVer" class="modal p-4">
+        <div class="max-w-4xl w-full">
+            <button class="fechar text-white text-2xl float-right mb-4">&times;</button>
+            <img id="imagemGrande" class="w-full rounded-xl shadow-2xl mb-4" alt="">
+            <div class="card-glass p-4 rounded-xl">
+                <h3 id="tituloFoto" class="font-bold text-lg"></h3>
+                <p id="dataFoto" class="text-gray-400 text-sm mb-1"></p>
+                <p id="ministerioFoto" class="text-secondary text-sm mb-2"></p>
+                <p id="autorFoto" class="text-gray-400 text-sm mb-4"></p>
+                
+                <div class="flex flex-wrap gap-3 items-center">
+                    <button type="button" id="btnApagarFoto" class="hidden text-red-400 hover:text-red-300 text-sm font-bold border border-red-400/50 px-3 py-1.5 rounded-lg">
+                        <i class="fa fa-trash"></i> Apagar foto
+                    </button>
+                    <button type="button" id="btnRemover" class="text-amber-400 hover:text-amber-300 text-sm">
+                        <i class="fa fa-flag"></i> Solicitar Remoção
+                    </button>
+                </div>
+                <p id="msgRemover" class="text-sm mt-2 hidden"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        // ========== LISTA DE MINISTÉRIOS (nomes amigáveis) ==========
+        const NOMES_MINISTERIO = {
+            'atmosfera': 'Atmosfera',
+            'acolhimento': 'Acolhimento',
+            'mulheres': 'Mulheres',
+            'homens': 'Homens',
+            'intercessao': 'Intercessão',
+            'evangelismo': 'Evangelismo',
+            'danca': 'Dança',
+            'empreendedorismo': 'Empreendedorismo',
+            'batismo': 'Batismo',
+            'zeladoria': 'Zeladoria',
+            'projetos-sociais': 'Projetos Sociais',
+            'casais': 'Casais',
+            'jovens': 'Jovens',
+            'adolescentes': 'Adolescentes',
+            'louvor': 'Louvor',
+            'midias': 'Mídias Sociais',
+            'infantil': 'Infantil',
+            'artes': 'Artes',
+            'ensino': 'Ensino',
+            'cantina': 'Cantina',
+            'projeto-kids': 'Projeto Kids',
+            'geral': 'Geral / Outros'
+        };
+
+        // ========== VERIFICAR LOGIN (chave oficial ibn_sessao_atual) ==========
+        let membro = null;
+        try {
+            if (typeof getUsuarioLogado === 'function') {
+                membro = getUsuarioLogado();
+            }
+        } catch (e) {
+            console.warn('Erro ao verificar login:', e);
+        }
+        // Fallback: chave da versão map / outras páginas
+        if (!membro) {
+            try {
+                const antigo = localStorage.getItem('usuarioLogado') || localStorage.getItem('ibn_sessao_atual');
+                if (antigo) {
+                    membro = JSON.parse(antigo);
+                    // Mantém as duas chaves sincronizadas (não remove)
+                    if (membro && typeof iniciarSessao === 'function') {
+                        iniciarSessao(membro);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        if (!membro) {
+            alert('Você precisa estar logado para acessar a galeria de fotos.\n\nFaça login ou cadastre-se para ver o que acontece na igreja e nos ministérios.');
+            window.location.href = 'login.html?destino=fotos.html';
+        } else {
+            var areaUser = document.getElementById('area-usuario');
+            if (areaUser) {
+                areaUser.innerHTML = `
+                    <p class="text-sm text-gray-300">${membro.nome || 'Membro'}</p>
+                    <a href="area-membro.html" class="text-secondary text-sm hover:underline">Minha Área</a>
+                `;
+
+        // Só mostra ministérios em que o membro pode postar (+ Geral). Lista de integrantes fica silenciosa.
+        (function restringirSelectMinisterio() {
+            var sel = document.getElementById('fotoMinisterio');
+            if (!sel || !membro) return;
+            if (typeof isAdmin === 'function' && isAdmin(membro)) return; // admin vê todos
+            var pode = (typeof ministeriosQuePodePostar === 'function') ? ministeriosQuePodePostar() : [];
+            var opts = Array.prototype.slice.call(sel.options);
+            opts.forEach(function(opt) {
+                if (!opt.value) return;
+                if (opt.value === 'geral') return; // sempre
+                var ok = typeof podePostarFotoMinisterio === 'function' && podePostarFotoMinisterio(opt.value);
+                if (!ok) opt.remove();
+            });
+            // Garante Geral
+            if (!sel.querySelector('option[value="geral"]')) {
+                var o = document.createElement('option');
+                o.value = 'geral';
+                o.textContent = 'Geral / Outros';
+                sel.appendChild(o);
+            }
+        })();
+
+            }
+        }
+
+        // ========== PREENCHER DIAS E ANOS ==========
+        const selDia = document.getElementById('fotoDia');
+        const selMes = document.getElementById('fotoMes');
+        const selAno = document.getElementById('fotoAno');
+
+        for (let d = 1; d <= 31; d++) {
+            const opt = document.createElement('option');
+            opt.value = String(d).padStart(2, '0');
+            opt.textContent = d;
+            selDia.appendChild(opt);
+        }
+
+        const anoAtual = new Date().getFullYear();
+        for (let a = anoAtual; a >= 2023; a--) {
+            const opt = document.createElement('option');
+            opt.value = String(a);
+            opt.textContent = a;
+            selAno.appendChild(opt);
+        }
+
+        // ========== COMPRIMIR FOTO (iPhone JPEG/PNG + nuvem grátis) ==========
+        function comprimirImagem(arquivo, maxLado, qualidade) {
+            maxLado = maxLado || 1200;
+            qualidade = qualidade || 0.65;
+            return new Promise(async function(resolve, reject) {
+                function paraJpeg(source, w0, h0) {
+                    var w = w0, h = h0;
+                    if (w > maxLado || h > maxLado) {
+                        if (w > h) { h = Math.round(h * maxLado / w); w = maxLado; }
+                        else { w = Math.round(w * maxLado / h); h = maxLado; }
+                    }
+                    var canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+                    var q = qualidade;
+                    var dataUrl = canvas.toDataURL('image/jpeg', q);
+                    while (dataUrl.length > 850000 && q > 0.3) {
+                        q -= 0.08;
+                        dataUrl = canvas.toDataURL('image/jpeg', q);
+                    }
+                    return dataUrl;
+                }
+                try {
+                    if (typeof createImageBitmap === 'function') {
+                        var bmp = await createImageBitmap(arquivo);
+                        var out = paraJpeg(bmp, bmp.width, bmp.height);
+                        if (bmp.close) try { bmp.close(); } catch (e) {}
+                        resolve(out);
+                        return;
+                    }
+                } catch (e1) { console.warn(e1); }
+                try {
+                    var url = URL.createObjectURL(arquivo);
+                    var img = new Image();
+                    img.onload = function() {
+                        try {
+                            var out = paraJpeg(img, img.width, img.height);
+                            URL.revokeObjectURL(url);
+                            resolve(out);
+                        } catch (e3) {
+                            URL.revokeObjectURL(url);
+                            reject(e3);
+                        }
+                    };
+                    img.onerror = function() {
+                        URL.revokeObjectURL(url);
+                        var fr = new FileReader();
+                        fr.onload = function() {
+                            if (fr.result && String(fr.result).length < 950000) resolve(fr.result);
+                            else reject(new Error('HEIC/formato não suportado. Use JPEG ou PNG.'));
+                        };
+                        fr.onerror = function() { reject(new Error('Falha ao ler arquivo')); };
+                        fr.readAsDataURL(arquivo);
+                    };
+                    img.src = url;
+                } catch (e2) { reject(e2); }
+            });
+        }
+
+        // ========== BANCO DE FOTOS ==========
+        var fotoAtualAberta = null;
+
+        function carregarFotos() {
+            const salvas = localStorage.getItem('ibn_fotos');
+            return salvas ? JSON.parse(salvas) : [];
+        }
+        function salvarFotos(lista) {
+            localStorage.setItem('ibn_fotos', JSON.stringify(lista));
+        }
+        function adicionarFoto(foto) {
+            if (!foto.id) foto.id = 'foto-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+            if (!foto.criadoEm) foto.criadoEm = new Date().toISOString();
+            const lista = carregarFotos();
+            lista.unshift(foto);
+            salvarFotos(lista);
+            renderizarGaleria();
+            try {
+                if (typeof IBNNuvem !== 'undefined') {
+                    if (IBNNuvem.salvarFotoNuvem) IBNNuvem.salvarFotoNuvem(foto);
+                    if (IBNNuvem.registrarAtividade) {
+                        IBNNuvem.registrarAtividade('foto', 'Foto: ' + (foto.titulo || '') + ' (' + (foto.ministerio || '') + ')');
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // Busca fotos de todos os membros na nuvem e mostra na galeria
+        async function sincronizarGaleriaNuvem() {
+            try {
+                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.puxarFotosParaLocal) return;
+                const r = await IBNNuvem.puxarFotosParaLocal();
+                if (r && r.sucesso) renderizarGaleria();
+            } catch (e) { console.warn(e); }
+        }
+
+        // ========== RENDERIZAR GALERIA ==========
+        function renderizarGaleria() {
+            const lista = carregarFotos();
+            const container = document.getElementById('galeria');
+            const filtroMin = document.getElementById('filtroMinisterio').value;
+            const filtroMes = document.getElementById('filtroMes').value;
+
+            let filtrada = lista;
+            if (filtroMin !== 'todos') {
+                filtrada = filtrada.filter(f => f.ministerio === filtroMin);
+            }
+            if (filtroMes !== 'todos') {
+                filtrada = filtrada.filter(f => f.mesAno === filtroMes);
+            }
+
+            if (lista.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Ainda não há fotos enviadas. Seja o primeiro a compartilhar o que acontece no seu ministério!</p>';
+                return;
+            }
+
+            if (filtrada.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Nenhuma foto encontrada com esses filtros.</p>';
+                return;
+            }
+
+            container.innerHTML = filtrada.map((foto) => {
+                const nomeMin = NOMES_MINISTERIO[foto.ministerio] || foto.ministerio || 'Geral';
+                const fid = String(foto.id != null ? foto.id : '');
+                var uFoto = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                const pode = (uFoto && (uFoto.nivel === 'admin' || uFoto.nivel === 'gestor')) ||
+                    ((typeof podeRemoverFoto === 'function') && podeRemoverFoto(foto));
+                const acoes = pode
+                    ? '<button type="button" class="btn-apagar-min text-xs text-red-300 font-bold mt-2 px-2 py-1 border border-red-400 rounded" data-fid="' + fid + '">Apagar foto</button>'
+                    : '<button type="button" class="btn-solicitar-min text-xs text-amber-300 font-semibold mt-2 underline" data-fid="' + fid + '" data-titulo="' + String(foto.titulo || '').replace(/"/g, '') + '">Solicitar remoção</button>';
+                return (
+                '<div class="photo-card card-glass rounded-lg overflow-hidden transition" data-fid="' + fid + '">' +
+                    '<img src="' + (foto.imagem || foto.imagemUrl || '') + '" alt="" class="w-full h-40 object-cover cursor-pointer img-abrir-foto">' +
+                    '<div class="p-3">' +
+                        '<h3 class="font-bold text-sm truncate cursor-pointer titulo-abrir-foto">' + (foto.titulo || '') + '</h3>' +
+                        '<p class="text-xs text-secondary mt-1">' + nomeMin + '</p>' +
+                        '<p class="text-xs text-gray-400">' + (foto.dataFormatada || '') + '</p>' +
+                        '<p class="text-xs text-gray-500 mt-1">por ' + (foto.autor || '') + '</p>' +
+                        acoes +
+                    '</div>' +
+                '</div>'
+                );
+            }).join('');
+
+            function acharFotoPorId(fid) {
+                var all = carregarFotos();
+                return all.find(function(f) { return String(f.id) === String(fid); }) || null;
+            }
+
+            container.querySelectorAll('.img-abrir-foto, .titulo-abrir-foto').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    var card = el.closest('.photo-card');
+                    var f = acharFotoPorId(card && card.getAttribute('data-fid'));
+                    if (f) abrirVisualizacao(f);
+                });
+            });
+
+            container.querySelectorAll('.btn-apagar-min').forEach(function(btn) {
+                btn.addEventListener('click', async function(ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    var fid = btn.getAttribute('data-fid');
+                    var f = acharFotoPorId(fid);
+                    if (!f) { alert('Foto não encontrada.'); return; }
+                    if (typeof podeRemoverFoto === 'function' && !podeRemoverFoto(f)) {
+                        alert('Você não tem permissão para apagar esta foto.');
+                        return;
+                    }
+                    if (!confirm('Apagar esta foto definitivamente?\n\n• Sai da nuvem (todos os aparelhos, inclusive de quem postou, na próxima sincronização)\n• Sai também deste aparelho agora.')) return;
+                    try {
+                        if (typeof removerFotoMinisterioLocal === 'function') removerFotoMinisterioLocal(fid);
+                        else {
+                            var lista2 = carregarFotos().filter(function(x) { return String(x.id) !== String(fid); });
+                            salvarFotos(lista2);
+                        }
+                        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.removerFotoNuvem) {
+                            await IBNNuvem.removerFotoNuvem(fid);
+                        }
+                        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
+                            IBNNuvem.registrarAtividade('apagar_foto', 'Removeu foto: ' + (f.titulo || fid), typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null);
+                        }
+                        renderizarGaleria();
+                        alert('Foto apagada.');
+                    } catch (err) {
+                        alert('Erro ao apagar: ' + ((err && err.message) || err));
+                    }
+                });
+            });
+
+            container.querySelectorAll('.btn-solicitar-min').forEach(function(btn) {
+                btn.addEventListener('click', function(ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    alert('Solicitação registrada. A liderança / admin poderá remover em até 48h.');
+                    try {
+                        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
+                            IBNNuvem.registrarAtividade('solicitar_remocao_foto', 'Solicitou remoção: ' + (btn.getAttribute('data-titulo') || ''), typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null);
+                        }
+                    } catch (e) {}
+                });
+            });
+
+            atualizarFiltroMeses(lista);
+        }
+
+        function atualizarFiltroMeses(lista) {
+            const sel = document.getElementById('filtroMes');
+            const selecionado = sel.value;
+            sel.innerHTML = '<option value="todos">Todos os meses</option>';
+            
+            const meses = [...new Set(lista.map(f => f.mesAno).filter(Boolean))].sort().reverse();
+            meses.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                sel.appendChild(opt);
+            });
+            if ([...sel.options].some(o => o.value === selecionado)) {
+                sel.value = selecionado;
+            }
+        }
+
+        // ========== ABRIR FOTO GRANDE ==========
+        function abrirVisualizacao(foto) {
+            document.getElementById('imagemGrande').src = foto.imagem || foto.imagemUrl || foto.url || '';
+            document.getElementById('tituloFoto').textContent = foto.titulo;
+            document.getElementById('dataFoto').textContent = foto.dataFormatada;
+            document.getElementById('ministerioFoto').textContent = 'Ministério: ' + (NOMES_MINISTERIO[foto.ministerio] || foto.ministerio || 'Geral');
+            document.getElementById('autorFoto').textContent = `Enviada por: ${foto.autor}`;
+            fotoAtualAberta = foto;
+            var uFoto2 = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            var podeApagar = (uFoto2 && (uFoto2.nivel === 'admin' || uFoto2.nivel === 'gestor')) ||
+                ((typeof podeRemoverFoto === 'function') && podeRemoverFoto(foto));
+            var btnAp = document.getElementById('btnApagarFoto');
+            var btnSol = document.getElementById('btnRemover');
+            if (btnAp) btnAp.classList.toggle('hidden', !podeApagar);
+            if (btnSol) btnSol.classList.toggle('hidden', !!podeApagar); // quem pode apagar não precisa solicitar
+            document.getElementById('modalVer').classList.add('aberto');
+            document.getElementById('msgRemover').classList.add('hidden');
+            document.getElementById('msgRemover').textContent = '';
+        }
+
+        // ========== ENVIAR FOTO ==========
+        document.getElementById('formEnviar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const arquivo = document.getElementById('fotoArquivo').files[0];
+            const titulo = document.getElementById('fotoTitulo').value.trim();
+            const ministerio = document.getElementById('fotoMinisterio').value;
+            const dia = selDia.value;
+            const mes = selMes.value;
+            const ano = selAno.value;
+
+            if (!arquivo || !titulo || !ministerio) return;
+
+            if (typeof podePostarFotoMinisterio === 'function' && !podePostarFotoMinisterio(ministerio)) {
+                var pode = (typeof ministeriosQuePodePostar === 'function') ? ministeriosQuePodePostar() : ['Geral / Outros'];
+                alert(
+                    'Você não participa deste ministério.\n\n' +
+                    'Pode postar em:\n• ' + pode.join('\n• ') + '\n\n' +
+                    'Se não for de nenhum ministério específico, use "Geral / Outros".'
+                );
+                // força geral se existir option
+                var sel = document.getElementById('fotoMinisterio');
+                if (sel.querySelector('option[value="geral"]')) sel.value = 'geral';
+                return;
+            }
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+            try {
+                // Comprime automaticamente — sobe na nuvem grátis (Firestore), todos veem
+                const imagemCompacta = await comprimirImagem(arquivo, 800, 0.5);
+
+                const dataObj = ano && mes && dia ? new Date(ano + '-' + mes + '-' + dia) : new Date();
+                const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+                const nomeMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][dataObj.getMonth()];
+                const mesAno = nomeMes + ' de ' + dataObj.getFullYear();
+
+                const novaFoto = {
+                    id: 'foto-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                    titulo: titulo,
+                    imagem: imagemCompacta,
+                    dataFormatada: dataFormatada,
+                    mesAno: mesAno,
+                    ministerio: ministerio,
+                    autor: (membro && membro.nome) || 'Membro',
+                    autorId: (membro && membro.id) || '',
+                    emailAutor: (membro && membro.email) || '',
+                    dataEnvio: new Date().toISOString(),
+                    criadoEm: new Date().toISOString()
+                };
+
+                adicionarFoto(novaFoto);
+
+                // Garante envio à nuvem e avisa se falhar
+                let msgNuvem = '';
+                try {
+                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarFotoNuvem) {
+                        const r = await IBNNuvem.salvarFotoNuvem(novaFoto);
+                        if (r && r.sucesso) {
+                            msgNuvem = ' A foto já está na nuvem para todos os membros.';
+                            if (r.foto) {
+                                var listaUp = carregarFotos();
+                                var ix = listaUp.findIndex(function(f) { return String(f.id) === String(novaFoto.id); });
+                                if (ix >= 0) {
+                                    listaUp[ix].imagem = r.foto.imagemUrl || r.foto.url || r.foto.imagem || listaUp[ix].imagem;
+                                    listaUp[ix].imagemUrl = r.foto.imagemUrl || r.foto.url || '';
+                                    listaUp[ix].url = r.foto.url || r.foto.imagemUrl || '';
+                                    salvarFotos(listaUp);
+                                }
+                            }
+                        } else {
+                            msgNuvem = ' (Só neste aparelho — nuvem falhou)';
+                            if (typeof avisarFalhaNuvem === 'function') {
+                                avisarFalhaNuvem('Foto', (r && r.mensagem) || 'Foto não carregada na nuvem');
+                            } else {
+                                alert('Foto não carregada na nuvem. Contate a secretaria.\n' + ((r && r.mensagem) || ''));
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn(err);
+                    msgNuvem = ' (Só neste aparelho — falha ao enviar nuvem)';
+                    if (typeof avisarFalhaNuvem === 'function') {
+                        avisarFalhaNuvem('Foto', (err && err.message) || String(err));
+                    }
+                }
+
+                document.getElementById('modalEnviar').classList.remove('aberto');
+                document.getElementById('formEnviar').reset();
+                selDia.value = '';
+                selMes.value = '';
+                selAno.value = '';
+
+                alert('✅ Foto enviada!' + msgNuvem);
+            } catch (err) {
+                console.error(err);
+                alert('Não foi possível processar a foto. No iPhone evite HEIC: use JPEG/PNG ou "Formato mais compatível".');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Publicar Foto'; }
+            }
+        });
+
+        // ========== SOLICITAR REMOÇÃO ==========
+        document.getElementById('btnRemover').addEventListener('click', () => {
+            var msg = document.getElementById('msgRemover');
+            msg.className = 'text-green-400 text-sm mt-2';
+            msg.textContent = '✅ Solicitação enviada. A liderança / admin analisará e poderá remover em até 48h.';
+            msg.classList.remove('hidden');
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade && fotoAtualAberta) {
+                    IBNNuvem.registrarAtividade('solicitar_remocao_foto', 'Solicitou remoção: ' + (fotoAtualAberta.titulo || fotoAtualAberta.id), typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null);
+                }
+            } catch (e) {}
+        });
+
+        document.getElementById('btnApagarFoto').addEventListener('click', async function(ev) {
+            if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+            if (!fotoAtualAberta) return;
+            if (typeof podeRemoverFoto === 'function' && !podeRemoverFoto(fotoAtualAberta)) {
+                alert('Você não tem permissão para apagar esta foto.');
+                return;
+            }
+            if (!confirm('Apagar esta foto definitivamente?\n\n• Sai da nuvem (todos os aparelhos, inclusive de quem postou, na próxima sincronização)\n• Sai também deste aparelho agora.')) return;
+            var id = fotoAtualAberta.id;
+            var msg = document.getElementById('msgRemover');
+            try {
+                if (typeof removerFotoMinisterioLocal === 'function') removerFotoMinisterioLocal(id);
+                else {
+                    var lista = carregarFotos().filter(function(f) { return String(f.id) !== String(id); });
+                    salvarFotos(lista);
+                }
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.removerFotoNuvem) {
+                    await IBNNuvem.removerFotoNuvem(id);
+                }
+                try {
+                    if (IBNNuvem.registrarAtividade) {
+                        IBNNuvem.registrarAtividade('apagar_foto', 'Removeu foto: ' + (fotoAtualAberta.titulo || id), typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null);
+                    }
+                } catch (e2) {}
+                document.getElementById('modalVer').classList.remove('aberto');
+                fotoAtualAberta = null;
+                renderizarGaleria();
+                alert('Foto apagada.');
+            } catch (err) {
+                msg.className = 'text-red-400 text-sm mt-2';
+                msg.textContent = 'Erro ao apagar: ' + ((err && err.message) || err);
+                msg.classList.remove('hidden');
+            }
+        });
+
+        // ========== CONTROLE DOS MODAIS ==========
+        function ministerioFiltroAtual() {
+            var sel = document.getElementById('filtroMinisterio');
+            return sel ? sel.value : 'todos';
+        }
+
+        function atualizarAvisoPostar() {
+            var aviso = document.getElementById('avisoPostarMinisterio');
+            var btn = document.getElementById('btnEnviar');
+            if (!aviso || !btn) return;
+            var min = ministerioFiltroAtual();
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (!u) {
+                aviso.textContent = 'Faça login para postar. Só quem participa do ministério pode enviar fotos nele.';
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            if (min === 'todos') {
+                var lista = (typeof ministeriosQuePodePostar === 'function') ? ministeriosQuePodePostar() : [];
+                aviso.textContent = 'Ao postar, escolha um ministério do qual você participa' +
+                    (lista.length ? (': ' + lista.join(', ')) : '') + '.';
+                return;
+            }
+            var pode = typeof podePostarFotoMinisterio === 'function' && podePostarFotoMinisterio(min);
+            var nome = (typeof NOMES_MINISTERIO !== 'undefined' && NOMES_MINISTERIO[min]) ? NOMES_MINISTERIO[min] : min;
+            if (pode) {
+                aviso.textContent = 'Você participa de ' + nome + ' — pode postar fotos aqui.';
+                aviso.className = 'text-xs text-green-400 max-w-sm';
+            } else {
+                var lista2 = (typeof ministeriosQuePodePostar === 'function') ? ministeriosQuePodePostar() : [];
+                aviso.textContent = 'Você não participa de ' + nome + '. Só pode postar em: ' +
+                    (lista2.length ? lista2.join(', ') : 'Geral / Outros') + '.';
+                aviso.className = 'text-xs text-amber-300 max-w-sm';
+            }
+        }
+
+        document.getElementById('btnEnviar').addEventListener('click', () => {
+            var min = ministerioFiltroAtual();
+            // Se filtro em um ministério específico e não participa — bloqueia
+            if (min && min !== 'todos' && typeof podePostarFotoMinisterio === 'function' && !podePostarFotoMinisterio(min)) {
+                var lista = (typeof ministeriosQuePodePostar === 'function') ? ministeriosQuePodePostar() : [];
+                alert('Você não pode postar neste ministério.\n\nSó quem participa pode enviar fotos nele.\n\nVocê pode postar em: ' +
+                    (lista.length ? lista.join(', ') : 'Geral / Outros'));
+                return;
+            }
+            var regras = document.getElementById('boxRegrasFoto');
+            if (regras) {
+                regras.classList.remove('hidden');
+                regras.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            var selPost = document.getElementById('fotoMinisterio');
+            if (selPost && min && min !== 'todos' && selPost.querySelector('option[value="' + min + '"]')) {
+                selPost.value = min;
+            }
+            setTimeout(function() {
+                document.getElementById('modalEnviar').classList.add('aberto');
+            }, 400);
+        });
+
+        document.querySelectorAll('.fechar').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.modal').classList.remove('aberto');
+            });
+        });
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('aberto');
+            });
+        });
+
+        // Filtros
+        document.getElementById('filtroMinisterio').addEventListener('change', function() {
+            renderizarGaleria();
+            atualizarAvisoPostar();
+        });
+        document.getElementById('filtroMes').addEventListener('change', renderizarGaleria);
+
+        // Aplicar filtro da URL (?ministerio=atmosfera) — só galeria, sem abrir postagem
+        const params = new URLSearchParams(window.location.search);
+        const minUrl = params.get('ministerio');
+        if (minUrl && NOMES_MINISTERIO[minUrl]) {
+            document.getElementById('filtroMinisterio').value = minUrl;
+            var selPost = document.getElementById('fotoMinisterio');
+            if (selPost && typeof podePostarFotoMinisterio === 'function' && podePostarFotoMinisterio(minUrl)) {
+                if (selPost.querySelector('option[value="' + minUrl + '"]')) selPost.value = minUrl;
+            }
+        }
+
+        // Iniciar: galeria primeiro; postar só se participar do ministério
+        renderizarGaleria();
+        atualizarAvisoPostar();
+        sincronizarGaleriaNuvem();
+    </script>
+
+</body>
+</html>

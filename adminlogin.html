@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Gestor — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: { colors: { primary: '#0A1A3F', secondary: '#D4AF37' } } } }
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <h1 class="text-2xl font-bold text-center mb-6 text-primary">🔐 Acesso Gestor / Secretaria</h1>
+        <p class="text-sm text-gray-500 text-center mb-4">Use o mesmo e-mail e senha do login do site (gestor ou admin).</p>
+        <form id="loginForm" class="space-y-4">
+            <div>
+                <label class="block font-semibold mb-1">E-mail</label>
+                <input type="text" id="usuario" required placeholder="gestor@ibndiamantino.com.br" class="w-full p-3 border rounded-md" autocomplete="username">
+            </div>
+            <div>
+                <label class="block font-semibold mb-1">Senha</label>
+                <input type="password" id="senha" required class="w-full p-3 border rounded-md" autocomplete="current-password">
+            </div>
+            <p id="msgErro" class="text-red-500 text-sm hidden">Usuário ou senha incorretos</p>
+            <button type="submit" class="w-full bg-primary text-white p-3 rounded-md font-bold hover:bg-blue-900">
+                Entrar
+            </button>
+        </form>
+        <p class="mt-6 text-center text-sm text-gray-500 space-y-2">
+            <a href="login.html" class="text-secondary font-bold block">Login de membros</a>
+            <a href="index.html" class="text-primary font-bold">← Voltar ao site</a>
+        </p>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        (function preencherUsuarioLogado() {
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (!u) return;
+                var el = document.getElementById('usuario');
+                if (!el) return;
+                // Prefere e-mail; se for gestor/admin logado, preenche
+                var id = (u.email || u.usuario || '').trim();
+                if (!id && u.nivel === 'gestor') id = 'gestor@ibndiamantino.com.br';
+                if (!id && u.nivel === 'admin') id = 'admin@ibndiamantino.com.br';
+                if (id) {
+                    el.value = id;
+                    el.setAttribute('title', 'Usuário da sessão atual — pode alterar se quiser');
+                    var dica = document.getElementById('dicaUsuarioLogado');
+                    if (!dica) {
+                        dica = document.createElement('p');
+                        dica.id = 'dicaUsuarioLogado';
+                        dica.className = 'text-xs text-green-700 mt-1';
+                        el.parentNode.appendChild(dica);
+                    }
+                    dica.innerHTML = 'Sessão atual: <strong>' + (u.nome || id) + '</strong> — só digite a senha, ou troque o usuário se preferir.';
+                    var senha = document.getElementById('senha');
+                    if (senha) setTimeout(function(){ senha.focus(); }, 200);
+                }
+            } catch (e) {}
+        })();
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const u = document.getElementById('usuario').value.trim();
+            const s = document.getElementById('senha').value;
+            const msg = document.getElementById('msgErro');
+            msg.classList.add('hidden');
+
+            // 1) Login unificado (conta.js) — e-mail gestor@ / admin@
+            var r = (typeof fazerLogin === 'function') ? fazerLogin(u, s) : { sucesso: false };
+            if (r && r.sucesso && r.usuario && (r.usuario.nivel === 'gestor' || r.usuario.nivel === 'admin')) {
+                window.location.href = 'adminpainel.html';
+                return;
+            }
+            // 2) Compatibilidade com acesso antigo desta página
+            var legado = [
+                { usuario: 'gestor', senha: 'IbnDiamantino@2026', nivel: 'gestor', nome: 'Gestor Master', email: 'gestor@ibndiamantino.com.br' },
+                { usuario: 'gestor@ibndiamantino.com.br', senha: 'IbnDiamantino@2026', nivel: 'gestor', nome: 'Gestor Master', email: 'gestor@ibndiamantino.com.br' },
+                { usuario: 'admin', senha: 'IbnDiamantino@2026', nivel: 'admin', nome: 'Administrador', email: 'admin@ibndiamantino.com.br' }
+            ];
+            var leg = legado.find(function(a) {
+                return a.usuario.toLowerCase() === u.toLowerCase() && a.senha === s;
+            });
+            if (leg && typeof iniciarSessao === 'function') {
+                iniciarSessao({
+                    id: 'legado-' + leg.nivel,
+                    nome: leg.nome,
+                    email: leg.email,
+                    nivel: leg.nivel,
+                    cargo: leg.nivel === 'gestor' ? 'Gestor' : 'Administrador',
+                    status: 'aprovado'
+                });
+                window.location.href = 'adminpainel.html';
+                return;
+            }
+            if (r && r.sucesso) {
+                msg.textContent = 'Esta conta não é gestor/admin. Use o login de membros.';
+            } else {
+                msg.textContent = (r && r.mensagem) || 'Usuário ou senha incorretos';
+            }
+            msg.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>

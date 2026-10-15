@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Membros — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#0A1A3F', secondary: '#D4AF37', accent: '#1E3A8A', light: '#F8F9FC' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light min-h-screen">
+    <header class="bg-primary text-white py-4 px-4 shadow">
+        <div class="container mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h1 class="text-xl font-bold">Gestão de Membros</h1>
+                <span id="nivelUsuario" class="text-secondary text-sm font-bold"></span>
+            </div>
+            <div class="flex gap-3 text-sm">
+                <a href="adminpainel.html" class="hover:text-secondary">← Painel</a>
+                <a href="#" id="btnSair" class="hover:text-red-300">Sair</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- Filtros -->
+        <div class="bg-white rounded-xl shadow p-4 mb-6 flex flex-wrap gap-3 items-end">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Status</label>
+                <select id="filtroStatus" class="border rounded-lg px-3 py-2 text-sm">
+                    <option value="">Todos</option>
+                    <option value="pendente">Pendentes</option>
+                    <option value="aprovado">Aprovados</option>
+                    <option value="rejeitado">Rejeitados</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Buscar</label>
+                <input type="text" id="filtroBusca" placeholder="Nome, e-mail..." class="border rounded-lg px-3 py-2 text-sm">
+            </div>
+            <button id="btnFiltrar" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold">Filtrar</button>
+        </div>
+
+        <div id="avisoMembroUnico" class="hidden mb-4 bg-primary/5 border border-primary/20 rounded-xl p-3 flex flex-wrap justify-between gap-2 items-center">
+            <p class="text-sm text-primary"><strong>Ficha individual</strong> — só este membro e as pendências da gestão.</p>
+            <a href="gestao-membros.html" class="text-sm font-bold text-secondary underline">Ver todos os membros</a>
+        </div>
+        <div id="lista" class="space-y-4"></div>
+        <p id="vazio" class="text-center text-gray-400 py-12 hidden">Nenhum membro encontrado.</p>
+
+        <!-- Bloqueios (reversíveis) -->
+        <section class="mt-10 border-t pt-8">
+            <h2 class="text-lg font-bold text-primary mb-1"><i class="fa fa-ban"></i> Cadastros bloqueados</h2>
+            <p class="text-sm text-gray-500 mb-4">O bloqueio é <strong>reversível</strong>. Use <strong>Desbloquear</strong> para liberar nome, e-mail ou telefone novamente.</p>
+            <div id="listaBloqueios" class="space-y-2"></div>
+            <p id="vazioBloqueios" class="text-center text-gray-400 py-6 text-sm">Nenhum bloqueio ativo.</p>
+        </section>
+    </main>
+
+    <!-- Modal aprovar -->
+        <div id="modalAprovar" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-xl font-bold text-primary mb-1">Aprovar e alocar</h2>
+            <p id="modalNome" class="text-gray-600 mb-2"></p>
+            <p class="text-xs text-gray-500 mb-4">A mesma pessoa pode ter <strong>várias funções</strong> ao mesmo tempo (ex.: líder de célula + líder de 2 ministérios + anfitrião).</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-1">Funções na igreja (pode marcar várias)</label>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <label class="flex items-center gap-2"><input type="checkbox" id="fnMembro" checked> Membro</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="fnAnfitriao"> Anfitrião de célula</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="fnLiderCel"> Líder de célula</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="fnLiderTreino"> Líder em treinamento</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="fnLiderMin"> Líder de ministério</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="fnAdmin"> Administrador</label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-1">Cargo (exibição)</label>
+                    <select id="alocCargo" class="w-full border rounded-lg px-3 py-2"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Observação / função extra</label>
+                    <input type="text" id="alocFuncao" class="w-full border rounded-lg px-3 py-2" placeholder="Ex.: discipulador, coordenador...">
+                </div>
+
+                <div class="border rounded-lg p-3 bg-gray-50">
+                    <label class="block text-sm font-bold mb-2">Célula de terça — participação e papéis</label>
+                    <select id="alocTerca" class="w-full border rounded-lg px-3 py-2 mb-2">
+                        <option value="">— Nenhuma —</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mb-1">Pode marcar vários papéis na mesma célula:</p>
+                    <div class="grid grid-cols-2 gap-1 text-sm" id="boxPapelTerca">
+                        <label class="flex items-center gap-1"><input type="checkbox" name="papelTerca" value="membro" class="accent-secondary"> Membro</label>
+                        <label class="flex items-center gap-1"><input type="checkbox" name="papelTerca" value="anfitriao" class="accent-secondary"> Anfitrião</label>
+                        <label class="flex items-center gap-1"><input type="checkbox" name="papelTerca" value="lider" class="accent-secondary"> Líder de célula</label>
+                        <label class="flex items-center gap-1"><input type="checkbox" name="papelTerca" value="lider_treino" class="accent-secondary"> Líder em treinamento</label>
+                    </div>
+                </div>
+
+                <div class="border rounded-lg p-3 bg-gray-50">
+                    <label class="block text-sm font-bold mb-2">Célula de sábado — participação e papéis</label>
+                    <select id="alocSabado" class="w-full border rounded-lg px-3 py-2 mb-2">
+                        <option value="">— Nenhuma —</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mb-1">Pode marcar vários papéis na mesma célula:</p>
+                    <div class="grid grid-cols-2 gap-1 text-sm" id="boxPapelSabado">
+                        <label class="flex items-center gap-1"><input type="checkbox" name="papelSabado" value="membro" class="accent-secondary"> Membro</label>
+                        <label class="flex items-center gap-1"><input type="checkbox" name="papelSabado" value="anfitriao" class="accent-secondary"> Anfitrião</label>
+                        <label class="flex items-center gap-1"><input type="checkbox" name="papelSabado" value="lider" class="accent-secondary"> Líder de célula</label>
+                        <label class="flex items-center gap-1"><input type="checkbox" name="papelSabado" value="lider_treino" class="accent-secondary"> Líder em treinamento</label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-1">Ministérios em que participa (vários)</label>
+                    <div id="boxMinsParticipa" class="grid grid-cols-2 gap-1 text-sm max-h-36 overflow-y-auto border rounded-lg p-2"></div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-1">Ministérios que <span class="text-secondary">lidera</span> (vários)</label>
+                    <div id="boxMinsLidera" class="grid grid-cols-2 gap-1 text-sm max-h-36 overflow-y-auto border rounded-lg p-2 bg-yellow-50"></div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button id="btnConfirmarAprovar" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold">Salvar alocação</button>
+                <button id="btnFecharModal" class="flex-1 border py-2 rounded-lg font-bold">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal senha temporária (copiar fácil) -->
+    <div id="modalSenhaTemp" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h2 class="text-lg font-bold text-primary mb-1">Senha temporária</h2>
+            <p id="senhaTempNome" class="text-sm text-gray-500 mb-4"></p>
+            <label class="block text-xs font-bold text-gray-500 mb-1">Senha (selecione ou use Copiar)</label>
+            <input type="text" id="senhaTempValor" readonly
+                class="w-full text-center text-xl font-mono font-bold tracking-wide border-2 border-secondary rounded-xl px-3 py-3 bg-yellow-50 text-primary select-all"
+                onclick="this.select()">
+            <p class="text-xs text-gray-500 mt-2 mb-4">Peça ao membro para entrar e trocar a senha depois do login.</p>
+            <div class="flex flex-col gap-2">
+                <button type="button" id="btnCopiarSenha" class="w-full bg-secondary text-primary py-2.5 rounded-lg font-bold hover:bg-yellow-400">
+                    <i class="fa fa-copy"></i> Copiar só a senha
+                </button>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button type="button" id="btnWhatsTexto" class="bg-green-700 text-white py-2.5 rounded-lg font-bold hover:bg-green-800 text-sm">
+                        <i class="fa fa-whatsapp"></i> 1º WhatsApp — texto
+                    </button>
+                    <button type="button" id="btnWhatsSenha" class="bg-green-600 text-white py-2.5 rounded-lg font-bold hover:bg-green-700 text-sm">
+                        <i class="fa fa-whatsapp"></i> 2º WhatsApp — só senha
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 text-center">Envie em <strong>duas mensagens</strong>: primeiro o texto, depois só a senha (assim o membro copia só a senha).</p>
+                <button type="button" id="btnFecharSenhaTemp" class="w-full border py-2.5 rounded-lg font-bold">Fechar</button>
+            </div>
+            <p id="msgCopiouSenha" class="text-center text-green-600 text-sm font-bold mt-3 hidden">Copiado!</p>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        const usuario = getUsuarioLogado();
+        if (!usuario || !isAdmin(usuario)) {
+            alert('Acesso restrito a gestores e administradores.');
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('nivelUsuario').textContent =
+            usuario.nivel === 'gestor' ? 'Gestor Master' : 'Administrador';
+        document.getElementById('btnSair').addEventListener('click', function(e) {
+            e.preventDefault();
+            sair();
+        });
+
+        // Preenche selects / checkboxes do modal
+        LISTA_CARGOS.forEach(c => {
+            document.getElementById('alocCargo').innerHTML += `<option value="${c}">${c}</option>`;
+        });
+        LISTA_CELULAS.filter(c => c.dia === 'terca').forEach(c => {
+            document.getElementById('alocTerca').innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+        });
+        LISTA_CELULAS.filter(c => c.dia === 'sabado').forEach(c => {
+            document.getElementById('alocSabado').innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+        });
+        const boxP = document.getElementById('boxMinsParticipa');
+        const boxL = document.getElementById('boxMinsLidera');
+        LISTA_MINISTERIOS.forEach(m => {
+            boxP.innerHTML += `<label class="flex items-center gap-1"><input type="checkbox" name="alocMin" value="${m}" class="accent-secondary"> ${m}</label>`;
+            boxL.innerHTML += `<label class="flex items-center gap-1"><input type="checkbox" name="alocMinLidera" value="${m}" class="accent-secondary"> ${m}</label>`;
+        });
+
+        let membroAtualId = null;
+
+        function badgeStatus(s) {
+            const map = {
+                pendente: 'bg-yellow-100 text-yellow-800',
+                aprovado: 'bg-green-100 text-green-800',
+                rejeitado: 'bg-red-100 text-red-800'
+            };
+            return `<span class="text-xs px-2 py-0.5 rounded-full font-bold ${map[s] || 'bg-gray-100'}">${s || '—'}</span>`;
+        }
+
+
+        async function removerMembroDef(id) {
+            const m = lerMembros().find(x => String(x.id) === String(id));
+            if (!m) return;
+            if (!confirm('REMOVER DEFINITIVAMENTE\\n\\n' + m.nome + '\\n' + (m.email || '') + '\\n\\nApaga sem deixar vestígios.\\nA pessoa poderá se cadastrar de novo com o mesmo nome, e-mail ou telefone.\\n\\nConfirma?')) return;
+            const r = excluirMembroDefinitivo(id);
+            if (r.sucesso) {
+                try {
+                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.removerMembroNuvem) {
+                        await IBNNuvem.removerMembroNuvem(id);
+                    }
+                } catch (e) {}
+                alert('Membro removido. Pode cadastrar de novo com os mesmos dados.');
+                renderizar();
+                renderBloqueios();
+            } else {
+                alert(r.mensagem || 'Não foi possível remover.');
+            }
+        }
+
+        function bloquearMembro(id) {
+            const m = lerMembros().find(x => String(x.id) === String(id));
+            if (!m) return;
+            const motivo = prompt('Bloquear cadastro de:\\n' + m.nome + '\\n' + (m.email || '') + '\\n' + (m.telefone || '') + '\\n\\nMotivo (opcional):', '');
+            if (motivo === null) return;
+            const r = bloquearCadastro({
+                nome: m.nome,
+                email: m.email,
+                telefone: m.telefone,
+                motivo: motivo
+            });
+            if (!r.sucesso) {
+                alert(r.mensagem || 'Falha ao bloquear.');
+                return;
+            }
+            const tb = confirm('Bloqueio criado.\\n\\nDeseja TAMBÉM remover o cadastro atual desta pessoa?\\n(OK = remove + bloqueia | Cancelar = só bloqueia)');
+            if (tb) {
+                excluirMembroDefinitivo(id);
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.removerMembroNuvem) {
+                    IBNNuvem.removerMembroNuvem(id);
+                }
+            }
+            alert('Pronto. Nome, e-mail e telefone bloqueados para novo cadastro.');
+            renderizar();
+            renderBloqueios();
+        }
+
+        function listarPendenciasMembro(m) {
+            var itens = [];
+            var st = (m.status || '').toLowerCase();
+            if (st === 'pendente') itens.push('Cadastro aguardando aprovação / alocação');
+            if (st === 'rejeitado') itens.push('Cadastro rejeitado');
+            if (!(m.nascimento || m.dataNascimento)) itens.push('Falta data de nascimento');
+            if (!String(m.telefone || '').replace(/\D/g, '')) itens.push('Falta telefone');
+            if (!String(m.email || '').trim()) itens.push('Falta e-mail');
+            if (!Array.isArray(m.celulas) || !m.celulas.length) itens.push('Sem célula vinculada');
+            if (!Array.isArray(m.ministerios) || !m.ministerios.length) itens.push('Sem ministério (opcional)');
+            if (!m.endereco && !m.municipio) itens.push('Falta endereço / município');
+            if (m.deveTrocarSenha) itens.push('Precisa trocar senha temporária no próximo login');
+            if ((m.cargo === 'Líder de Célula' || m.nivel === 'lider_celula') && !m.lideraCelulaId && !(m.celulas || []).some(function(c){ return c.papel === 'lider'; })) {
+                itens.push('Marcado como líder de célula, mas célula de liderança não definida');
+            }
+            if ((m.cargo === 'Líder de Ministério' || m.nivel === 'lider_ministerio') && !(m.lideraMinisterios && m.lideraMinisterios.length) && !m.lideraMinisterio) {
+                itens.push('Marcado como líder de ministério, mas ministério de liderança não definido');
+            }
+            if (Array.isArray(m.funcoesSolicitadas) && m.funcoesSolicitadas.length) {
+                itens.push('Funções pedidas pelo membro (aprovar ou ajustar): ' + m.funcoesSolicitadas.join(', '));
+            }
+            return itens;
+        }
+
+        function idMembroDoHash() {
+            var h = (location.hash || '').replace(/^#/, '');
+            if (h.indexOf('membro-') === 0) return h.slice(7);
+            return '';
+        }
+
+        function renderizar() {
+
+            const status = document.getElementById('filtroStatus').value;
+            const busca = document.getElementById('filtroBusca').value.toLowerCase().trim();
+            let lista = lerMembros();
+
+            if (status) lista = lista.filter(m => m.status === status);
+            if (busca) {
+                lista = lista.filter(m =>
+                    (m.nome || '').toLowerCase().includes(busca) ||
+                    (m.email || '').toLowerCase().includes(busca) ||
+                    (m.telefone || '').includes(busca)
+                );
+            }
+
+            var soUmId = idMembroDoHash();
+            var aviso = document.getElementById('avisoMembroUnico');
+            if (soUmId) {
+                lista = lista.filter(function(m) { return String(m.id) === String(soUmId); });
+                if (aviso) aviso.classList.remove('hidden');
+            } else if (aviso) {
+                aviso.classList.add('hidden');
+            }
+
+            // Pendentes primeiro
+            lista.sort((a, b) => {
+                if (a.status === 'pendente' && b.status !== 'pendente') return -1;
+                if (b.status === 'pendente' && a.status !== 'pendente') return 1;
+                return (b.dataCadastro || '').localeCompare(a.dataCadastro || '');
+            });
+
+            const container = document.getElementById('lista');
+            document.getElementById('vazio').classList.toggle('hidden', lista.length > 0);
+
+            container.innerHTML = lista.map(m => {
+                const celulasTxt = (m.celulas || []).map(c => c.nome).join(', ') || '—';
+                const minsTxt = (m.ministerios || []).join(', ') || '—';
+                return `
+                <div class="bg-white rounded-xl shadow p-4 border-l-4 ${m.status === 'pendente' ? 'border-yellow-400' : m.status === 'aprovado' ? 'border-green-500' : 'border-gray-300'}">
+                    <div class="flex flex-wrap justify-between gap-2 mb-2">
+                        <div>
+                            <h3 class="font-bold text-primary text-lg">${m.nome}</h3>
+                            <p class="text-sm text-gray-500">${m.email || ''} · ${m.telefone || ''}</p>
+                        </div>
+                        ${badgeStatus(m.status)}
+                    </div>
+                    <div class="text-sm text-gray-600 grid sm:grid-cols-2 gap-1 mb-3">
+                        <p><strong>Cargo:</strong> ${m.cargo || 'Membro'}</p>
+                        <p><strong>Nível:</strong> ${m.nivel || 'membro'}</p>
+                        <p><strong>Nascimento:</strong> ${m.nascimento || m.dataNascimento || '—'}</p>
+                        <p><strong>Telefone:</strong> ${m.telefone || '—'}</p>
+                        <p><strong>Células:</strong> ${celulasTxt}</p>
+                        <p><strong>Ministérios:</strong> ${minsTxt}</p>
+                        ${m.funcaoEspecifica ? `<p class="sm:col-span-2"><strong>Função:</strong> ${m.funcaoEspecifica}</p>` : ''}
+                        <p class="sm:col-span-2"><strong>Endereço:</strong> ${m.endereco || '—'} ${m.municipio ? ' · ' + m.municipio : ''}</p>
+                    </div>
+                    ${(() => {
+                        const pends = listarPendenciasMembro(m);
+                        if (!pends.length) {
+                            return '<div class="mb-3 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800"><strong>✓ Sem pendências</strong> — cadastro em ordem para a gestão.</div>';
+                        }
+                        return '<div class="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm">' +
+                            '<p class="font-bold text-amber-900 mb-1">Pendências da gestão (' + pends.length + ')</p>' +
+                            '<ul class="list-disc pl-5 text-amber-900 space-y-0.5">' +
+                            pends.map(function(x) { return '<li>' + x + '</li>'; }).join('') +
+                            '</ul></div>';
+                    })()}
+                    <div class="flex flex-wrap gap-2">
+                        ${m.status === 'pendente' ? `
+                            <button onclick="abrirAprovar(${m.id})" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold">
+                                <i class="fa fa-check"></i> Aprovar / Alocar
+                            </button>
+                            <button onclick="fazerRejeitar(${m.id})" class="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-sm font-bold">
+                                Rejeitar
+                            </button>
+                        ` : `
+                            <button onclick="abrirAprovar(${m.id})" class="bg-primary text-white px-3 py-1.5 rounded-lg text-sm font-bold">
+                                Editar alocação
+                            </button>
+                        `}
+                        <button onclick="bloquearMembro(${m.id})" class="border border-amber-500 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-amber-50">
+                            <i class="fa fa-ban"></i> Bloquear
+                        </button>
+                        ${typeof isGestor === 'function' && isGestor() ? `<button onclick="removerMembroDef(${m.id})" class="border border-red-500 text-red-600 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-red-50">
+                            <i class="fa fa-trash"></i> Remover
+                        </button>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function abrirAprovar(id) {
+            membroAtualId = id;
+            const m = lerMembros().find(x => String(x.id) === String(id));
+            if (!m) return;
+            document.getElementById('modalNome').textContent = m.nome;
+            document.getElementById('alocCargo').value = m.cargo || 'Membro';
+            document.getElementById('alocFuncao').value = m.funcaoEspecifica || '';
+            const fns = Array.isArray(m.funcoes) ? m.funcoes : [];
+            const fn = String(m.funcaoEspecifica || '').toLowerCase();
+            document.getElementById('fnMembro').checked = true;
+            document.getElementById('fnAnfitriao').checked = fns.indexOf('anfitriao') !== -1 || fn.indexOf('anfitri') !== -1;
+            document.getElementById('fnLiderCel').checked = fns.indexOf('lider_celula') !== -1 || m.nivel === 'lider_celula' || !!m.lideraCelulaId;
+            document.getElementById('fnLiderTreino').checked = fns.indexOf('lider_treino') !== -1 || fn.indexOf('treinament') !== -1;
+            document.getElementById('fnLiderMin').checked = fns.indexOf('lider_ministerio') !== -1 || m.nivel === 'lider_ministerio' || !!(m.lideraMinisterios && m.lideraMinisterios.length) || !!m.lideraMinisterio;
+            document.getElementById('fnAdmin').checked = fns.indexOf('admin') !== -1 || m.nivel === 'admin';
+            const terca = (m.celulas || []).find(c => c.dia === 'terca');
+            const sabado = (m.celulas || []).find(c => c.dia === 'sabado');
+            document.getElementById('alocTerca').value = terca ? terca.id : '';
+            document.getElementById('alocSabado').value = sabado ? sabado.id : '';
+            function papeisDaCelula(c) {
+                if (!c) return ['membro'];
+                if (Array.isArray(c.papeis) && c.papeis.length) return c.papeis;
+                if (c.papel) return String(c.papel).split(/[,;|]/).map(function(x){ return x.trim(); }).filter(Boolean);
+                return ['membro'];
+            }
+            var pt = papeisDaCelula(terca);
+            var ps = papeisDaCelula(sabado);
+            document.querySelectorAll('input[name="papelTerca"]').forEach(function(el) {
+                el.checked = pt.indexOf(el.value) !== -1;
+            });
+            document.querySelectorAll('input[name="papelSabado"]').forEach(function(el) {
+                el.checked = ps.indexOf(el.value) !== -1;
+            });
+            if (!pt.length) document.querySelector('input[name="papelTerca"][value="membro"]').checked = true;
+            if (!ps.length) document.querySelector('input[name="papelSabado"][value="membro"]').checked = true;
+            document.querySelectorAll('input[name="alocMin"]').forEach(el => {
+                var mins = m.ministerios || [];
+                el.checked = mins.some(function(x) {
+                    return (typeof nomesMinisterioIguais === 'function')
+                        ? nomesMinisterioIguais(x, el.value)
+                        : String(x).toLowerCase() === String(el.value).toLowerCase();
+                }) || (typeof lideraEsteMinisterio === 'function' && lideraEsteMinisterio(m, el.value));
+            });
+            const lidera = Array.isArray(m.lideraMinisterios) ? m.lideraMinisterios.slice() : (m.lideraMinisterio ? [m.lideraMinisterio] : []);
+            // inclui inferência pela função específica
+            if (typeof ministeriosQueLidera === 'function') {
+                ministeriosQueLidera(m).forEach(function(n) {
+                    if (!lidera.some(function(x){ return String(x).toLowerCase()===String(n).toLowerCase(); })) lidera.push(n);
+                });
+            }
+            document.querySelectorAll('input[name="alocMinLidera"]').forEach(el => {
+                el.checked = lidera.some(function(x) {
+                    return (typeof nomesMinisterioIguais === 'function')
+                        ? nomesMinisterioIguais(x, el.value)
+                        : String(x).toLowerCase() === String(el.value).toLowerCase();
+                });
+            });
+            const modal = document.getElementById('modalAprovar');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        document.getElementById('btnFecharModal').addEventListener('click', function() {
+            const modal = document.getElementById('modalAprovar');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        });
+
+        document.getElementById('btnConfirmarAprovar').addEventListener('click', function() {
+            const celulas = [];
+            const idT = document.getElementById('alocTerca').value;
+            const idS = document.getElementById('alocSabado').value;
+            function coletarPapeis(name) {
+                var arr = [];
+                document.querySelectorAll('input[name="' + name + '"]:checked').forEach(function(el) { arr.push(el.value); });
+                if (!arr.length) arr = ['membro'];
+                return arr;
+            }
+            const papelT = coletarPapeis('papelTerca');
+            const papelS = coletarPapeis('papelSabado');
+            if (idT) {
+                const c = LISTA_CELULAS.find(x => x.id === idT);
+                if (c) celulas.push(Object.assign({}, c, {
+                    papel: papelT.join(','),
+                    papeis: papelT
+                }));
+            }
+            if (idS) {
+                const c = LISTA_CELULAS.find(x => x.id === idS);
+                if (c) celulas.push(Object.assign({}, c, {
+                    papel: papelS.join(','),
+                    papeis: papelS
+                }));
+            }
+            const ministerios = [];
+            document.querySelectorAll('input[name="alocMin"]:checked').forEach(el => ministerios.push(el.value));
+            const lideraMinisterios = [];
+            document.querySelectorAll('input[name="alocMinLidera"]:checked').forEach(el => lideraMinisterios.push(el.value));
+            // lidera também participa
+            lideraMinisterios.forEach(function(n) {
+                if (ministerios.indexOf(n) === -1) ministerios.push(n);
+            });
+
+            const funcoes = [];
+            if (document.getElementById('fnMembro').checked) funcoes.push('membro');
+            if (document.getElementById('fnAnfitriao').checked) funcoes.push('anfitriao');
+            if (document.getElementById('fnLiderCel').checked) funcoes.push('lider_celula');
+            if (document.getElementById('fnLiderTreino').checked) funcoes.push('lider_treino');
+            if (document.getElementById('fnLiderMin').checked || lideraMinisterios.length) funcoes.push('lider_ministerio');
+            if (document.getElementById('fnAdmin').checked) funcoes.push('admin');
+            // papéis marcados na célula também entram em funcoes
+            papelT.concat(papelS).forEach(function(p) {
+                if (p === 'anfitriao' && funcoes.indexOf('anfitriao') === -1) funcoes.push('anfitriao');
+                if (p === 'lider' && funcoes.indexOf('lider_celula') === -1) funcoes.push('lider_celula');
+                if (p === 'lider_treino' && funcoes.indexOf('lider_treino') === -1) funcoes.push('lider_treino');
+            });
+
+            // nível principal (prioridade)
+            let nivel = 'membro';
+            if (funcoes.indexOf('admin') !== -1) nivel = 'admin';
+            else if (funcoes.indexOf('lider_celula') !== -1) nivel = 'lider_celula';
+            else if (funcoes.indexOf('lider_ministerio') !== -1) nivel = 'lider_ministerio';
+
+            // lideraCelulaId: célula com papel lider
+            let lideraCelulaId = '';
+            celulas.forEach(function(c) {
+                var pp = Array.isArray(c.papeis) ? c.papeis : String(c.papel || '').split(',');
+                if (pp.indexOf('lider') !== -1 || pp.indexOf('lider_treino') !== -1) lideraCelulaId = c.id;
+            });
+            if (funcoes.indexOf('lider_celula') !== -1 && !lideraCelulaId && celulas[0]) lideraCelulaId = celulas[0].id;
+
+            let funcaoEspecifica = document.getElementById('alocFuncao').value.trim();
+            if (funcoes.indexOf('anfitriao') !== -1 && funcaoEspecifica.toLowerCase().indexOf('anfitri') === -1) {
+                funcaoEspecifica = (funcaoEspecifica ? funcaoEspecifica + ' / ' : '') + 'Anfitrião';
+            }
+            if (funcoes.indexOf('lider_treino') !== -1 && funcaoEspecifica.toLowerCase().indexOf('treinament') === -1) {
+                funcaoEspecifica = (funcaoEspecifica ? funcaoEspecifica + ' / ' : '') + 'Líder em treinamento';
+            }
+
+            const r = aprovarMembro(membroAtualId, {
+                nivel: nivel,
+                cargo: document.getElementById('alocCargo').value,
+                funcaoEspecifica: funcaoEspecifica,
+                celulas: celulas,
+                ministerios: ministerios,
+                lideraCelulaId: lideraCelulaId,
+                lideraMinisterio: lideraMinisterios[0] || '',
+                lideraMinisterios: lideraMinisterios,
+                funcoes: funcoes
+            });
+            if (!r.sucesso) {
+                alert(r.mensagem);
+                return;
+            }
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.sincronizarUmMembro && r.membro) {
+                    IBNNuvem.sincronizarUmMembro(r.membro);
+                }
+            } catch (e) {}
+            document.getElementById('modalAprovar').classList.add('hidden');
+            document.getElementById('modalAprovar').classList.remove('flex');
+            renderizar();
+        });
+
+        function fazerRejeitar(id) {
+            if (!confirm('Rejeitar este cadastro?')) return;
+            rejeitarMembro(id);
+            renderizar();
+        }
+
+        function resetSenha(id) {
+            if (!confirm('Gerar senha temporária para este membro?')) return;
+            const m = lerMembros().find(x => String(x.id) === String(id));
+            const r = resetarSenhaPorGestor(id);
+            if (!r.sucesso) {
+                alert(r.mensagem || 'Não foi possível gerar a senha.');
+                return;
+            }
+            const senha = r.senhaTemporaria || '';
+            var telCad = (r.telefoneCadastro || (m && m.telefone) || '').toString();
+            var emailCad = (r.emailCadastro || (m && m.email) || '').toString();
+            document.getElementById('senhaTempNome').innerHTML =
+                (m && m.nome ? '<strong>' + m.nome + '</strong><br>' : '') +
+                (emailCad ? 'E-mail para login: <strong>' + emailCad + '</strong><br>' : '') +
+                (telCad ? 'Telefone para login: <strong>' + telCad + '</strong>' : '') +
+                '<br><span class="text-xs text-red-600">Use exatamente este e-mail ou telefone no login.</span>';
+            document.getElementById('senhaTempValor').value = senha;
+            document.getElementById('msgCopiouSenha').classList.add('hidden');
+            const modal = document.getElementById('modalSenhaTemp');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(function() {
+                const inp = document.getElementById('senhaTempValor');
+                inp.focus();
+                inp.select();
+            }, 100);
+            // WhatsApp em 2 partes: (1) texto sem senha  (2) só a senha
+            const tel = m && m.telefone ? String(m.telefone).replace(/\D/g, '') : '';
+            const num = (tel && tel.length >= 10) ? (tel.startsWith('55') ? tel : ('55' + tel)) : '';
+            const nomeCurto = m && m.nome ? m.nome.split(' ')[0] : '';
+            const loginHint = emailCad || telCad || '';
+            const msgTexto = 'Olá' + (nomeCurto ? ' ' + nomeCurto : '') +
+                '! Acesso ao site da IBN Diamantino.\n\n' +
+                (loginHint ? '*Login (e-mail ou telefone):* ' + loginHint + '\n\n' : '') +
+                'A *senha temporária* vai na *próxima mensagem* (copie só ela).\n' +
+                'Depois do login, altere a senha.';
+            const msgSenha = senha; // somente a senha, nada mais
+
+            function abrirWa(texto) {
+                const q = encodeURIComponent(texto);
+                if (num) window.open('https://wa.me/' + num + '?text=' + q, '_blank');
+                else window.open('https://wa.me/?text=' + q, '_blank');
+            }
+            document.getElementById('btnWhatsTexto').onclick = function() { abrirWa(msgTexto); };
+            document.getElementById('btnWhatsSenha').onclick = function() { abrirWa(msgSenha); };
+        }
+
+        document.getElementById('btnCopiarSenha').addEventListener('click', async function() {
+            const senha = document.getElementById('senhaTempValor').value;
+            const msg = document.getElementById('msgCopiouSenha');
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(senha);
+                } else {
+                    const inp = document.getElementById('senhaTempValor');
+                    inp.select();
+                    document.execCommand('copy');
+                }
+                msg.textContent = 'Copiado! Cole no WhatsApp, SMS ou e-mail.';
+                msg.classList.remove('hidden');
+            } catch (e) {
+                const inp = document.getElementById('senhaTempValor');
+                inp.select();
+                msg.textContent = 'Selecione a senha acima e use Ctrl+C (ou toque longo → Copiar).';
+                msg.classList.remove('hidden');
+            }
+        });
+        document.getElementById('btnFecharSenhaTemp').addEventListener('click', function() {
+            const modal = document.getElementById('modalSenhaTemp');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        });
+
+        function renderBloqueios() {
+            var box = document.getElementById('listaBloqueios');
+            var vazio = document.getElementById('vazioBloqueios');
+            if (!box) return;
+            var lista = (typeof lerBloqueios === 'function') ? lerBloqueios() : [];
+            if (!lista.length) {
+                box.innerHTML = '';
+                if (vazio) vazio.classList.remove('hidden');
+                return;
+            }
+            if (vazio) vazio.classList.add('hidden');
+            box.innerHTML = lista.map(function(b) {
+                var partes = [];
+                if (b.nome) partes.push('Nome: ' + b.nome);
+                if (b.email) partes.push('E-mail: ' + b.email);
+                if (b.telefone) partes.push('Tel: ' + b.telefone);
+                var quando = b.em ? new Date(b.em).toLocaleString('pt-BR') : '';
+                return '<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex flex-wrap justify-between gap-2 items-center">' +
+                    '<div class="text-sm">' +
+                    '<p class="font-semibold text-amber-900">' + partes.join(' · ') + '</p>' +
+                    '<p class="text-xs text-gray-500">Por ' + (b.porNome || '—') + (quando ? ' · ' + quando : '') +
+                    (b.motivo ? ' · Motivo: ' + b.motivo : '') + '</p></div>' +
+                    '<button type="button" class="btn-desbloq border border-green-600 text-green-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-green-50" data-id="' + b.id + '">' +
+                    '<i class="fa fa-unlock"></i> Desbloquear</button></div>';
+            }).join('');
+            box.querySelectorAll('.btn-desbloq').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (!confirm('Desbloquear este cadastro?\n\nA pessoa poderá se inscrever de novo com esses dados.')) return;
+                    var r = desbloquearCadastro(btn.getAttribute('data-id'));
+                    if (r.sucesso) {
+                        alert('Desbloqueado.');
+                        renderBloqueios();
+                    } else {
+                        alert(r.mensagem || 'Não foi possível desbloquear.');
+                    }
+                });
+            });
+        }
+
+        document.getElementById('btnFiltrar').addEventListener('click', renderizar);
+        document.getElementById('filtroBusca').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') renderizar();
+        });
+
+        renderizar();
+    </script>
+</body>
+</html>

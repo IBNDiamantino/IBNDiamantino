@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Área do Membro — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0A1A3F',
+                        secondary: '#D4AF37',
+                        accent: '#1E3A8A',
+                        light: '#F8F9FC',
+                        dark: '#0F172A'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F8F9FC; }
+        .card { @apply bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition; }
+        .btn { @apply px-4 py-2 rounded-lg font-medium transition; }
+        .btn-primary { @apply bg-primary text-white hover:bg-accent; }
+        .btn-gold { @apply bg-secondary text-primary hover:bg-yellow-400; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Cabeçalho -->
+    <header class="bg-primary text-white py-4 shadow-md">
+        <div class="container mx-auto px-4 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-primary font-bold">IB</span>
+                <span class="font-bold hidden sm:inline">IBN Diamantino</span>
+            </a>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="index.html" class="text-sm bg-secondary text-primary px-3 py-1.5 rounded font-bold hover:bg-yellow-400">
+                    ← Voltar ao site
+                </a>
+                <span id="nomeUsuario" class="text-sm hidden md:inline"></span>
+                <button id="btnSair" class="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">
+                    <i class="fa fa-sign-out"></i> Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold text-primary mb-6">👋 Bem-vindo, <span id="tituloNome"></span>!</h1>
+
+        <div class="grid md:grid-cols-3 gap-6">
+            <!-- Perfil -->
+            <div class="md:col-span-1">
+                <div class="card">
+                    <h2 class="font-bold text-lg mb-4 text-primary">Meus Dados</h2>
+                    <div id="dadosPerfil" class="space-y-2 text-sm">
+                        <!-- Preenchido por JS -->
+                    </div>
+                    <button id="btnEditar" class="btn btn-primary w-full mt-4 text-sm">
+                        <i class="fa fa-pencil"></i> Editar Dados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Inscrições e Atividades -->
+            <div class="md:col-span-2 space-y-6">
+                <div class="card border-pink-200" id="cardAniversariantes">
+                    <h2 class="font-bold text-lg mb-2 text-primary">🎂 Aniversariantes</h2>
+                    <div id="areaAnivResumo" class="text-sm text-gray-600 mb-3">Carregando...</div>
+                    <button type="button" id="btnAreaAniv" class="btn btn-gold text-sm w-full sm:w-auto">
+                        Ver e homenagear
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h2 class="font-bold text-lg mb-4 text-primary">Minhas Inscrições</h2>
+                    <div id="listaInscricoes" class="text-sm text-gray-500">
+                        <p class="py-4 text-center">Você ainda não está inscrito em nenhum evento.</p>
+                        <a href="eventos.html" class="btn btn-gold inline-block mt-2">Ver Eventos Disponíveis</a>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="font-bold text-lg mb-4 text-primary">Acesso Rápido</h2>
+                    <div class="grid grid-cols-2 gap-3">
+                        <a href="eventos.html" class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-center">
+                            <i class="fa fa-calendar text-secondary text-xl"></i>
+                            <p class="text-sm mt-1">Eventos</p>
+                        </a>
+                        <a href="celulas.html" class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-center">
+                            <i class="fa fa-map-marker text-secondary text-xl"></i>
+                            <p class="text-sm mt-1">Células</p>
+                        </a>
+                        <a href="transmissoes.html" class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-center">
+                            <i class="fa fa-play-circle text-secondary text-xl"></i>
+                            <p class="text-sm mt-1">Transmissões</p>
+                        </a>
+                        <a href="doacao.html" class="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 text-center">
+                            <i class="fa fa-heart text-secondary text-xl"></i>
+                            <p class="text-sm mt-1">Doação</p>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    <!-- Modal aniversariantes (sempre disponível para membros) -->
+    <div id="modalAniversariantesArea" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[90] p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="sticky top-0 bg-gradient-to-r from-pink-500 to-rose-500 text-white px-5 py-3 flex justify-between items-center rounded-t-2xl">
+                <h3 class="font-bold text-lg">🎂 Aniversariantes</h3>
+                <button type="button" id="btnFecharAnivArea" class="text-2xl leading-none hover:opacity-80">&times;</button>
+            </div>
+            <div class="p-5 space-y-4 text-sm">
+                <div id="boxAnivProprioArea" class="hidden rounded-xl bg-pink-50 border border-pink-200 p-4 text-center">
+                    <p class="text-2xl mb-1">🎉</p>
+                    <p class="font-bold text-pink-700 text-lg">Feliz aniversário, <span id="nomeAnivProprioArea"></span>!</p>
+                    <p class="text-gray-600 mt-1">A família IBN Diamantino celebra o seu dia com muita alegria!</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-primary mb-2">Hoje</h4>
+                    <div id="listaAnivHojeArea" class="space-y-2"></div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-primary mb-2">Próximos 8 dias</h4>
+                    <div id="listaAnivProxArea" class="space-y-2"></div>
+                </div>
+                <div id="boxEnviarAnivArea" class="border-t pt-4 space-y-3">
+                    <h4 class="font-bold text-primary">Mensagem de feliz aniversário</h4>
+                    <p class="text-xs text-gray-500" id="hintDestAnivArea">Escolha um aniversariante acima para personalizar e enviar. Você pode editar o texto abaixo.</p>
+                    <p class="text-xs hidden" id="nomeDestAnivAreaWrap">Para: <strong id="nomeDestAnivArea"></strong></p>
+                    <textarea id="textoMsgAnivArea" rows="5" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" id="btnWaAnivArea" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold hover:bg-green-700">
+                            <i class="fa fa-whatsapp"></i> Enviar no WhatsApp
+                        </button>
+                        <button type="button" id="btnCopiarAnivArea" class="flex-1 border border-primary text-primary py-2.5 rounded-lg font-bold hover:bg-primary hover:text-white">
+                            Copiar mensagem
+                        </button>
+                    </div>
+                    <p id="msgAnivStatusArea" class="text-xs text-center hidden"></p>
+                </div>
+                <p class="text-xs text-gray-400 text-center">Só membros logados. Precisa ter data de nascimento no cadastro para aparecer na lista.</p>
+            </div>
+        </div>
+    </div>
+
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        // Verifica login
+        if (!exigirLogin()) {}
+        const usuario = getUsuarioLogado();
+
+        // Preenche dados
+        document.getElementById('nomeUsuario').textContent = usuario.nome.split(' ')[0];
+        document.getElementById('tituloNome').textContent = usuario.nome.split(' ')[0];
+
+        function formatarData(data) {
+            if (typeof formatarDataBR === 'function') return formatarDataBR(data);
+            if (!data) return 'Não informado';
+            return new Date(data).toLocaleDateString('pt-BR');
+        }
+
+        function estaBatizado(u) {
+            if (!u) return false;
+            return u.batizado === true || u.batismo === 'sim' || u.batizado === 'sim' || u.batismo === true;
+        }
+
+        // Exibe perfil
+        function carregarPerfil() {
+            const usuarioAtual = getUsuarioLogado();
+            const container = document.getElementById('dadosPerfil');
+            container.innerHTML = `
+                <p><strong>Nome:</strong> ${usuarioAtual.nome}</p>
+                <p><strong>E-mail:</strong> ${usuarioAtual.email}</p>
+                <p><strong>Nascimento:</strong> ${formatarData(usuarioAtual.nascimento)}</p>
+                <p><strong>Estado Civil:</strong> ${usuarioAtual.estadoCivil || 'Não informado'}</p>
+                <p><strong>Telefone:</strong> ${usuarioAtual.telefone || 'Não informado'}</p>
+                <p><strong>Município:</strong> ${(usuarioAtual.municipio || '') + (usuarioAtual.uf ? ' — ' + usuarioAtual.uf : '') || 'Não informado'}</p>
+                <p><strong>Endereço:</strong> ${usuarioAtual.endereco || 'Não informado'}</p>
+                <p><strong>Batizado:</strong> ${estaBatizado(usuarioAtual) ? '✅ Sim' : '❌ Não'}</p>
+                <p><strong>Células:</strong> ${Array.isArray(usuarioAtual.celulas) && usuarioAtual.celulas.length ? usuarioAtual.celulas.map(function(c){ return c.nome || c.id || c; }).join(', ') : 'Não informado'}</p>
+                <p><strong>Ministérios:</strong> ${Array.isArray(usuarioAtual.ministerios) && usuarioAtual.ministerios.length ? usuarioAtual.ministerios.join(', ') : 'Não informado'}</p>
+                <p><strong>Cargo:</strong> ${usuarioAtual.cargo || 'Membro'}${usuarioAtual.funcaoEspecifica ? ' — ' + usuarioAtual.funcaoEspecifica : ''}</p>
+                <p class="text-xs text-gray-400 mt-2">Membro desde: ${formatarData(usuarioAtual.dataCadastro)}</p>
+            `;
+        }
+
+        carregarPerfil();
+
+        // Sair
+        document.getElementById('btnSair').addEventListener('click', sair);
+
+        // Editar dados
+        document.getElementById('btnEditar').addEventListener('click', function() {
+            window.location.href = 'ajustar-dados.html';
+        });
+    </script>
+
+    <!-- Troca de senha (obrigatória se provisória) -->
+    <div id="modalTrocarSenha" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h2 class="text-lg font-bold text-primary mb-1">Defina sua senha definitiva</h2>
+            <p class="text-sm text-gray-500 mb-4">Você entrou com senha temporária. Crie uma senha nova para os próximos acessos.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Senha temporária (a que usou agora)</label>
+                    <div class="relative"><input type="password" id="tsAtual" autocomplete="current-password" class="w-full border rounded-lg px-3 py-2 text-sm pr-10"><button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary" data-target="tsAtual" tabindex="-1" aria-label="Mostrar senha"><i class="fa fa-eye"></i></button></div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Nova senha *</label>
+                    <div class="relative"><input type="password" id="tsNova" autocomplete="new-password" minlength="4" class="w-full border rounded-lg px-3 py-2 text-sm pr-10"><button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary" data-target="tsNova" tabindex="-1" aria-label="Mostrar senha"><i class="fa fa-eye"></i></button></div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Confirmar nova senha *</label>
+                    <div class="relative"><input type="password" id="tsNova2" autocomplete="new-password" minlength="4" class="w-full border rounded-lg px-3 py-2 text-sm pr-10"><button type="button" class="toggle-pass absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary" data-target="tsNova2" tabindex="-1" aria-label="Mostrar senha"><i class="fa fa-eye"></i></button></div>
+                </div>
+            </div>
+            <p id="tsMsg" class="text-sm text-center mt-3 hidden"></p>
+            <button type="button" id="btnSalvarSenhaNova" class="w-full mt-4 bg-primary text-white py-2.5 rounded-lg font-bold">Salvar nova senha</button>
+        </div>
+    </div>
+
+
+    <script>
+    (function () {
+        function abrirTrocaSenha() {
+            var m = document.getElementById('modalTrocarSenha');
+            if (!m) return;
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+        function precisaTrocar() {
+            var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+            if (!u) return false;
+            if (u.deveTrocarSenha) return true;
+            if (location.search.indexOf('trocarSenha=1') !== -1) return true;
+            return false;
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            if (precisaTrocar()) abrirTrocaSenha();
+            var btn = document.getElementById('btnSalvarSenhaNova');
+            if (btn) btn.addEventListener('click', function () {
+                var r = trocarSenha(
+                    document.getElementById('tsAtual').value,
+                    document.getElementById('tsNova').value,
+                    document.getElementById('tsNova2').value
+                );
+                var msg = document.getElementById('tsMsg');
+                msg.classList.remove('hidden');
+                if (r.sucesso) {
+                    msg.className = 'text-sm text-center mt-3 text-green-600 font-bold';
+                    msg.textContent = 'Senha salva! Use esta nos próximos logins.';
+                    setTimeout(function () {
+                        var m = document.getElementById('modalTrocarSenha');
+                        m.classList.add('hidden');
+                        m.classList.remove('flex');
+                        if (location.search.indexOf('trocarSenha') !== -1) {
+                            history.replaceState(null, '', 'area-membro.html');
+                        }
+                    }, 800);
+                } else {
+                    msg.className = 'text-sm text-center mt-3 text-red-500 font-bold';
+                    msg.textContent = r.mensagem || 'Não foi possível alterar.';
+                }
+            });
+        });
+    })();
+    </script>
+
+
+<script>
+(function(){
+    document.querySelectorAll('.toggle-pass').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            var id = btn.getAttribute('data-target');
+            var inp = document.getElementById(id);
+            if (!inp) return;
+            var icon = btn.querySelector('i');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+            } else {
+                inp.type = 'password';
+                if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+            }
+        });
+    });
+})();
+</script>
+
+
+
+
+<script>
+(function(){
+    var destAtual = null;
+    function uLog() {
+        return (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+    }
+    function abrir() {
+        var m = document.getElementById('modalAniversariantesArea');
+        if (!m) return;
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+        render();
+    }
+    function fechar() {
+        var m = document.getElementById('modalAniversariantesArea');
+        if (!m) return;
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+    }
+    function preencherResumo() {
+        var box = document.getElementById('areaAnivResumo');
+        if (!box) return;
+        if (typeof listarAniversariantesHoje !== 'function') {
+            box.innerHTML = '<p class="text-amber-700">Atualize o arquivo conta.js para ativar aniversariantes.</p>';
+            return;
+        }
+        var u = uLog();
+        var hoje = listarAniversariantesHoje();
+        var prox = listarProximosAniversariantes(8);
+        var parts = [];
+        if (u && typeof ehAniversarioHojeMembro === 'function' && ehAniversarioHojeMembro(u)) {
+            parts.push('🎉 <strong>Hoje é o seu aniversário!</strong> Feliz aniversário!');
+        }
+        if (hoje.length) {
+            parts.push('Hoje: <strong>' + hoje.map(function(a){ return a.nome; }).join(', ') + '</strong>');
+        } else {
+            parts.push('Nenhum aniversariante <strong>hoje</strong>.');
+        }
+        var n = 0;
+        prox.forEach(function(d){ if (d.diasAte > 0) n += d.aniversariantes.length; });
+        if (n) parts.push(n + ' aniversariante(s) nos <strong>próximos 8 dias</strong>.');
+        else parts.push('Nenhum nos próximos 8 dias — o quadro continua disponível para quando houver.');
+        box.innerHTML = parts.map(function(p){ return '<p class="mb-1">' + p + '</p>'; }).join('');
+    }
+    function msgPadrao(nome) {
+        var u = uLog();
+        if (typeof mensagemAniversarioPadrao === 'function') {
+            return mensagemAniversarioPadrao(nome || 'irmão(ã)', u && u.nome);
+        }
+        return '🎂 Feliz aniversário!\n\nQue Deus abençoe sua vida. Família IBN Diamantino 🙏';
+    }
+    function selecionar(a) {
+        destAtual = a;
+        document.getElementById('nomeDestAnivAreaWrap').classList.remove('hidden');
+        document.getElementById('nomeDestAnivArea').textContent = a.nome + (a.idade ? ' (' + a.idade + ' anos)' : '');
+        document.getElementById('hintDestAnivArea').textContent = 'Edite a mensagem se quiser e envie pelo WhatsApp ou copie.';
+        document.getElementById('textoMsgAnivArea').value = msgPadrao(a.nome);
+        document.getElementById('boxEnviarAnivArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function render() {
+        var u = uLog();
+        var boxHoje = document.getElementById('listaAnivHojeArea');
+        var boxProx = document.getElementById('listaAnivProxArea');
+        var boxProp = document.getElementById('boxAnivProprioArea');
+        // sempre mostra mensagem modelo mesmo sem destinatário
+        if (!destAtual) {
+            document.getElementById('textoMsgAnivArea').value = msgPadrao('irmão(ã)');
+            document.getElementById('nomeDestAnivAreaWrap').classList.add('hidden');
+            document.getElementById('hintDestAnivArea').textContent = 'Escolha um aniversariante na lista (quando houver) para enviar. O texto abaixo já vem pronto e pode ser editado.';
+        }
+        if (u && typeof ehAniversarioHojeMembro === 'function' && ehAniversarioHojeMembro(u)) {
+            boxProp.classList.remove('hidden');
+            document.getElementById('nomeAnivProprioArea').textContent = (u.nome || '').split(' ')[0] || 'você';
+        } else {
+            boxProp.classList.add('hidden');
+        }
+        if (typeof listarAniversariantesHoje !== 'function') {
+            boxHoje.innerHTML = '<p class="text-amber-600">Função indisponível — confira se conta.js está atualizado.</p>';
+            boxProx.innerHTML = '';
+            return;
+        }
+        var hoje = listarAniversariantesHoje();
+        if (!hoje.length) {
+            boxHoje.innerHTML = '<p class="text-gray-500 bg-gray-50 rounded-lg px-3 py-2">Nenhum aniversariante hoje. Quando houver, o nome aparece aqui com botão <strong>Homenagear</strong>.</p>';
+        } else {
+            boxHoje.innerHTML = hoje.map(function(a){
+                var eu = u && String(a.id) === String(u.id);
+                return '<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg px-3 py-2 bg-pink-50">' +
+                    '<span class="font-bold text-primary">' + (a.nome||'').replace(/</g,'&lt;') +
+                    (a.idade ? ' <span class="text-xs text-gray-500">· '+a.idade+' anos</span>' : '') +
+                    (eu ? ' <span class="text-xs text-pink-600 font-bold">· é você!</span>' : '') + '</span>' +
+                    (eu ? '' : '<button type="button" class="btnHomArea text-xs font-bold bg-pink-600 text-white px-3 py-1.5 rounded-lg" data-id="'+a.id+'">Homenagear</button>') +
+                    '</div>';
+            }).join('');
+        }
+        var prox = listarProximosAniversariantes(8).filter(function(d){ return d.diasAte > 0; });
+        if (!prox.length) {
+            boxProx.innerHTML = '<p class="text-gray-500 bg-gray-50 rounded-lg px-3 py-2">Nenhum nos próximos 8 dias. Membros precisam ter <strong>data de nascimento</strong> no cadastro.</p>';
+        } else {
+            boxProx.innerHTML = prox.map(function(d){
+                return '<div class="border rounded-lg px-3 py-2 mb-1"><p class="text-xs font-bold text-secondary mb-1">' + d.dataBR +
+                    (d.diasAte===1?' (amanhã)':' (em '+d.diasAte+' dias)') + '</p>' +
+                    d.aniversariantes.map(function(a){
+                        return '<div class="flex justify-between items-center gap-2 py-1"><span class="font-semibold">'+(a.nome||'').replace(/</g,'&lt;')+
+                            '</span><button type="button" class="btnHomArea text-xs font-bold border border-pink-500 text-pink-700 px-2 py-1 rounded" data-id="'+a.id+'">Homenagear</button></div>';
+                    }).join('') + '</div>';
+            }).join('');
+        }
+        document.querySelectorAll('.btnHomArea').forEach(function(btn){
+            btn.onclick = function(){
+                var id = btn.getAttribute('data-id');
+                var found = null;
+                listarProximosAniversariantes(8).forEach(function(d){
+                    d.aniversariantes.forEach(function(a){ if (String(a.id)===String(id)) found=a; });
+                });
+                if (found) selecionar(found);
+            };
+        });
+    }
+    function bind() {
+        var btn = document.getElementById('btnAreaAniv');
+        if (btn) btn.addEventListener('click', function(e){ e.preventDefault(); abrir(); });
+        document.getElementById('btnFecharAnivArea') && document.getElementById('btnFecharAnivArea').addEventListener('click', fechar);
+        var modal = document.getElementById('modalAniversariantesArea');
+        if (modal) modal.addEventListener('click', function(ev){ if (ev.target === modal) fechar(); });
+        document.getElementById('btnWaAnivArea') && document.getElementById('btnWaAnivArea').addEventListener('click', function(){
+            var texto = (document.getElementById('textoMsgAnivArea').value || '').trim();
+            if (!texto) return alert('Escreva ou edite a mensagem.');
+            if (!destAtual) return alert('Escolha um aniversariante na lista (quando houver) para enviar no WhatsApp.');
+            var u = uLog();
+            if (typeof registrarMensagemAniversarioLocal === 'function') {
+                registrarMensagemAniversarioLocal(u&&u.id, u&&u.nome, destAtual.id, destAtual.nome, texto);
+            }
+            var link = typeof linkWhatsAppAniversario === 'function' ? linkWhatsAppAniversario(destAtual.telefone, texto) : null;
+            var st = document.getElementById('msgAnivStatusArea');
+            if (!link) {
+                st.textContent = 'Sem telefone cadastrado. Use "Copiar mensagem".';
+                st.className = 'text-xs text-center text-amber-700';
+                st.classList.remove('hidden');
+                return;
+            }
+            st.textContent = 'Abrindo WhatsApp...';
+            st.className = 'text-xs text-center text-green-600';
+            st.classList.remove('hidden');
+            window.open(link, '_blank');
+        });
+        document.getElementById('btnCopiarAnivArea') && document.getElementById('btnCopiarAnivArea').addEventListener('click', function(){
+            var texto = (document.getElementById('textoMsgAnivArea').value || '').trim();
+            var st = document.getElementById('msgAnivStatusArea');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(texto).then(function(){
+                    st.textContent = 'Mensagem copiada!';
+                    st.className = 'text-xs text-center text-green-600';
+                    st.classList.remove('hidden');
+                });
+            } else alert(texto);
+        });
+        preencherResumo();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(bind, 300); });
+    else setTimeout(bind, 300);
+})();
+</script>
+
+
+<script>
+(function(){
+    function trySync() {
+        try {
+            if (typeof IBNNuvem === 'undefined' || !IBNNuvem.agendarSyncSessao) return;
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (u && u.id) IBNNuvem.agendarSyncSessao(u, 1000);
+        } catch (e) {}
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', trySync);
+    else trySync();
+})();
+</script>
+</body>
+</html>

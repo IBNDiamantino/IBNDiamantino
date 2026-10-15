@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos de Oração — Intercessão | IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#0A1628',secondary:'#D4AF37',accent:'#1a365d'}}}}</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+    <header class="bg-primary text-white py-4 px-4">
+        <div class="container mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <a href="index.html" class="text-white/70 text-sm hover:text-secondary">← Início</a>
+                <h1 class="text-xl font-bold mt-1"><i class="fa fa-heart text-secondary mr-2"></i>Pedidos de Oração</h1>
+                <p class="text-sm text-white/70">Ministério de Intercessão · acesso restrito</p>
+            </div>
+            <div class="text-right">
+                <p id="nomeUser" class="text-secondary text-sm font-bold"></p>
+                <a href="ministerios.html" class="text-xs text-white/60 hover:text-white">Ministérios</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-3xl">
+        <div id="semPermissao" class="hidden bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <p class="font-bold text-red-700">Acesso restrito</p>
+            <p class="text-sm text-red-600 mt-2">Somente líderes de Intercessão, secretaria (admin) e gestor/pastor.</p>
+            <a href="login.html?destino=oracao-intercessao.html" class="inline-block mt-4 bg-primary text-white px-5 py-2 rounded-lg font-bold">Fazer login</a>
+        </div>
+
+        <div id="conteudo" class="hidden space-y-4">
+            <div class="flex flex-wrap gap-2 items-center justify-between">
+                <p class="text-sm text-gray-600">Lista dos pedidos enviados pelo site. Marque o status conforme a intercessão.</p>
+                <button type="button" id="btnAtualizar" class="text-sm bg-secondary text-primary px-4 py-2 rounded-lg font-bold hover:bg-yellow-400">
+                    <i class="fa fa-refresh"></i> Atualizar da nuvem
+                </button>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs">
+                <button type="button" data-filtro="todos" class="filtro px-3 py-1 rounded-full bg-primary text-white">Todos</button>
+                <button type="button" data-filtro="novo" class="filtro px-3 py-1 rounded-full bg-gray-200">Novos</button>
+                <button type="button" data-filtro="em_oracao" class="filtro px-3 py-1 rounded-full bg-gray-200">Em oração</button>
+                <button type="button" data-filtro="concluido" class="filtro px-3 py-1 rounded-full bg-gray-200">Concluídos</button>
+            </div>
+            <div id="lista" class="space-y-3"></div>
+        </div>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        var filtroAtual = 'todos';
+        var usuario = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+
+        if (!usuario || !podeVerPedidosOracao(usuario)) {
+            document.getElementById('semPermissao').classList.remove('hidden');
+        } else {
+            document.getElementById('conteudo').classList.remove('hidden');
+            document.getElementById('nomeUser').textContent = usuario.nome || '';
+            render();
+            puxarNuvem();
+        }
+
+        document.querySelectorAll('.filtro').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                filtroAtual = btn.getAttribute('data-filtro');
+                document.querySelectorAll('.filtro').forEach(function (b) {
+                    b.className = 'filtro px-3 py-1 rounded-full bg-gray-200';
+                });
+                btn.className = 'filtro px-3 py-1 rounded-full bg-primary text-white';
+                render();
+            });
+        });
+
+        document.getElementById('btnAtualizar').addEventListener('click', function () {
+            puxarNuvem();
+        });
+
+        async function puxarNuvem() {
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarPedidosOracaoParaLocal) {
+                    await IBNNuvem.puxarPedidosOracaoParaLocal();
+                }
+            } catch (e) {}
+            render();
+        }
+
+        function render() {
+            var lista = (typeof lerPedidosOracao === 'function') ? lerPedidosOracao() : [];
+            if (filtroAtual !== 'todos') {
+                lista = lista.filter(function (p) { return (p.status || 'novo') === filtroAtual; });
+            }
+            var box = document.getElementById('lista');
+            if (!lista.length) {
+                box.innerHTML = '<p class="text-gray-400 text-center py-8">Nenhum pedido neste filtro.</p>';
+                return;
+            }
+            box.innerHTML = lista.map(function (p) {
+                var quando = p.criadoEm ? new Date(p.criadoEm).toLocaleString('pt-BR') : '';
+                var st = p.status || 'novo';
+                var cor = st === 'novo' ? 'border-yellow-400' : (st === 'em_oracao' ? 'border-blue-400' : 'border-green-400');
+                return '<div class="bg-white rounded-xl border-l-4 ' + cor + ' shadow-sm p-4">' +
+                    '<div class="flex flex-wrap justify-between gap-2 mb-2">' +
+                    '<p class="font-bold text-primary">' + escapeHtml(p.nome || 'Anônimo') + '</p>' +
+                    '<span class="text-xs text-gray-400">' + quando + '</span></div>' +
+                    (p.email ? '<p class="text-xs text-gray-500 mb-2">' + escapeHtml(p.email) + '</p>' : '') +
+                    '<p class="text-sm text-gray-700 whitespace-pre-wrap mb-3">' + escapeHtml(p.pedido || '') + '</p>' +
+                    '<div class="flex flex-wrap gap-2">' +
+                    btnStatus(p.id, 'novo', 'Novo', st) +
+                    btnStatus(p.id, 'em_oracao', 'Em oração', st) +
+                    btnStatus(p.id, 'concluido', 'Concluído', st) +
+                    '</div></div>';
+            }).join('');
+        }
+
+        function btnStatus(id, status, label, atual) {
+            var ativo = atual === status ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700';
+            return '<button type="button" onclick="mudarStatus(\'' + id + '\',\'' + status + '\')" class="text-xs px-3 py-1 rounded-full font-semibold ' + ativo + '">' + label + '</button>';
+        }
+
+        function mudarStatus(id, status) {
+            var r = atualizarStatusPedidoOracao(id, status);
+            if (r && r.sucesso) render();
+            else alert((r && r.mensagem) || 'Erro');
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    </script>
+</body>
+</html>

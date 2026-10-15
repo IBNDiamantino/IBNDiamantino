@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventos — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0A1A3F',
+                        secondary: '#D4AF37',
+                        accent: '#1E3A8A',
+                        light: '#F8F9FC',
+                        dark: '#0F172A'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        .status-pendente { background: #FEF3C7; color: #92400E; }
+        .status-pago { background: #D1FAE5; color: #065F40; }
+    </style>
+</head>
+<body class="bg-light text-gray-800 font-sans antialiased">
+
+    <header class="bg-primary/95 text-white sticky top-0 z-50 shadow-md backdrop-blur-sm">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2">
+                <span class="text-2xl font-bold text-secondary">IBN</span>
+                <span class="hidden sm:inline text-sm">Família para pertencer</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-6 text-sm">
+                <a href="index.html" class="hover:text-secondary">Início</a>
+                <a href="eventos.html" class="border-b-2 border-secondary pb-1 font-bold">Eventos</a>
+                <a href="index.html#doacao" class="hover:text-secondary">Doação</a>
+                <a href="adminlogin.html" class="hover:text-secondary">Gestão</a>
+            </nav>
+            <a href="javascript:history.back()" class="md:hidden text-xl"><i class="fa fa-arrow-left"></i></a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-12 max-w-4xl">
+
+        <!-- Aviso membro -->
+        <div id="avisoNaoLogado" class="hidden mb-8 bg-yellow-50 border border-yellow-300 rounded-xl p-5 text-center">
+            <p class="font-bold text-primary mb-2"><i class="fa fa-lock mr-2"></i>Inscrição apenas para membros</p>
+            <p class="text-sm text-gray-600 mb-4">Para se inscrever em eventos, faça login ou cadastre-se como membro.</p>
+            <div class="flex flex-wrap justify-center gap-3">
+                <a href="login.html?destino=eventos.html" class="bg-primary text-white px-5 py-2 rounded-lg font-bold hover:bg-accent">Entrar</a>
+                <a href="cadastro.html" class="bg-secondary text-primary px-5 py-2 rounded-lg font-bold hover:bg-yellow-400">Seja Membro</a>
+            </div>
+        </div>
+
+        <div id="avisoLogado" class="hidden mb-6 bg-green-50 border border-green-200 rounded-xl p-3 text-center text-sm text-green-800">
+            <i class="fa fa-check-circle mr-1"></i> Conectado como <strong id="nomeMembro"></strong> — você pode se inscrever.
+        </div>
+
+        <section id="proximo" class="mb-12">
+            <h2 class="text-3xl font-bold text-center mb-8 text-primary">📅 Próximos Eventos</h2>
+            <div id="listaEventosCards" class="space-y-4">
+                <div class="py-8 text-center text-gray-500">
+                    <i class="fa fa-calendar-check-o text-3xl text-secondary mb-2"></i>
+                    <p>Carregando...</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="inscricao" class="mb-12">
+            <h2 class="text-2xl font-bold mb-6 text-primary">Fazer Inscrição</h2>
+            <div id="avisoSemEvento" class="hidden mb-4 bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-gray-600 text-sm">
+                Não há eventos abertos para inscrição no momento. Quando um evento for publicado, você poderá se inscrever aqui.
+            </div>
+            <div id="formInscricao" class="bg-white rounded-xl shadow-lg p-6">
+                <form id="formInsc" class="space-y-4">
+                    <div>
+                        <label class="block font-semibold mb-1">Escolha o Evento</label>
+                        <select id="eventoSelect" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                            <option value="">Carregando eventos...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Nome Completo</label>
+                        <input type="text" id="nome" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Telefone / WhatsApp</label>
+                        <input type="tel" id="telefone" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" placeholder="(65) 9 9999-9999">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">E-mail</label>
+                        <input type="email" id="email" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                    </div>
+                    <button type="submit" id="btnEnviarInsc" class="w-full bg-primary text-white p-3 rounded-md font-bold hover:bg-accent">
+                        <i class="fa fa-check-circle mr-2"></i> Gerar Inscrição
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <section id="fatura" class="hidden mb-12">
+            <h2 class="text-2xl font-bold mb-6 text-primary">Pagamento da Inscrição</h2>
+            <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-green-200">
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500">Código da Inscrição:</p>
+                    <p id="codigoInsc" class="font-mono text-lg font-bold text-primary"></p>
+                </div>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500">Evento:</p>
+                    <p id="nomeEventoFat" class="font-bold"></p>
+                </div>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500">Valor:</p>
+                    <p id="valorEventoFat" class="text-2xl font-bold text-secondary"></p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg mb-4 space-y-3">
+                    <p class="text-sm font-semibold">Escolha a forma de pagamento:</p>
+                    <div class="flex flex-col gap-2 text-sm" id="opcoesPagamento">
+                        <label class="flex items-center gap-2"><input type="radio" name="meioPag" value="PIX" checked class="accent-secondary"> PIX (chave da igreja)</label>
+                        <label class="flex items-center gap-2"><input type="radio" name="meioPag" value="PagBank / Cartão" class="accent-secondary"> Cartão ou PagBank (link de pagamento no site)</label>
+                        <label class="flex items-center gap-2"><input type="radio" name="meioPag" value="Dinheiro" class="accent-secondary"> Dinheiro (na secretaria)</label>
+                    </div>
+                    <p id="formaPagamento" class="text-xs text-gray-500 hidden"></p>
+                    <div id="boxPixPag">
+                        <p class="text-sm font-semibold mb-2">Chave PIX:</p>
+                        <p id="pixCode" class="font-mono bg-white p-3 rounded border text-center text-sm break-all"></p>
+                        <button type="button" onclick="copiarPixPag()" class="mt-3 w-full bg-secondary text-primary p-2 rounded font-bold hover:bg-yellow-400">
+                            <i class="fa fa-copy mr-2"></i> Copiar Chave PIX
+                        </button>
+                    </div>
+                    <div id="boxCartaoPag" class="hidden text-sm text-gray-700 bg-white border rounded-lg p-3">
+                        Pague com <strong>cartão</strong> pelo botão do <strong>PagBank</strong> abaixo.
+                        Se preferir, pode pagar na maquininha da igreja e a secretaria confirma depois.
+                    </div>
+                    <div id="boxLinkOnline" class="hidden space-y-2">
+                        <a id="btnPagarOnline" href="#" target="_blank" rel="noopener"
+                           class="block w-full text-center bg-primary text-white p-3 rounded-lg font-bold hover:opacity-90">
+                            <i class="fa fa-credit-card mr-2"></i> Pagar com PagBank (PIX ou cartão)
+                        </a>
+                        <p class="text-xs text-gray-500 text-center">1) Pague na página do PagBank · 2) Volte aqui · 3) Envie o comprovante</p>
+                    </div>
+                    <p id="avisoSemLinkPag" class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                        Este evento ainda não tem link PagBank. Use a chave PIX ou pague na secretaria.
+                    </p>
+                </div>
+                <div class="mt-6 pt-4 border-t space-y-3">
+                    <p class="font-semibold">Comprovante (PIX) ou foto do recibo do cartão:</p>
+                    <input type="file" id="comprovantePag" accept="image/*,application/pdf" class="w-full text-sm border rounded-lg p-2">
+                    <p class="text-xs text-gray-500">A secretaria confere. Enquanto isso a inscrição fica <strong>pendente</strong>.</p>
+                    <button id="btnConfirmar" class="w-full bg-green-600 text-white p-3 rounded-md font-bold hover:bg-green-700">
+                        <i class="fa fa-check mr-2"></i> Enviar comprovante e finalizar
+                    </button>
+                    <p id="msgConfirmacao" class="mt-3 hidden text-center font-bold text-green-600">✅ Comprovante enviado! Aguarde confirmação da secretaria.</p>
+                    <div id="boxComprovanteInsc" class="hidden mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-sm">
+                        <p class="font-bold text-green-800 mb-1">Comprovante de inscrição</p>
+                        <p id="txtComprovanteInsc"></p>
+                        <button type="button" id="btnPrintInsc" class="mt-2 text-sm font-bold text-primary underline">Imprimir / salvar PDF</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="listaPublica" class="mb-12">
+            <h2 class="text-2xl font-bold mb-6 text-primary">Inscritos</h2>
+            <div id="listaPub" class="bg-white rounded-xl shadow-lg p-6">
+                <p class="text-gray-500 text-center">Carregando...</p>
+            </div>
+        </section>
+
+        <!-- Área admin (visível só para admin/gestor) -->
+        <section id="areaAdmin" class="hidden mb-12 border-2 border-dashed border-secondary/40 rounded-xl p-6 bg-white">
+            <h2 class="text-xl font-bold text-primary mb-2"><i class="fa fa-cog mr-2"></i> Gestão de Eventos (Admin)</h2>
+            <p class="text-sm text-gray-500 mb-4">Adicione eventos, valores e formas de pagamento. Os dados ficam salvos neste navegador (depois pode migrar para servidor).</p>
+            <form id="formAdminEvento" class="space-y-3 max-w-xl">
+                <input type="text" id="admNome" placeholder="Nome do evento" required class="w-full p-2 border rounded">
+                <input type="date" id="admData" required class="w-full p-2 border rounded">
+                <input type="number" id="admValor" placeholder="Valor (R$) — 0 = gratuito" step="0.01" min="0" required class="w-full p-2 border rounded">
+                <input type="text" id="admPix" placeholder="Chave PIX da igreja" value="36.158.983/0001-36" class="w-full p-2 border rounded">
+                <input type="text" id="admForma" placeholder="Formas aceitas" value="PIX, Cartão (PagBank), Dinheiro" class="w-full p-2 border rounded">
+                <input type="url" id="admLinkPag" placeholder="Link PagBank de pagamento (opcional)" class="w-full p-2 border rounded">
+                <button type="submit" class="bg-secondary text-primary px-4 py-2 rounded font-bold">+ Adicionar Evento</button>
+            </form>
+            <div id="listaAdminEventos" class="mt-4 text-sm space-y-2"></div>
+        </section>
+
+    </main>
+
+    <footer class="bg-dark text-white py-6 text-center text-sm">
+        <p>© 2026 — Igreja Batista Nacional Diamantino</p>
+    </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        // Eventos padrão + os salvos pelo admin
+        // Agenda começa vazia — o admin adiciona os eventos
+        const EVENTOS_PADRAO = [];
+
+        function formatarDataEvento(d) {
+            if (!d) return '';
+            d = String(d).trim();
+            // já está DD/MM/AAAA
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) return d;
+            // ISO YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}/.test(d)) {
+                var p = d.slice(0,10).split('-');
+                return p[2] + '/' + p[1] + '/' + p[0];
+            }
+            // só números 11102026 ou 15112026
+            var n = d.replace(/\D/g, '');
+            if (n.length === 8) {
+                // tenta DDMMAAAA
+                return n.slice(0,2) + '/' + n.slice(2,4) + '/' + n.slice(4);
+            }
+            return d;
+        }
+        function carregarEventos() {
+            try {
+                var a = JSON.parse(localStorage.getItem('ibn_eventos') || 'null');
+                var b = JSON.parse(localStorage.getItem('eventos') || 'null');
+                var lista = Array.isArray(a) && a.length ? a : (Array.isArray(b) ? b : []);
+                return lista.map(function(e, i) {
+                    return {
+                        id: e.id || ('ev-' + i),
+                        nome: e.nome || e.titulo || 'Evento',
+                        data: formatarDataEvento(e.data || ''),
+                        dataIso: e.dataIso || e.data || '',
+                        local: e.local || '',
+                        valor: e.valor != null ? Number(e.valor) : 0,
+                        pix: e.pix || e.chavePix || '36.158.983/0001-36',
+                        forma: e.forma || e.formas || 'PIX',
+                        foto: e.foto || e.imagem || '',
+                        video: e.video || e.videoUrl || '',
+                        visitantes: e.visitantes !== false,
+                        linkPagamento: e.linkPagamento || e.link_pagamento || e.linkPago || ''
+                    };
+                });
+            } catch (err) {
+                return EVENTOS_PADRAO.slice();
+            }
+        }
+
+        function salvarEventos(lista) {
+            localStorage.setItem('ibn_eventos', JSON.stringify(lista));
+        }
+
+        let eventos = carregarEventos();
+        let inscritos = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
+        let inscricaoAtual = null;
+        let membro = null;
+
+        function verificarMembro() {
+            membro = null;
+            try {
+                if (typeof getUsuarioLogado === 'function') {
+                    membro = getUsuarioLogado();
+                }
+                if (!membro) {
+                    var s = localStorage.getItem('ibn_sessao_atual') || localStorage.getItem('usuarioLogado');
+                    if (s) membro = JSON.parse(s);
+                }
+            } catch (e) {}
+            return !!(membro && (membro.nome || membro.email || membro.id));
+        }
+
+        function quemEhParticipante() {
+            var r = document.querySelector('input[name="quemInscricao"]:checked');
+            return r ? r.value : 'outro';
+        }
+
+        function aplicarCamposInscricao() {
+            var logado = verificarMembro();
+            var boxV = document.getElementById('camposVisitante');
+            var btn = document.getElementById('btnEnviarInsc');
+            var boxQuem = document.getElementById('boxQuemInsc');
+            var quemEu = document.getElementById('quemEu');
+            var quemOutro = document.getElementById('quemOutro');
+
+            if (logado) {
+                document.getElementById('avisoLogado') && document.getElementById('avisoLogado').classList.remove('hidden');
+                document.getElementById('avisoNaoLogado') && document.getElementById('avisoNaoLogado').classList.add('hidden');
+                var nm = document.getElementById('nomeMembro');
+                if (nm) nm.textContent = membro.nome || 'Membro';
+                if (boxQuem) boxQuem.classList.remove('hidden');
+                if (membro.nivel === 'admin' || membro.nivel === 'gestor' ||
+                    (typeof isAdmin === 'function' && isAdmin(membro)) ||
+                    (typeof isGestor === 'function' && isGestor(membro))) {
+                    var area = document.getElementById('areaAdmin');
+                    if (area) { area.classList.remove('hidden'); if (typeof renderAdminEventos === 'function') renderAdminEventos(); }
+                }
+            } else {
+                document.getElementById('avisoNaoLogado') && document.getElementById('avisoNaoLogado').classList.remove('hidden');
+                document.getElementById('avisoLogado') && document.getElementById('avisoLogado').classList.add('hidden');
+                // sem login: sempre ficha de participante (visitante)
+                if (boxQuem) boxQuem.classList.add('hidden');
+                if (quemOutro) quemOutro.checked = true;
+            }
+
+            var paraMim = logado && quemEhParticipante() === 'eu';
+            if (paraMim) {
+                document.getElementById('nome').value = membro.nome || '';
+                document.getElementById('email').value = membro.email || '';
+                document.getElementById('telefone').value = membro.telefone || '';
+                if (boxV) boxV.classList.add('hidden');
+            } else {
+                // outra pessoa ou visitante: campos em branco para preencher o participante
+                if (!paraMim) {
+                    // não apaga se usuário já digitou — só limpa na primeira carga
+                    if (document.getElementById('nome').dataset.autofill === '1') {
+                        document.getElementById('nome').value = '';
+                        document.getElementById('email').value = '';
+                        document.getElementById('telefone').value = '';
+                    }
+                }
+                if (boxV) boxV.classList.remove('hidden');
+            }
+            if (logado && quemEhParticipante() === 'eu') {
+                document.getElementById('nome').dataset.autofill = '1';
+            } else {
+                document.getElementById('nome').dataset.autofill = '0';
+            }
+
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.innerHTML = '<i class="fa fa-check-circle mr-2"></i> Gerar Inscrição';
+            }
+        }
+
+        function init() {
+            aplicarCamposInscricao();
+            document.querySelectorAll('input[name="quemInscricao"]').forEach(function(r){
+                r.addEventListener('change', function(){
+                    // ao trocar para "outra pessoa", limpa campos
+                    if (quemEhParticipante() === 'outro') {
+                        document.getElementById('nome').value = '';
+                        document.getElementById('email').value = '';
+                        document.getElementById('telefone').value = '';
+                        document.getElementById('nome').dataset.autofill = '0';
+                    }
+                    aplicarCamposInscricao();
+                });
+            });
+            carregarCardsEventos();
+            carregarSelectEventos();
+            atualizarUISemEvento();
+            carregarListaPublica();
+        }
+
+
+        function atualizarUISemEvento() {
+            const sem = !eventos.length;
+            const aviso = document.getElementById('avisoSemEvento');
+            const form = document.getElementById('formInscricao');
+            if (aviso) aviso.classList.toggle('hidden', !sem);
+            if (form) form.classList.toggle('opacity-50', sem);
+            if (form && sem) {
+                form.querySelectorAll('input, select, button').forEach(el => { el.disabled = true; });
+            }
+        }
+
+        function carregarCardsEventos() {
+            const container = document.getElementById('listaEventosCards');
+            if (!eventos.length) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-lg p-8 md:p-12 border-2 border-dashed border-secondary/40 text-center">
+                        <div class="text-5xl mb-4">📅</div>
+                        <h3 class="text-2xl font-bold text-primary mb-2">Nenhum evento na agenda</h3>
+                        <p class="text-gray-600 max-w-md mx-auto mb-4">
+                            Em breve teremos novidades! Fique de olho nas nossas redes e no WhatsApp da igreja.
+                        </p>
+                        <p class="text-sm text-gray-500 mb-6">
+                            Igreja Batista Nacional Diamantino — Família para pertencer
+                        </p>
+                        <div class="flex flex-wrap justify-center gap-3">
+                            <a href="https://youtube.com/@ibndiamantino" target="_blank"
+                               class="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-700">
+                                <i class="fa fa-youtube-play"></i> YouTube
+                            </a>
+                            <a href="index.html#celulas"
+                               class="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-accent">
+                                <i class="fa fa-map-marker"></i> Células
+                            </a>
+                            <a href="index.html"
+                               class="inline-flex items-center gap-2 bg-secondary text-primary px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400">
+                                <i class="fa fa-home"></i> Site
+                            </a>
+                        </div>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = eventos.map((e, i) => `
+                <div class="bg-white rounded-xl shadow-lg p-6 border-2 ${i === 0 ? 'border-secondary' : 'border-gray-100'}">
+                    <div class="grid md:grid-cols-2 gap-4 items-center">
+                        <div>
+                            ${i === 0 ? '<p class="text-sm text-secondary font-bold">PRÓXIMO</p>' : ''}
+                            <h3 class="text-xl font-bold text-primary mt-1">${e.nome}</h3>
+                            <p class="mt-2"><i class="fa fa-calendar"></i> ${formatarDataEvento(e.data)}</p>
+                            <p class="text-lg font-bold text-secondary mt-2">${Number(e.valor) > 0 ? 'R$ ' + Number(e.valor).toFixed(2) : 'Gratuito'}</p>
+                            <p class="text-xs text-gray-500 mt-1">${e.forma || e.formaPagamento || 'PIX, Cartão (PagBank), Dinheiro'}</p>
+                        </div>
+                        <a href="#inscricao" class="bg-secondary text-primary p-3 rounded-lg font-bold text-center hover:bg-yellow-400">
+                            <i class="fa fa-pencil-square-o mr-2"></i> Inscrever-se
+                        </a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function carregarSelectEventos() {
+            const sel = document.getElementById('eventoSelect');
+            if (!eventos.length) {
+                sel.innerHTML = '<option value="">Nenhum evento na agenda no momento</option>';
+                sel.disabled = true;
+            } else {
+                sel.disabled = false;
+                sel.innerHTML = '<option value="">Selecione...</option>' +
+                    eventos.map(e => `<option value="${e.id}">${e.nome} — R$ ${Number(e.valor).toFixed(2)}</option>`).join('');
+            }
+        }
+
+        document.getElementById('formInsc').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!verificarMembro()) {
+                alert('Você precisa estar cadastrado e logado como membro para se inscrever.');
+                // visitante pode preencher dados no formulário; login é opcional
+                // window.location.href = 'login.html?destino=eventos.html';
+                return;
+            }
+
+            const eventoId = document.getElementById('eventoSelect').value;
+            const nome = document.getElementById('nome').value.trim();
+            const telefone = document.getElementById('telefone').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const nascV = (document.getElementById('nascimentoInsc') || {}).value || '';
+            const endV = (document.getElementById('enderecoInsc') || {}).value || '';
+            const munV = (document.getElementById('municipioInsc') || {}).value || '';
+            const paraOutro = !verificarMembro() || quemEhParticipante() === 'outro';
+            const ehVisitante = paraOutro; // ficha completa do participante
+            if (paraOutro) {
+                if (!nascV) return alert('Informe a data de nascimento do participante.');
+                if (!endV && !munV) return alert('Informe endereço ou município do participante.');
+            }
+
+            const evento = eventos.find(ev => ev.id === eventoId);
+            if (!evento) return alert('Selecione um evento válido');
+
+            // Evitar inscrição duplicada no mesmo evento
+            const ja = inscritos.find(i => i.eventoId === eventoId && (i.email === email || i.telefone === telefone));
+            if (ja) {
+                alert('Você já possui inscrição neste evento. Código: ' + ja.codigo);
+                return;
+            }
+
+            const codigo = 'IBN-' + eventoId.toUpperCase().replace(/-/g,'') + '-' + Date.now().toString(36).toUpperCase();
+
+            const novaInsc = {
+                codigo, eventoId, eventoNome: evento.nome, nome, telefone, email,
+                valor: evento.valor, dataInsc: new Date().toLocaleString('pt-BR'), pago: false,
+                tipo: (verificarMembro() && quemEhParticipante() === 'eu') ? 'membro' : 'outra_pessoa',
+                nascimento: nascV || (membro && membro.nascimento) || '',
+                endereco: endV || (membro && membro.endereco) || '',
+                municipio: munV || (membro && membro.municipio) || '',
+                membroId: membro.email || membro.nome
+            };
+            inscritos.push(novaInsc);
+            salvarInscritos();
+
+            inscricaoAtual = novaInsc;
+            document.getElementById('fatura').classList.remove('hidden');
+            (function(){
+                var linkPag = (evento && (evento.linkPagamento || '')) || '';
+                var boxLink = document.getElementById('boxLinkOnline');
+                var btnOn = document.getElementById('btnPagarOnline');
+                if (boxLink && btnOn) {
+                    if (linkPag) { btnOn.href = linkPag; btnOn.setAttribute('href', linkPag); boxLink.classList.remove('hidden'); }
+                    else { btnOn.removeAttribute('href'); btnOn.href = '#'; boxLink.classList.add('hidden'); }
+                }
+                if (typeof atualizarMeioPagUI === 'function') atualizarMeioPagUI();
+            })();
+            document.getElementById('codigoInsc').textContent = codigo;
+            document.getElementById('nomeEventoFat').textContent = evento.nome;
+            document.getElementById('valorEventoFat').textContent = `R$ ${Number(evento.valor).toFixed(2)}`;
+            document.getElementById('formaPagamento').textContent = evento.forma || evento.formaPagamento || 'PIX, Cartão, Dinheiro';
+            document.getElementById('pixCode').textContent = evento.pix || evento.pixDestino || '36.158.983/0001-36';
+
+            document.getElementById('fatura').scrollIntoView({ behavior: 'smooth' });
+            // reset meio pagamento UI
+            var pixRadio = document.querySelector('input[name="meioPag"][value="PIX"]');
+            if (pixRadio) pixRadio.checked = true;
+            if (typeof atualizarMeioPagUI === 'function') atualizarMeioPagUI();
+            carregarListaPublica();
+        });
+
+        function atualizarMeioPagUI() {
+            var meio = (document.querySelector('input[name="meioPag"]:checked') || {}).value || 'PIX';
+            var boxPix = document.getElementById('boxPixPag');
+            var boxCard = document.getElementById('boxCartaoPag');
+            var boxLink = document.getElementById('boxLinkOnline');
+            var btnOn = document.getElementById('btnPagarOnline');
+            var aviso = document.getElementById('avisoSemLinkPag');
+            var temLink = !!(btnOn && btnOn.getAttribute('href') && btnOn.getAttribute('href') !== '#' && btnOn.getAttribute('href').length > 8);
+            if (boxPix) boxPix.classList.toggle('hidden', meio !== 'PIX');
+            if (boxCard) boxCard.classList.toggle('hidden', meio.indexOf('PagBank') === -1 && meio.indexOf('Cartão') === -1);
+            if (boxLink) {
+                // mostra link PagBank em PIX ou cartão, se existir
+                if (temLink && meio !== 'Dinheiro') boxLink.classList.remove('hidden');
+                else boxLink.classList.add('hidden');
+            }
+            if (aviso) {
+                if (!temLink && meio !== 'Dinheiro' && meio !== 'PIX') aviso.classList.remove('hidden');
+                else aviso.classList.add('hidden');
+            }
+        }
+        document.addEventListener('change', function(ev) {
+            if (ev.target && ev.target.name === 'meioPag') atualizarMeioPagUI();
+        });
+        function copiarPixPag() {
+            const pix = (inscricaoAtual && eventos.find(e => e.id === inscricaoAtual.eventoId))
+                ? (eventos.find(e => e.id === inscricaoAtual.eventoId).pixDestino || '36158983000136')
+                : '36158983000136';
+            navigator.clipboard.writeText(pix.replace(/\D/g, '') || pix);
+            alert('✅ Chave PIX copiada! No app do banco, use a referência: ' + (inscricaoAtual ? inscricaoAtual.codigo : ''));
+        }
+
+        document.getElementById('btnConfirmar').addEventListener('click', function() {
+            if (!inscricaoAtual) return;
+            const idx = inscritos.findIndex(i => i.codigo === inscricaoAtual.codigo);
+            if (idx === -1) return;
+            const fileInput = document.getElementById('comprovantePag');
+            const valor = Number(inscritos[idx].valor || 0);
+            function finalizar(comprovanteData) {
+                inscritos[idx].pago = valor <= 0; // gratuito já pago
+                inscritos[idx].comprovanteEnviado = !!comprovanteData || valor <= 0;
+                inscritos[idx].comprovante = comprovanteData || '';
+                inscritos[idx].dataPagamento = new Date().toLocaleString('pt-BR');
+                inscritos[idx].meioPagamento = (document.querySelector('input[name="meioPag"]:checked') || {}).value || 'PIX';
+                inscritos[idx].statusPagamento = valor <= 0 ? 'confirmado' : 'aguardando_conferencia';
+                salvarInscritos();
+                document.getElementById('msgConfirmacao').classList.remove('hidden');
+                document.getElementById('btnConfirmar').disabled = true;
+                document.getElementById('btnConfirmar').textContent = valor <= 0 ? '✅ Inscrito' : '✅ Comprovante enviado';
+                var box = document.getElementById('boxComprovanteInsc');
+                var txt = document.getElementById('txtComprovanteInsc');
+                if (box && txt) {
+                    txt.innerHTML = '<strong>Código:</strong> ' + inscritos[idx].codigo +
+                        '<br><strong>Evento:</strong> ' + (inscritos[idx].eventoNome || '') +
+                        '<br><strong>Nome:</strong> ' + (inscritos[idx].nome || '') +
+                        '<br><strong>Valor:</strong> R$ ' + Number(inscritos[idx].valor||0).toFixed(2) +
+                        '<br><strong>Status:</strong> ' + (inscritos[idx].statusPagamento === 'confirmado' ? 'Confirmado' : 'Aguardando secretaria');
+                    box.classList.remove('hidden');
+                }
+                carregarListaPublica();
+            }
+            if (valor > 0 && fileInput && fileInput.files && fileInput.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function() { finalizar(reader.result); };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else if (valor > 0) {
+                if (!confirm('Não anexou comprovante. Deseja enviar mesmo assim? A secretaria precisará confirmar o pagamento.')) return;
+                finalizar('');
+            } else {
+                finalizar('');
+            }
+        });
+
+        function salvarInscritos() {
+            localStorage.setItem('inscritosIBN', JSON.stringify(inscritos));
+        }
+
+        function carregarListaPublica() {
+            const container = document.getElementById('listaPub');
+            if (inscritos.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center">Ninguém inscrito ainda. Seja o primeiro! ✨</p>';
+                return;
+            }
+            const pagos = inscritos.filter(i => i.pago).length;
+            container.innerHTML = `
+                <p class="text-sm text-gray-500 mb-4">Total: ${inscritos.length} · Pagos: ${pagos} · Pendentes: ${inscritos.length - pagos}</p>
+                <div class="space-y-2">
+                    ${inscritos.map(i => `
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <span class="font-semibold">${i.nome}</span>
+                                <span class="text-xs text-gray-500 block sm:inline sm:ml-2">${i.eventoNome || ''}</span>
+                            </div>
+                            <span class="text-xs px-2 py-1 rounded-full w-fit ${i.pago ? 'status-pago' : 'status-pendente'}">
+                                ${i.pago ? '✅ Pago' : '⏳ Pendente'}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Admin: adicionar evento
+        document.getElementById('formAdminEvento').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const nome = document.getElementById('admNome').value.trim();
+            const dataRaw = document.getElementById('admData').value.trim();
+            const data = formatarDataEvento(dataRaw);
+            const valor = parseFloat(document.getElementById('admValor').value) || 0;
+            const pix = document.getElementById('admPix').value.trim() || '36.158.983/0001-36';
+            const forma = document.getElementById('admForma').value.trim() || 'PIX, Cartão (PagBank), Dinheiro';
+            const linkPag = (document.getElementById('admLinkPag') && document.getElementById('admLinkPag').value || '').trim();
+            const id = 'ev-' + Date.now();
+            eventos.push({
+                id: id,
+                nome: nome,
+                data: data,
+                dataIso: dataRaw,
+                valor: valor,
+                pix: pix,
+                pixDestino: pix,
+                forma: forma,
+                formaPagamento: forma,
+                linkPagamento: linkPag
+            });
+            salvarEventos(eventos);
+            e.target.reset();
+            document.getElementById('admPix').value = '36.158.983/0001-36';
+            document.getElementById('admForma').value = 'PIX, Cartão (PagBank), Dinheiro';
+            carregarCardsEventos();
+            carregarSelectEventos();
+            renderAdminEventos();
+        });
+
+        function renderAdminEventos() {
+            const box = document.getElementById('listaAdminEventos');
+            box.innerHTML = eventos.map((e, idx) => `
+                <div class="flex justify-between items-center border-b py-2">
+                    <span>${e.nome} — ${e.data} — R$ ${Number(e.valor).toFixed(2)}</span>
+                    <button type="button" data-idx="${idx}" class="btn-rm-evt text-red-500 text-xs">Remover</button>
+                </div>
+            `).join('') || '<p class="text-gray-400">Nenhum evento</p>';
+            box.querySelectorAll('.btn-rm-evt').forEach(btn => {
+                btn.onclick = () => {
+                    eventos.splice(parseInt(btn.dataset.idx), 1);
+                    salvarEventos(eventos);
+                    carregarCardsEventos();
+                    carregarSelectEventos();
+                    atualizarUISemEvento();
+                    renderAdminEventos();
+                };
+            });
+        }
+
+        init();
+    </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var b = document.getElementById('btnPrintInsc');
+    if (b) b.addEventListener('click', function(){ window.print(); });
+});
+</script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    
+</body>
+</html>

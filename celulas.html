@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Células — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#0A1A3F', secondary: '#D4AF37', accent: '#1E3A8A', light: '#F8F9FC' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light text-gray-800 min-h-screen">
+    <header class="bg-primary text-white sticky top-0 z-40 shadow">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="index.html" class="font-bold text-secondary text-xl">IBN</a>
+            <span class="text-sm">Organização das Células</span>
+            <a href="index.html#celulas" class="text-sm hover:text-secondary">← Voltar</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-2xl md:text-3xl font-bold text-primary mb-2">Células da IBN</h1>
+        <p class="text-gray-600 mb-2">Terça-feira às 20h nas casas · Sábado: Adolescentes (18h) e Jovens (20h) — local definido pelo líder da célula</p>
+        <p class="text-sm text-gray-500 mb-6">Toque em uma célula para ver equipe, membros, fotos e relatórios.</p>
+
+        <div id="avisoLogin" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-900">
+            <i class="fa fa-info-circle"></i> Faça <a href="login.html?destino=celulas.html" class="font-bold underline">login</a> para ver membros, enviar relatório ou exportar dados.
+        </div>
+
+        <div id="barraAdmin" class="hidden mb-6 p-4 bg-white border-2 border-secondary/40 rounded-xl">
+            <p class="font-bold text-primary mb-2"><i class="fa fa-lock"></i> Área do Gestor / Administrador</p>
+            <button type="button" id="btnExportGeral" class="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-accent">
+                <i class="fa fa-download"></i> Exportar todos os relatórios (CSV)
+            </button>
+        </div>
+
+        <div id="listaCelulas" class="space-y-3"></div>
+
+        <!-- Painel detalhe da célula -->
+        <div id="painelCelula" class="hidden mt-8 bg-white rounded-2xl shadow-lg border p-5">
+            <div class="flex items-start justify-between gap-2 mb-4">
+                <div>
+                    <h2 id="painelTitulo" class="text-xl font-bold text-primary"></h2>
+                    <p id="painelMeta" class="text-sm text-gray-500"></p>
+                </div>
+                <button type="button" id="btnFecharPainel" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+
+            <div class="grid sm:grid-cols-3 gap-3 mb-6 text-sm">
+                <div class="bg-gray-50 rounded-lg p-3 border">
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Líder</p>
+                    <p id="papelLider" class="font-bold text-primary">—</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-3 border">
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Anfitrião(ã)</p>
+                    <p id="papelAnfitriao" class="font-bold text-primary">—</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-3 border">
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Líder em treinamento</p>
+                    <p id="papelTreino" class="font-bold text-primary">—</p>
+                </div>
+            </div>
+
+            <h3 class="font-bold text-primary mb-2"><i class="fa fa-users"></i> Membros da célula</h3>
+            <ul id="listaMembrosCelula" class="mb-4 text-sm space-y-1 border rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto"></ul>
+
+            <!-- Adicionar membro ou visitante (líder / admin / gestor) -->
+            <div id="blocoAddPessoaCelula" class="hidden mb-6 border rounded-xl p-4 bg-white border-secondary/40">
+                <h3 class="font-bold text-primary mb-2"><i class="fa fa-user-plus"></i> Adicionar à célula / chamada</h3>
+                <p class="text-xs text-gray-500 mb-2">Disponível para <strong>líder</strong> ou <strong>anfitrião</strong> desta célula.</p>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button type="button" id="tabAddMembro" class="px-3 py-1.5 rounded-lg text-sm font-bold bg-primary text-white">Membro cadastrado</button>
+                    <button type="button" id="tabAddVisitante" class="px-3 py-1.5 rounded-lg text-sm font-bold border border-primary text-primary">Visitante</button>
+                </div>
+                <div id="painelAddMembro">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Buscar membro (nome, e-mail ou telefone)</label>
+                    <input type="text" id="buscaMembroCelula" class="w-full p-2 border rounded-lg text-sm mb-2" placeholder="Digite pelo menos 2 letras..." autocomplete="off">
+                    <div id="resultBuscaMembro" class="text-sm space-y-1 max-h-40 overflow-y-auto mb-2"></div>
+                    <p class="text-xs text-gray-400">Aparecem só nomes já cadastrados no sistema que ainda não estão nesta célula.</p>
+                </div>
+                <div id="painelAddVisitante" class="hidden space-y-2">
+                    <p class="text-xs text-gray-500 mb-1">Cadastro rápido de visitante nesta célula:</p>
+                    <input type="text" id="visNome" class="w-full p-2 border rounded-lg text-sm" placeholder="Nome completo *">
+                    <input type="text" id="visEndereco" class="w-full p-2 border rounded-lg text-sm" placeholder="Endereço">
+                    <div class="grid sm:grid-cols-2 gap-2">
+                        <input type="text" id="visMunicipio" class="w-full p-2 border rounded-lg text-sm" placeholder="Município" value="Diamantino">
+                        <input type="text" id="visTelefone" class="w-full p-2 border rounded-lg text-sm" placeholder="Telefone">
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-0.5">Data de nascimento</label>
+                            <input type="date" id="visNascimento" class="w-full p-2 border rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-0.5">Estado civil</label>
+                            <select id="visEstadoCivil" class="w-full p-2 border rounded-lg text-sm">
+                                <option value="">—</option>
+                                <option value="solteiro">Solteiro(a)</option>
+                                <option value="casado">Casado(a)</option>
+                                <option value="uniao">União estável</option>
+                                <option value="divorciado">Divorciado(a)</option>
+                                <option value="viuvo">Viúvo(a)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="visBatizado"> É batizado(a)</label>
+                    <input type="date" id="visDataBatismo" class="w-full p-2 border rounded-lg text-sm hidden" placeholder="Data do batismo">
+                    <button type="button" id="btnSalvarVisitante" class="w-full bg-secondary text-primary py-2 rounded-lg font-bold text-sm hover:bg-yellow-400">
+                        <i class="fa fa-save"></i> Cadastrar visitante na célula
+                    </button>
+                </div>
+                <p id="msgAddPessoa" class="text-sm text-center mt-2 hidden"></p>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mb-6">
+                <a id="linkFotosCelula" href="fotos-celulas.html" class="inline-block bg-secondary text-primary px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400">
+                    <i class="fa fa-camera"></i> Galeria de fotos da célula
+                </a>
+                <a id="linkMapa" href="index.html#celulas" class="inline-block border border-primary text-primary px-4 py-2 rounded-lg font-bold text-sm hover:bg-primary hover:text-white">
+                    <i class="fa fa-map-marker"></i> Ver no mapa
+                </a>
+            </div>
+
+            <!-- Local ajustável (só células de sábado) -->
+            <div id="blocoLocalSabado" class="hidden mb-6 border rounded-xl p-4 bg-amber-50 border-amber-200">
+                <h3 class="font-bold text-primary mb-1"><i class="fa fa-map-marker"></i> Local deste sábado</h3>
+                <p id="localSabadoPublico" class="text-sm text-gray-700 mb-3">Ainda não definido pelo líder.</p>
+                <a id="linkLocalSabado" href="#" target="_blank" rel="noopener" class="hidden text-sm text-secondary font-bold underline mb-3 inline-block">Abrir no Google Maps / localização</a>
+                <div id="formLocalSabado" class="hidden space-y-2 border-t border-amber-200 pt-3 mt-2">
+                    <p class="text-xs text-gray-600">Você é líder desta célula — informe onde será o encontro:</p>
+                    <input type="text" id="localAnfitriao" placeholder="Hoje na casa de..." class="w-full p-2 border rounded-lg text-sm">
+                    <input type="text" id="localEndereco" placeholder="Endereço completo (rua, número, bairro)" class="w-full p-2 border rounded-lg text-sm">
+                    <input type="url" id="localMaps" placeholder="Link do Google Maps (opcional)" class="w-full p-2 border rounded-lg text-sm">
+                    <button type="button" id="btnSalvarLocalSabado" class="w-full bg-primary text-white py-2 rounded-lg font-bold text-sm hover:bg-accent">
+                        <i class="fa fa-save"></i> Publicar local deste sábado
+                    </button>
+                    <p id="msgLocalSabado" class="text-xs text-center hidden"></p>
+                </div>
+            </div>
+
+            <!-- Escala da reunião -->
+            <div id="blocoEscalaCelula" class="hidden mb-6 border rounded-xl p-4 bg-white border-primary/20">
+                <h3 class="font-bold text-primary mb-1"><i class="fa fa-list-ol"></i> Escala da reunião</h3>
+                <p class="text-xs text-gray-500 mb-3">Tempos aproximados: Oração ~2′ · Louvor ~8′ · Quebra Gelo ~10′ · Oferta ~5′ · Palavra ~30′ · Final/Avisos ~5′. Líder ou líder em treinamento monta; pode incluir visitantes assíduos.</p>
+                <button type="button" id="btnAbrirEscalaCelula" class="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-accent">
+                    <i class="fa fa-calendar"></i> Ver / montar escala
+                </button>
+            </div>
+
+            <!-- Relatórios -->
+            <div id="blocoRelatorios" class="hidden border-t pt-5">
+                <h3 class="font-bold text-primary mb-3"><i class="fa fa-file-text-o"></i> Relatório de presença e ofertas</h3>
+                <p class="text-xs text-gray-500 mb-3">Somente o <strong>líder da célula</strong> preenche (presença + ofertas PIX/espécie) para envio à <strong>secretaria</strong> e à <strong>tesouraria</strong>. Gestores/admin também acessam.</p>
+
+                <div id="relModoBanner" class="hidden mb-2 text-sm font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    ✏️ Editando relatório — altere e salve, ou <button type="button" id="btnCancelarEdicaoRel" class="underline">cancelar edição</button>
+                </div>
+                <form id="formRelatorio" class="space-y-3 mb-6 bg-gray-50 p-4 rounded-xl border">
+                    <input type="hidden" id="relCelulaId">
+                    <input type="hidden" id="relId" value="">
+                    <div class="grid sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Data do encontro</label>
+                            <input type="date" id="relData" required class="w-full p-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Qtd. presentes (se não marcar nomes)</label>
+                            <input type="number" id="relQtd" min="0" class="w-full p-2 border rounded-lg" placeholder="Opcional">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Presentes (marque os nomes)</label>
+                        <div id="relCheckPresentes" class="max-h-36 overflow-y-auto border rounded-lg p-2 bg-white text-sm space-y-1"></div>
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Ofertas PIX (R$)</label>
+                            <input type="number" id="relPix" step="0.01" min="0" value="0" class="w-full p-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Ofertas em espécie (R$)</label>
+                            <input type="number" id="relEspecie" step="0.01" min="0" value="0" class="w-full p-2 border rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Observações</label>
+                        <textarea id="relObs" rows="2" class="w-full p-2 border rounded-lg" placeholder="Opcional"></textarea>
+                    </div>
+                    <button type="submit" id="btnSubmitRel" class="w-full bg-primary text-white py-2.5 rounded-lg font-bold hover:bg-accent">
+                        <i class="fa fa-save"></i> <span id="txtBtnRel">Salvar relatório</span>
+                    </button>
+                    <p id="relMsg" class="text-sm text-center hidden"></p>
+                </form>
+
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button type="button" id="btnExportCelula" class="text-sm border border-primary text-primary px-3 py-1.5 rounded-lg font-semibold hover:bg-primary hover:text-white">
+                        <i class="fa fa-download"></i> Exportar esta célula (CSV)
+                    </button>
+                </div>
+                <div id="listaRelatorios" class="space-y-2 text-sm"></div>
+            </div>
+        </div>
+    
+    <!-- Modal Escala da Célula -->
+    <div id="modalEscalaCelula" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 p-3">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+            <div class="bg-primary text-white px-4 py-3 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
+                <h2 id="tituloModalEscalaCelula" class="font-bold text-lg">Escala da célula</h2>
+                <button type="button" id="btnFecharModalEscalaCelula" class="text-white/90 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-4 space-y-4">
+                <p class="text-xs text-gray-500">Uma pessoa por momento; a mesma pessoa pode fazer dois ou mais momentos. Escaláveis: do líder ao visitante da célula.</p>
+                <div id="listaEscalaCelulaModal" class="space-y-2 text-sm"></div>
+                <hr>
+                <h3 class="font-bold text-primary text-sm">Novo dia / editar</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="date" id="escCelData" class="border rounded-lg px-3 py-2 text-sm">
+                    <input type="text" id="escCelLabel" class="border rounded-lg px-3 py-2 text-sm" placeholder="Ex: TER 15/10">
+                </div>
+                <div id="camposEscalaCelula" class="space-y-2"></div>
+                <input type="text" id="escCelObs" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Observação (opcional)">
+                <div class="border rounded-lg p-3 space-y-2" style="background:#faf6ef">
+                    <p class="text-xs font-bold text-primary">Versículo no cartaz (editável · NVI padrão)</p>
+                    <textarea id="escCelVersiculo" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Texto do versículo"></textarea>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="text" id="escCelRef" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Referência (ex: Mateus 18:20)">
+                        <select id="escCelVersao" class="sel-versao-biblia w-full border rounded-lg px-3 py-2 text-sm"></select>
+                    </div>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <button type="button" id="btnAtualizarVersiculoCel" class="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold"
+                            data-texto="escCelVersiculo" data-ref="escCelRef" data-versao="escCelVersao" data-msg="msgVersiculoCel">Atualizar texto</button>
+                        <button type="button" id="btnSalvarVersiculoCel" class="text-xs font-bold text-primary underline">Salvar padrão desta célula</button>
+                    </div>
+                    <p id="msgVersiculoCel" class="text-xs hidden"></p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="btnSalvarRascunhoEscalaCel" class="bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-bold">Salvar rascunho</button>
+                    <button type="button" id="btnFinalizarEscalaCel" class="bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-bold">Finalizar escala</button>
+                    <button type="button" id="btnPngEscalaCel" class="bg-primary text-white px-3 py-2 rounded-lg text-sm font-bold">Baixar PNG</button>
+                </div>
+                <p id="msgEscalaCelula" class="text-sm hidden"></p>
+                <div class="flex justify-end gap-2 pt-2 border-t">
+                    <button type="button" id="btnSairEscalaCel" class="border px-4 py-2 rounded-lg text-sm font-bold">Sair</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        // Meta das células (endereço / horário) — alinhado ao mapa
+        const META_CELULAS = {
+            'somos-igreja': { endereco: 'Rua Pirarara, 97 — Solar, Novo Diamantino', dia: 'Terça 20h' },
+            'genesis': { endereco: 'Rua das Paineiras, 541 — Centro, Novo Diamantino', dia: 'Terça 20h' },
+            'fonte-agua': { endereco: 'Rua Jacarandá, 321 — Centro, Novo Diamantino', dia: 'Terça 20h' },
+            'ebenezer': { endereco: 'Rua Cajarana, 533 — Bom Jesus, Novo Diamantino', dia: 'Terça 20h' },
+            'shamah': { endereco: 'Rua 5 Alta Floresta, 241 — Bom Jesus, Novo Diamantino', dia: 'Terça 20h' },
+            'morada': { endereco: 'Rua B, 25 — Buriti, Diamantino', dia: 'Terça 20h' },
+            'atos2': { endereco: 'Rua 2, próximo ao ginásio — Buriti, Diamantino', dia: 'Terça 20h' },
+            'primeiro-mandamento': { endereco: 'Rua Manoel Ferreira de Arruda, 33 — Buriti, Diamantino', dia: 'Terça 20h' },
+            'missao': { endereco: 'Alto Paraguai — MT', dia: 'Terça 20h' },
+            'adolescentes': { endereco: 'Local definido pelo líder a cada sábado', dia: 'Sábado 18h', localAjustavel: true },
+            'jovens': { endereco: 'Local definido pelo líder a cada sábado', dia: 'Sábado 20h', localAjustavel: true }
+        };
+
+
+        const CHAVE_LOCAIS_SABADO = 'ibn_locais_celulas_sabado';
+        const CELULAS_LOCAL_AJUSTAVEL = ['adolescentes', 'jovens'];
+
+        function lerLocaisSabado() {
+            try { return JSON.parse(localStorage.getItem(CHAVE_LOCAIS_SABADO) || '{}'); }
+            catch (e) { return {}; }
+        }
+        function salvarLocaisSabado(obj) {
+            localStorage.setItem(CHAVE_LOCAIS_SABADO, JSON.stringify(obj));
+        }
+        function localAtualCelula(id) {
+            var todos = lerLocaisSabado();
+            return todos[id] || null;
+        }
+        function textoEnderecoCelula(id) {
+            var meta = META_CELULAS[id] || {};
+            if (!CELULAS_LOCAL_AJUSTAVEL.includes(id)) return meta.endereco || '';
+            var loc = localAtualCelula(id);
+            if (loc && (loc.anfitriao || loc.endereco)) {
+                var partes = [];
+                if (loc.anfitriao) partes.push(loc.anfitriao);
+                if (loc.endereco) partes.push(loc.endereco);
+                return partes.join(' — ');
+            }
+            return 'Local definido pelo líder a cada sábado';
+        }
+
+        let celulaAberta = null;
+        const usuario = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+
+        function nomeOuTraco(m) {
+            return m && m.nome ? m.nome : 'A definir';
+        }
+
+        function renderLista() {
+            const box = document.getElementById('listaCelulas');
+            box.innerHTML = LISTA_CELULAS.map(function(c) {
+                const meta = META_CELULAS[c.id] || {};
+                const eq = (typeof equipeDaCelula === 'function') ? equipeDaCelula(c.id) : { membros: [] };
+                const n = (eq.membros || []).length;
+                var st = (typeof statusPendenciasCelula === 'function') ? statusPendenciasCelula(c.id) : { cor: null, motivos: [] };
+                var bola = (typeof htmlBolinhaStatus === 'function') ? htmlBolinhaStatus(st) : '';
+                var dica = (st.motivos && st.motivos.length) ? '<p class="text-xs text-gray-400 mt-1">' + st.motivos.join(' · ') + '</p>' : '';
+                return (
+                    '<button type="button" data-id="' + c.id + '" class="btn-celula w-full text-left p-4 bg-white rounded-xl border shadow-sm hover:border-secondary hover:shadow-md transition">' +
+                    '<div class="flex items-start justify-between gap-2">' +
+                    '<p class="font-bold text-primary">' + c.nome + '</p>' + bola +
+                    '</div>' +
+                    '<p class="text-xs text-gray-500 mt-1">' + (meta.dia || '') + ' · ' + textoEnderecoCelula(c.id) + '</p>' +
+                    '<p class="text-xs text-secondary mt-1">' + n + ' membro(s) · Líder: ' + nomeOuTraco(eq.lider) + '</p>' +
+                    dica +
+                    '</button>'
+                );
+            }).join('');
+
+            box.querySelectorAll('.btn-celula').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    abrirCelula(btn.getAttribute('data-id'));
+                });
+            });
+        }
+
+        function abrirCelula(id) {
+            celulaAberta = id;
+            const cel = LISTA_CELULAS.find(c => c.id === id);
+            const meta = META_CELULAS[id] || {};
+            const eq = equipeDaCelula(id);
+
+            document.getElementById('painelTitulo').textContent = cel ? cel.nome : id;
+            document.getElementById('painelMeta').textContent = (meta.dia || '') + ' · ' + textoEnderecoCelula(id);
+            document.getElementById('papelLider').textContent = nomeOuTraco(eq.lider);
+            document.getElementById('papelAnfitriao').textContent = nomeOuTraco(eq.anfitriao);
+            document.getElementById('papelTreino').textContent = nomeOuTraco(eq.liderTreino);
+            var blEsc0 = document.getElementById('blocoEscalaCelula');
+            if (blEsc0) {
+                if ((typeof podeEditarEscalaCelula === 'function' && podeEditarEscalaCelula(id)) || (typeof isAdmin === 'function' && isAdmin())) {
+                    blEsc0.classList.remove('hidden');
+                } else {
+                    blEsc0.classList.add('hidden');
+                }
+            }
+
+            const ul = document.getElementById('listaMembrosCelula');
+            if (!eq.membros.length) {
+                ul.innerHTML = '<li class="text-gray-400">Nenhum membro vinculado a esta célula no cadastro.</li>';
+            } else {
+                var podeRem = (typeof podeGerenciarPessoasCelula === 'function') && podeGerenciarPessoasCelula(id);
+                ul.innerHTML = eq.membros.map(function(m) {
+                    var papel = m.cargo || m.funcaoEspecifica || 'Membro';
+                    if (m.status === 'visitante' || m.tipo === 'visitante') papel = 'Visitante';
+                    var btn = podeRem
+                        ? '<button type="button" class="btn-rem-cel text-xs text-red-600 font-bold" data-id="' + m.id + '" data-nome="' + String(m.nome || '').replace(/"/g, '') + '">Remover</button>'
+                        : '';
+                    return '<li class="flex justify-between gap-2 items-center border-b border-gray-100 py-1"><span>' + (m.nome || '—') + ' <span class="text-xs text-gray-400">(' + papel + ')</span></span><span>' + btn + '</span></li>';
+                }).join('');
+                ul.querySelectorAll('.btn-rem-cel').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var nome = btn.getAttribute('data-nome') || 'esta pessoa';
+                        if (!confirm('Remover ' + nome + ' desta célula?\n\nContinua membro da igreja; só sai desta célula.')) return;
+                        var r = removerMembroDaCelula(btn.getAttribute('data-id'), id);
+                        if (r.sucesso) { abrirCelula(id); renderLista(); }
+                        else alert(r.mensagem || 'Não foi possível remover.');
+                    });
+                });
+            }
+
+            document.getElementById('linkFotosCelula').href = 'fotos-celulas.html?celula=' + encodeURIComponent(id);
+
+            // Bloco adicionar membro/visitante
+            var blocoAdd = document.getElementById('blocoAddPessoaCelula');
+            var podeAdd = (typeof podeGerenciarPessoasCelula === 'function') && podeGerenciarPessoasCelula(id);
+            if (blocoAdd) {
+                blocoAdd.classList.toggle('hidden', !podeAdd);
+                document.getElementById('buscaMembroCelula').value = '';
+                document.getElementById('resultBuscaMembro').innerHTML = '';
+                document.getElementById('msgAddPessoa').classList.add('hidden');
+                document.getElementById('painelAddMembro').classList.remove('hidden');
+                document.getElementById('painelAddVisitante').classList.add('hidden');
+                document.getElementById('tabAddMembro').className = 'px-3 py-1.5 rounded-lg text-sm font-bold bg-primary text-white';
+                document.getElementById('tabAddVisitante').className = 'px-3 py-1.5 rounded-lg text-sm font-bold border border-primary text-primary';
+            }
+
+            document.getElementById('painelCelula').classList.remove('hidden');
+            document.getElementById('painelCelula').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // Local ajustável — células de sábado
+            var blocoLoc = document.getElementById('blocoLocalSabado');
+            if (CELULAS_LOCAL_AJUSTAVEL.includes(id)) {
+                blocoLoc.classList.remove('hidden');
+                var loc = localAtualCelula(id);
+                var pub = document.getElementById('localSabadoPublico');
+                var linkL = document.getElementById('linkLocalSabado');
+                if (loc && (loc.anfitriao || loc.endereco)) {
+                    pub.textContent = (loc.anfitriao ? loc.anfitriao : '') +
+                        (loc.endereco ? (loc.anfitriao ? ' — ' : '') + loc.endereco : '');
+                    if (loc.maps) {
+                        linkL.href = loc.maps;
+                        linkL.classList.remove('hidden');
+                    } else if (loc.endereco) {
+                        linkL.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(loc.endereco);
+                        linkL.classList.remove('hidden');
+                    } else {
+                        linkL.classList.add('hidden');
+                    }
+                    document.getElementById('localAnfitriao').value = loc.anfitriao || '';
+                    document.getElementById('localEndereco').value = loc.endereco || '';
+                    document.getElementById('localMaps').value = loc.maps || '';
+                } else {
+                    pub.textContent = 'Ainda não definido pelo líder. Aguarde o anúncio do local deste sábado.';
+                    linkL.classList.add('hidden');
+                    document.getElementById('localAnfitriao').value = '';
+                    document.getElementById('localEndereco').value = '';
+                    document.getElementById('localMaps').value = '';
+                }
+                var podeEditarLocal = (typeof podeEditarRelatorioCelula === 'function' && podeEditarRelatorioCelula(id)) ||
+                    (usuario && (typeof isAdmin === 'function' && isAdmin(usuario)));
+                document.getElementById('formLocalSabado').classList.toggle('hidden', !podeEditarLocal);
+            } else {
+                blocoLoc.classList.add('hidden');
+            }
+
+            // Relatórios: só líder da célula ou admin/gestor
+            var pode = podeEditarRelatorioCelula(id);
+            var bloco = document.getElementById('blocoRelatorios');
+            if (pode) {
+                bloco.classList.remove('hidden');
+                document.getElementById('relCelulaId').value = id;
+                document.getElementById('relData').value = new Date().toISOString().slice(0, 10);
+                // checkboxes de presença
+                var box = document.getElementById('relCheckPresentes');
+                if (!eq.membros.length) {
+                    box.innerHTML = '<p class="text-gray-400 text-xs">Sem membros cadastrados — use o campo quantidade.</p>';
+                } else {
+                    box.innerHTML = eq.membros.map(function(m) {
+                        return '<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" class="rel-presente" value="' +
+                            (m.id || '') + '" data-nome="' + (m.nome || '').replace(/"/g, '&quot;') + '"> <span>' + (m.nome || '—') + '</span></label>';
+                    }).join('');
+                }
+                renderRelatorios(id);
+            } else {
+                bloco.classList.add('hidden');
+            }
+        }
+
+        function limparFormRelatorio(manterData) {
+            document.getElementById('relId').value = '';
+            if (!manterData) {
+                try { document.getElementById('relData').value = new Date().toISOString().slice(0, 10); } catch (e) {}
+            }
+            document.getElementById('relPix').value = 0;
+            document.getElementById('relEspecie').value = 0;
+            document.getElementById('relObs').value = '';
+            document.getElementById('relQtd').value = '';
+            document.querySelectorAll('.rel-presente').forEach(function(cb) { cb.checked = false; });
+            var ban = document.getElementById('relModoBanner');
+            if (ban) ban.classList.add('hidden');
+            var txt = document.getElementById('txtBtnRel');
+            if (txt) txt.textContent = 'Salvar relatório';
+        }
+        function carregarRelatorioNoForm(r) {
+            if (!r) return;
+            document.getElementById('relId').value = r.id || '';
+            document.getElementById('relData').value = r.data || '';
+            document.getElementById('relQtd').value = r.qtdPresentes || '';
+            document.getElementById('relPix').value = r.ofertaPix != null ? r.ofertaPix : 0;
+            document.getElementById('relEspecie').value = r.ofertaEspecie != null ? r.ofertaEspecie : 0;
+            document.getElementById('relObs').value = r.observacoes || '';
+            var ids = {};
+            (r.presentes || []).forEach(function(p) {
+                if (p && p.id) ids[String(p.id)] = true;
+                if (p && p.nome) ids['nome:' + String(p.nome).toLowerCase()] = true;
+            });
+            document.querySelectorAll('.rel-presente').forEach(function(cb) {
+                var ok = ids[String(cb.value)] || ids['nome:' + String(cb.getAttribute('data-nome') || '').toLowerCase()];
+                cb.checked = !!ok;
+            });
+            var ban = document.getElementById('relModoBanner');
+            if (ban) ban.classList.remove('hidden');
+            var txt = document.getElementById('txtBtnRel');
+            if (txt) txt.textContent = 'Salvar alterações';
+            try { document.getElementById('formRelatorio').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+        }
+        function renderRelatorios(celulaId) {
+            var lista = relatoriosDaCelula(celulaId);
+            var el = document.getElementById('listaRelatorios');
+            if (!lista.length) {
+                el.innerHTML = '<p class="text-gray-400">Nenhum relatório registrado ainda.</p>';
+                return;
+            }
+            el.innerHTML = '<p class="text-xs font-bold text-gray-600 mb-2">Relatórios salvos — revisar ou editar:</p>' + lista.map(function(r) {
+                var nomes = (r.presentes || []).map(function(p) { return p.nome || ''; }).filter(Boolean).join(', ');
+                return '<div class="border rounded-lg p-3 bg-white">' +
+                    '<div class="flex flex-wrap justify-between gap-2 items-start">' +
+                    '<div class="min-w-0 flex-1">' +
+                    '<p class="font-bold text-primary">' + (r.data || '') + ' · ' + (r.qtdPresentes || 0) + ' presentes</p>' +
+                    '<p class="text-xs text-gray-600">PIX: R$ ' + (Number(r.ofertaPix) || 0).toFixed(2).replace('.', ',') +
+                    ' · Espécie: R$ ' + (Number(r.ofertaEspecie) || 0).toFixed(2).replace('.', ',') +
+                    ' · <strong>Total: R$ ' + (Number(r.totalOfertas) || 0).toFixed(2).replace('.', ',') + '</strong></p>' +
+                    (nomes ? '<p class="text-xs text-gray-500 mt-1">Presentes: ' + nomes + '</p>' : '') +
+                    (r.observacoes ? '<p class="text-xs text-gray-500 mt-1">' + r.observacoes + '</p>' : '') +
+                    '<p class="text-xs text-gray-400 mt-1">Por ' + (r.autorNome || '—') +
+                    (r.atualizadoEm ? ' · atualizado ' + String(r.atualizadoEm).slice(0, 16).replace('T', ' ') : '') +
+                    '</p></div>' +
+                    '<div class="flex flex-col gap-1 shrink-0">' +
+                    '<button type="button" class="btn-revisar-rel text-xs border border-primary text-primary px-2 py-1 rounded font-bold hover:bg-primary hover:text-white" data-id="' + (r.id || '') + '">Revisar / Editar</button>' +
+                    '</div></div></div>';
+            }).join('');
+            el.querySelectorAll('.btn-revisar-rel').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var id = btn.getAttribute('data-id');
+                    var rel = lista.find(function(x) { return String(x.id) === String(id); });
+                    if (!rel) return alert('Relatório não encontrado.');
+                    if (!confirm('Carregar este relatório no formulário para revisar/editar?')) return;
+                    carregarRelatorioNoForm(rel);
+                });
+            });
+        }
+
+        document.getElementById('btnFecharPainel').addEventListener('click', function() {
+            document.getElementById('painelCelula').classList.add('hidden');
+            celulaAberta = null;
+        });
+
+        document.getElementById('btnCancelarEdicaoRel') && document.getElementById('btnCancelarEdicaoRel').addEventListener('click', function() {
+            if (!confirm('Cancelar edição e limpar o formulário?')) return;
+            limparFormRelatorio(false);
+        });
+        document.getElementById('formRelatorio').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var presentes = [];
+            document.querySelectorAll('.rel-presente:checked').forEach(function(cb) {
+                presentes.push({ id: cb.value, nome: cb.getAttribute('data-nome') || '' });
+            });
+            var relId = (document.getElementById('relId') || {}).value || '';
+            var listaAnt = (typeof relatoriosDaCelula === 'function') ? relatoriosDaCelula(document.getElementById('relCelulaId').value) : [];
+            var antigo = listaAnt.find(function(x) { return String(x.id) === String(relId); });
+            var r = salvarRelatorioCelula({
+                id: relId || undefined,
+                celulaId: document.getElementById('relCelulaId').value,
+                data: document.getElementById('relData').value,
+                presentes: presentes,
+                qtdPresentes: document.getElementById('relQtd').value || presentes.length,
+                ofertaPix: document.getElementById('relPix').value,
+                ofertaEspecie: document.getElementById('relEspecie').value,
+                observacoes: document.getElementById('relObs').value,
+                criadoEm: antigo ? antigo.criadoEm : undefined
+            });
+            var msg = document.getElementById('relMsg');
+            msg.classList.remove('hidden');
+            if (r.sucesso) {
+                msg.className = 'text-sm text-center text-green-600 font-bold';
+                msg.textContent = relId ? '✅ Relatório atualizado!' : '✅ Relatório salvo!';
+                limparFormRelatorio(false);
+                renderRelatorios(celulaAberta);
+            } else {
+                msg.className = 'text-sm text-center text-red-500 font-bold';
+                msg.textContent = r.mensagem || 'Erro ao salvar.';
+            }
+        });
+
+        document.getElementById('btnExportCelula').addEventListener('click', function() {
+            if (!celulaAberta) return;
+            var r = exportarRelatoriosCSV(celulaAberta);
+            if (!r.sucesso) { alert(r.mensagem || 'Nada para exportar.'); return; }
+            baixarCSV(r.csv, r.nomeArquivo);
+        });
+
+        document.getElementById('btnExportGeral').addEventListener('click', function() {
+            var r = exportarRelatoriosCSV(null);
+            if (!r.sucesso) { alert(r.mensagem || 'Nada para exportar.'); return; }
+            baixarCSV(r.csv, r.nomeArquivo);
+        });
+
+        document.getElementById('btnSalvarLocalSabado').addEventListener('click', function() {
+            if (!celulaAberta || !CELULAS_LOCAL_AJUSTAVEL.includes(celulaAberta)) return;
+            var anfitriao = document.getElementById('localAnfitriao').value.trim();
+            var endereco = document.getElementById('localEndereco').value.trim();
+            var maps = document.getElementById('localMaps').value.trim();
+            if (!anfitriao && !endereco) {
+                alert('Informe pelo menos "Hoje na casa de..." ou o endereço.');
+                return;
+            }
+            var todos = lerLocaisSabado();
+            todos[celulaAberta] = {
+                anfitriao: anfitriao,
+                endereco: endereco,
+                maps: maps,
+                atualizadoEm: new Date().toISOString(),
+                por: (usuario && usuario.nome) || 'Líder'
+            };
+            salvarLocaisSabado(todos);
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
+                    IBNNuvem.registrarAtividade('local_celula', 'Local sábado ' + celulaAberta + ': ' + (anfitriao || endereco), usuario);
+                }
+            } catch (e) {}
+            var msg = document.getElementById('msgLocalSabado');
+            msg.className = 'text-xs text-center text-green-600 font-bold';
+            msg.textContent = '✅ Local publicado para este sábado!';
+            msg.classList.remove('hidden');
+            abrirCelula(celulaAberta);
+            renderLista();
+        });
+
+
+        document.getElementById('tabAddMembro').addEventListener('click', function() {
+            document.getElementById('painelAddMembro').classList.remove('hidden');
+            document.getElementById('painelAddVisitante').classList.add('hidden');
+            this.className = 'px-3 py-1.5 rounded-lg text-sm font-bold bg-primary text-white';
+            document.getElementById('tabAddVisitante').className = 'px-3 py-1.5 rounded-lg text-sm font-bold border border-primary text-primary';
+        });
+        document.getElementById('tabAddVisitante').addEventListener('click', function() {
+            document.getElementById('painelAddMembro').classList.add('hidden');
+            document.getElementById('painelAddVisitante').classList.remove('hidden');
+            this.className = 'px-3 py-1.5 rounded-lg text-sm font-bold bg-primary text-white';
+            document.getElementById('tabAddMembro').className = 'px-3 py-1.5 rounded-lg text-sm font-bold border border-primary text-primary';
+        });
+        document.getElementById('visBatizado').addEventListener('change', function() {
+            document.getElementById('visDataBatismo').classList.toggle('hidden', !this.checked);
+        });
+        document.getElementById('buscaMembroCelula').addEventListener('input', function() {
+            var box = document.getElementById('resultBuscaMembro');
+            if (!celulaAberta) { box.innerHTML = ''; return; }
+            var lista = (typeof buscarMembrosParaCelula === 'function')
+                ? buscarMembrosParaCelula(this.value, celulaAberta) : [];
+            if (!lista.length) {
+                box.innerHTML = this.value.trim().length >= 2
+                    ? '<p class="text-gray-400 text-xs">Nenhum membro encontrado ou todos já estão na célula.</p>' : '';
+                return;
+            }
+            box.innerHTML = lista.map(function(m) {
+                var extra = (m.status === 'visitante' || m.tipo === 'visitante') ? ' · visitante' : '';
+                return '<button type="button" class="btn-vincular-membro w-full text-left p-2 rounded border hover:border-secondary hover:bg-yellow-50" data-id="' + m.id + '">' +
+                    '<span class="font-semibold">' + (m.nome || '—') + '</span>' +
+                    '<span class="text-xs text-gray-500"> · ' + (m.telefone || m.email || '') + extra + '</span></button>';
+            }).join('');
+            box.querySelectorAll('.btn-vincular-membro').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var r = adicionarMembroACelula(btn.getAttribute('data-id'), celulaAberta);
+                    var msg = document.getElementById('msgAddPessoa');
+                    msg.classList.remove('hidden');
+                    if (r.sucesso) {
+                        msg.className = 'text-sm text-center mt-2 text-green-600 font-bold';
+                        msg.textContent = '✅ Membro adicionado à célula!';
+                        abrirCelula(celulaAberta);
+                        renderLista();
+                    } else {
+                        msg.className = 'text-sm text-center mt-2 text-red-500 font-bold';
+                        msg.textContent = r.mensagem || 'Não foi possível adicionar.';
+                    }
+                });
+            });
+        });
+        document.getElementById('btnSalvarVisitante').addEventListener('click', function() {
+            if (!celulaAberta) return;
+            var r = cadastrarVisitanteCelula({
+                nome: document.getElementById('visNome').value,
+                endereco: document.getElementById('visEndereco').value,
+                municipio: document.getElementById('visMunicipio').value,
+                telefone: document.getElementById('visTelefone').value,
+                nascimento: document.getElementById('visNascimento').value,
+                estadoCivil: document.getElementById('visEstadoCivil').value,
+                batizado: document.getElementById('visBatizado').checked,
+                dataBatismo: document.getElementById('visDataBatismo').value
+            }, celulaAberta);
+            var msg = document.getElementById('msgAddPessoa');
+            msg.classList.remove('hidden');
+            if (r.sucesso) {
+                msg.className = 'text-sm text-center mt-2 text-green-600 font-bold';
+                msg.textContent = '✅ Visitante cadastrado e vinculado à célula!';
+                document.getElementById('visNome').value = '';
+                document.getElementById('visEndereco').value = '';
+                document.getElementById('visTelefone').value = '';
+                document.getElementById('visNascimento').value = '';
+                document.getElementById('visBatizado').checked = false;
+                document.getElementById('visDataBatismo').classList.add('hidden');
+                abrirCelula(celulaAberta);
+                renderLista();
+            } else {
+                msg.className = 'text-sm text-center mt-2 text-red-500 font-bold';
+                msg.textContent = r.mensagem || 'Erro ao cadastrar.';
+            }
+        });
+
+        // Init
+        if (!usuario) {
+            document.getElementById('avisoLogin').classList.remove('hidden');
+        } else if (isAdmin(usuario) || isGestor(usuario)) {
+            document.getElementById('barraAdmin').classList.remove('hidden');
+        }
+        (async function initCelulas() {
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
+                    await IBNNuvem.puxarMembrosParaLocal();
+                } else if (typeof deduplicarMembrosLocais === 'function') {
+                    deduplicarMembrosLocais();
+                }
+            } catch (e) { console.warn(e); }
+            renderLista();
+        })();
+
+        // Abre célula se veio na URL ?id=
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('id')) abrirCelula(params.get('id'));
+    
+        // ===== ESCALA DA CÉLULA =====
+        var escalaCelulaEditandoIso = null;
+        function nomeCelulaPorId(id) {
+            var c = LISTA_CELULAS.find(function (x) { return x.id === id; });
+            return c ? c.nome : id;
+        }
+        function abrirModalEscalaCelula() {
+            if (!celulaAberta) return;
+            if (typeof podeEditarEscalaCelula === 'function' && !podeEditarEscalaCelula(celulaAberta)) {
+                alert('Só o líder da célula ou líder em treinamento pode montar a escala.');
+                return;
+            }
+            var modal = document.getElementById('modalEscalaCelula');
+            document.getElementById('tituloModalEscalaCelula').textContent = 'Escala — ' + nomeCelulaPorId(celulaAberta);
+            escalaCelulaEditandoIso = null;
+            document.getElementById('escCelData').value = '';
+            document.getElementById('escCelLabel').value = '';
+            document.getElementById('escCelObs').value = '';
+            try {
+                var vv = (typeof obterVersiculoEscala === 'function') ? obterVersiculoEscala('celula', celulaAberta) : null;
+                var elV = document.getElementById('escCelVersiculo');
+                var elR = document.getElementById('escCelRef');
+                if (elV) elV.value = (vv && vv.texto) ? vv.texto : '';
+                if (elR) elR.value = (vv && vv.referencia) ? vv.referencia : '';
+            } catch (e) { console.warn('load versiculo', e); }
+            try { if (typeof preencherSelectsVersaoBiblia === 'function') preencherSelectsVersaoBiblia(); } catch (e) {}
+            try { if (typeof ligarBotaoAtualizarVersiculo === 'function') ligarBotaoAtualizarVersiculo('btnAtualizarVersiculoCel'); } catch (e) {}
+            montarCamposEscalaCelula();
+            renderListaEscalaCelula();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarEscalasCelulaParaLocal) {
+                    IBNNuvem.puxarEscalasCelulaParaLocal().then(function () { renderListaEscalaCelula(); }).catch(function () {});
+                }
+            } catch (e) {}
+        }
+        function fecharModalEscalaCelula() {
+            var modal = document.getElementById('modalEscalaCelula');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        function montarCamposEscalaCelula(prefill) {
+            var box = document.getElementById('camposEscalaCelula');
+            var pessoas = (typeof pessoasEscalaveisCelula === 'function') ? pessoasEscalaveisCelula(celulaAberta) : [];
+            var modelo = (typeof MODELO_ESCALA_CELULA !== 'undefined') ? MODELO_ESCALA_CELULA : [];
+            prefill = prefill || {};
+            box.innerHTML = modelo.map(function (f) {
+                var escolhido = '';
+                if (prefill[f.nome] && prefill[f.nome].length) escolhido = prefill[f.nome][0];
+                var opts = '<option value="">— escolher —</option>' + pessoas.map(function (p) {
+                    var tag = p.tipo === 'visitante' ? ' (visitante)' : '';
+                    var sel = (escolhido && String(escolhido).toLowerCase() === String(p.nome).toLowerCase()) ? ' selected' : '';
+                    return '<option value="' + String(p.nome).replace(/"/g, '&quot;') + '"' + sel + '>' + (p.nome || '') + tag + '</option>';
+                }).join('');
+                return '<div class="border rounded-lg px-3 py-2">' +
+                    '<label class="text-xs font-bold text-primary">' + f.nome + ' <span class="text-gray-400 font-normal">(aprox. ' + f.minutos + ' min)</span></label>' +
+                    '<select class="esc-cel-fn w-full mt-1 border rounded-lg px-2 py-1.5 text-sm" data-fn="' + f.nome + '">' + opts + '</select>' +
+                    '</div>';
+            }).join('');
+        }
+        function coletarFuncoesEscalaCelula() {
+            var funcoes = {};
+            document.querySelectorAll('.esc-cel-fn').forEach(function (sel) {
+                var fn = sel.getAttribute('data-fn');
+                var v = (sel.value || '').trim();
+                funcoes[fn] = v ? [v] : [];
+            });
+            return funcoes;
+        }
+        function labelDeDataIso(iso) {
+            if (!iso) return '';
+            var p = String(iso).split('-');
+            if (p.length < 3) return iso;
+            var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+            var dias = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+            return dias[d.getDay()] + ' ' + p[2] + '/' + p[1];
+        }
+        function salvarEscalaCelulaUI(status) {
+            var dataIso = document.getElementById('escCelData').value;
+            var label = document.getElementById('escCelLabel').value.trim();
+            if (!dataIso && !label) { alert('Informe a data.'); return; }
+            if (!label && dataIso) label = labelDeDataIso(dataIso);
+            var r = salvarDiaEscalaCelula({
+                celulaId: celulaAberta,
+                dataIso: dataIso || escalaCelulaEditandoIso || '',
+                dataLabel: label,
+                funcoes: coletarFuncoesEscalaCelula(),
+                observacao: document.getElementById('escCelObs').value.trim(),
+                status: status,
+                versiculo: {
+                    texto: (document.getElementById('escCelVersiculo') || {}).value || '',
+                    referencia: (document.getElementById('escCelRef') || {}).value || ''
+                }
+            });
+            var msg = document.getElementById('msgEscalaCelula');
+            msg.classList.remove('hidden');
+            msg.className = 'text-sm ' + (r.sucesso ? 'text-green-600' : 'text-red-600');
+            msg.textContent = r.mensagem || (r.sucesso ? 'Ok' : 'Erro');
+            if (r.sucesso) {
+                escalaCelulaEditandoIso = r.linha.dataIso;
+                renderListaEscalaCelula();
+            }
+        }
+        function renderListaEscalaCelula() {
+            var box = document.getElementById('listaEscalaCelulaModal');
+            var linhas = (typeof lerEscalaCelula === 'function') ? lerEscalaCelula(celulaAberta) : [];
+            var inc = linhas.filter(function (l) { return l.status !== 'finalizada'; });
+            var fin = linhas.filter(function (l) { return l.status === 'finalizada'; });
+            function itemHtml(l, incompleta) {
+                var n = 0;
+                Object.keys(l.funcoes || {}).forEach(function (k) {
+                    if ((l.funcoes[k] || []).length) n++;
+                });
+                return '<div class="border rounded-lg px-3 py-2 ' + (incompleta ? 'border-amber-300 bg-amber-50' : 'border-green-200 bg-green-50') + '">' +
+                    '<div class="flex justify-between items-center gap-2">' +
+                    '<span class="font-bold text-sm">' + (l.dataLabel || l.dataIso) +
+                    (incompleta ? ' <span class="text-amber-700 text-xs">Rascunho</span>' : ' <span class="text-green-700 text-xs">Finalizada</span>') +
+                    ' · ' + n + ' momento(s)</span>' +
+                    '<span class="flex gap-1 flex-wrap">' +
+                    '<button type="button" class="btn-ed-esc-cel text-xs font-bold underline" data-iso="' + (l.dataIso || '') + '">Editar</button>' +
+                    '<button type="button" class="btn-png-esc-cel text-xs font-bold text-primary underline" data-iso="' + (l.dataIso || '') + '">PNG</button>' +
+                    '<button type="button" class="btn-rem-esc-cel text-xs font-bold text-red-600 underline" data-iso="' + (l.dataIso || '') + '">Excluir</button>' +
+                    '</span></div></div>';
+            }
+            var html = '';
+            if (inc.length) {
+                html += '<p class="text-xs font-bold text-amber-800">Incompletas / rascunhos (' + inc.length + ')</p>';
+                html += inc.map(function (l) { return itemHtml(l, true); }).join('');
+            }
+            if (fin.length) {
+                html += '<p class="text-xs font-bold text-green-800 mt-2">Completas / finalizadas (' + fin.length + ')</p>';
+                html += fin.map(function (l) { return itemHtml(l, false); }).join('');
+            }
+            if (!linhas.length) html = '<p class="text-gray-400 text-sm">Nenhuma escala ainda. Monte abaixo.</p>';
+            box.innerHTML = html;
+            box.querySelectorAll('.btn-ed-esc-cel').forEach(function (btn) {
+                btn.onclick = function () {
+                    var iso = btn.getAttribute('data-iso');
+                    var l = linhas.find(function (x) { return String(x.dataIso) === String(iso); });
+                    if (!l) return;
+                    escalaCelulaEditandoIso = l.dataIso;
+                    document.getElementById('escCelData').value = l.dataIso || '';
+                    document.getElementById('escCelLabel').value = l.dataLabel || '';
+                    document.getElementById('escCelObs').value = l.observacao || '';
+                    if (l.versiculo && l.versiculo.texto) {
+                        document.getElementById('escCelVersiculo').value = l.versiculo.texto;
+                        document.getElementById('escCelRef').value = l.versiculo.referencia || '';
+                    }
+                    montarCamposEscalaCelula(l.funcoes || {});
+                };
+            });
+            box.querySelectorAll('.btn-png-esc-cel').forEach(function (btn) {
+                btn.onclick = function () {
+                    var iso = btn.getAttribute('data-iso');
+                    var l = linhas.find(function (x) { return String(x.dataIso) === String(iso); });
+                    if (!l) return;
+                    l.celulaId = l.celulaId || celulaAberta;
+                    var r = gerarCartazEscalaCelulaPng(
+                        nomeCelulaPorId(celulaAberta),
+                        l,
+                        null,
+                        (document.getElementById('escCelVersiculo') || {}).value,
+                        (document.getElementById('escCelRef') || {}).value
+                    );
+                    if (!r.sucesso) alert(r.mensagem || 'Erro PNG');
+                };
+            });
+            box.querySelectorAll('.btn-rem-esc-cel').forEach(function (btn) {
+                btn.onclick = function () {
+                    if (!confirm('Excluir esta escala?')) return;
+                    removerDiaEscalaCelula(celulaAberta, btn.getAttribute('data-iso'));
+                    renderListaEscalaCelula();
+                };
+            });
+        }
+
+        document.getElementById('btnAbrirEscalaCelula') && document.getElementById('btnAbrirEscalaCelula').addEventListener('click', abrirModalEscalaCelula);
+        document.getElementById('btnFecharModalEscalaCelula') && document.getElementById('btnFecharModalEscalaCelula').addEventListener('click', fecharModalEscalaCelula);
+        document.getElementById('btnSairEscalaCel') && document.getElementById('btnSairEscalaCel').addEventListener('click', fecharModalEscalaCelula);
+        document.getElementById('btnSalvarRascunhoEscalaCel') && document.getElementById('btnSalvarRascunhoEscalaCel').addEventListener('click', function () { salvarEscalaCelulaUI('rascunho'); });
+        document.getElementById('btnFinalizarEscalaCel') && document.getElementById('btnFinalizarEscalaCel').addEventListener('click', function () {
+            if (!confirm('Finalizar esta escala do dia?')) return;
+            salvarEscalaCelulaUI('finalizada');
+        });
+        document.getElementById('btnSalvarVersiculoCel') && document.getElementById('btnSalvarVersiculoCel').addEventListener('click', function () {
+            if (typeof salvarVersiculoEscala !== 'function') {
+                alert('Função de versículo não carregada. Atualize o conta.js (Ctrl+F5).');
+                return;
+            }
+            if (!celulaAberta) { alert('Abra uma célula primeiro.'); return; }
+            var texto = ((document.getElementById('escCelVersiculo') || {}).value || '').trim();
+            var ref = ((document.getElementById('escCelRef') || {}).value || '').trim();
+            if (!texto) { alert('Digite o texto do versículo antes de salvar.'); return; }
+            var v = salvarVersiculoEscala('celula', celulaAberta, texto, ref);
+            document.getElementById('escCelVersiculo').value = v.texto || texto;
+            document.getElementById('escCelRef').value = v.referencia || ref;
+            alert('Versículo salvo para esta célula e aplicado nas escalas já cadastradas.\n' + (v.referencia || '') + '\n\nGere o PNG de novo para ver a mudança.');
+            try { renderListaEscalaCelula(); } catch (e) {}
+        });
+        document.getElementById('btnPngEscalaCel') && document.getElementById('btnPngEscalaCel').addEventListener('click', function () {
+            var dataIso = document.getElementById('escCelData').value || escalaCelulaEditandoIso;
+            var linhas = lerEscalaCelula(celulaAberta);
+            var l = linhas.find(function (x) { return String(x.dataIso) === String(dataIso); });
+            if (!l) {
+                // tenta montar da tela atual sem salvar
+                l = {
+                    dataIso: dataIso,
+                    dataLabel: document.getElementById('escCelLabel').value || labelDeDataIso(dataIso),
+                    funcoes: coletarFuncoesEscalaCelula(),
+                    observacao: document.getElementById('escCelObs').value,
+                    status: 'rascunho'
+                };
+            }
+            l.celulaId = l.celulaId || celulaAberta;
+            var r = gerarCartazEscalaCelulaPng(
+                nomeCelulaPorId(celulaAberta),
+                l,
+                null,
+                (document.getElementById('escCelVersiculo') || {}).value,
+                (document.getElementById('escCelRef') || {}).value
+            );
+            if (!r.sucesso) alert(r.mensagem || 'Erro ao gerar PNG');
+        });
+        document.getElementById('escCelData') && document.getElementById('escCelData').addEventListener('change', function () {
+            var v = this.value;
+            if (v && !document.getElementById('escCelLabel').value) {
+                document.getElementById('escCelLabel').value = labelDeDataIso(v);
+            }
+        });
+
+    </script>
+</body>
+</html>

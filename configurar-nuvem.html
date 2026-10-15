@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuvem e Exportações — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { primary: '#0A1A3F', secondary: '#D4AF37', accent: '#1E3A8A' } } }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-primary text-white py-4 px-4">
+        <div class="max-w-3xl mx-auto flex justify-between items-center">
+            <h1 class="font-bold text-lg"><i class="fa fa-cloud"></i> Nuvem — Admin / Gestor</h1>
+            <a href="adminpainel.html" class="text-sm text-secondary hover:underline">← Painel</a>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        <div class="bg-white rounded-xl shadow p-5 border">
+            <h2 class="font-bold text-primary mb-2">Status da nuvem</h2>
+            <p id="statusNuvem" class="text-sm text-gray-600">Verificando...</p>
+            <p class="text-xs text-gray-400 mt-2">
+                Enquanto a nuvem não estiver configurada no arquivo <code>firebase-config.js</code>,
+                o site continua funcionando só no aparelho (como hoje).
+            </p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow p-5 border">
+            <h2 class="font-bold text-primary mb-3">1) Enviar dados deste aparelho para a nuvem</h2>
+            <p class="text-sm text-gray-600 mb-3">
+                Use no celular/computador onde já existem cadastros ou relatórios.
+                Isso copia membros e relatórios de célula para o Firebase.
+            </p>
+            <button type="button" id="btnEnviar" class="bg-primary text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-accent">
+                <i class="fa fa-upload"></i> Enviar tudo deste aparelho
+            </button>
+            <p id="msgEnviar" class="text-sm mt-2 hidden"></p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow p-5 border">
+            <h2 class="font-bold text-primary mb-3">2) Baixar planilhas da nuvem (CSV)</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                O admin/gestor baixa de <b>qualquer aparelho</b> o que já foi sincronizado na nuvem.
+            </p>
+            <div class="flex flex-wrap gap-3">
+                <button type="button" id="btnCsvMembros" class="bg-secondary text-primary px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-yellow-400">
+                    <i class="fa fa-download"></i> CSV de membros
+                </button>
+                <button type="button" id="btnCsvCelulas" class="bg-secondary text-primary px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-yellow-400">
+                    <i class="fa fa-download"></i> CSV relatórios de células
+                </button>
+            </div>
+            <p id="msgCsv" class="text-sm mt-3 hidden"></p>
+        </div>
+
+        
+        <div class="bg-white rounded-xl shadow p-5 border">
+            <h2 class="font-bold text-primary mb-3">3) Movimentação dos membros (log)</h2>
+            <p class="text-sm text-gray-600 mb-3">Logins, fotos, cadastros, alterações de perfil e relatórios de células (presença/ofertas) registrados na nuvem.</p>
+            <button type="button" id="btnAtividades" class="bg-primary text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-accent">
+                <i class="fa fa-list"></i> Carregar últimas atividades
+            </button>
+            <div id="listaAtividades" class="mt-4 space-y-2 text-sm max-h-80 overflow-y-auto"></div>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-950">
+            <p class="font-bold mb-2"><i class="fa fa-info-circle"></i> Como ativar a nuvem (uma vez)</p>
+            <ol class="list-decimal list-inside space-y-1">
+                <li>Acesse <a class="underline font-semibold" href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a></li>
+                <li>Crie um projeto (ex.: <b>ibn-diamantino</b>)</li>
+                <li>Em “Build” → Firestore Database → criar banco (modo produção)</li>
+                <li>Regras do Firestore (temporárias para a igreja começar):</li>
+            </ol>
+            <pre class="bg-white border rounded p-2 text-xs mt-2 overflow-x-auto">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+            <ol class="list-decimal list-inside space-y-1 mt-2" start="5">
+                <li>Configurações do projeto → Seus apps → Web → registrar app</li>
+                <li>Copie apiKey, authDomain, projectId, etc.</li>
+                <li>Cole no arquivo <code>firebase-config.js</code> do site (no lugar de COLE_AQUI)</li>
+                <li>Publique o site no GitHub de novo</li>
+            </ol>
+            <p class="mt-2 text-xs">Depois de estabilizar, peça a um técnico para restringir as regras (só admin autenticado).</p>
+        </div>
+
+        <p class="text-center text-sm">
+            <a href="index.html" class="text-primary font-semibold hover:underline">← Voltar ao site</a>
+        </p>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        function exigeGestao() {
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (!u || !(typeof isAdmin === 'function' && isAdmin(u))) {
+                alert('Acesso restrito a administrador ou gestor. Faça login com uma conta autorizada.');
+                window.location.href = 'login.html?destino=configurar-nuvem.html';
+                return false;
+            }
+            return true;
+        }
+
+        function atualizarStatus() {
+            var st = IBNNuvem.status();
+            var el = document.getElementById('statusNuvem');
+            if (!st.configurada) {
+                el.innerHTML = '<span class="text-amber-700 font-semibold">● Nuvem ainda não configurada</span> — edite <code>firebase-config.js</code> com os dados do Firebase.';
+                return;
+            }
+            var ok = IBNNuvem.iniciar();
+            if (ok) {
+                el.innerHTML = '<span class="text-green-700 font-semibold">● Nuvem conectada</span> — pronta para enviar e baixar dados.';
+            } else {
+                el.innerHTML = '<span class="text-red-600 font-semibold">● Erro ao conectar:</span> ' + (st.erro || 'desconhecido');
+            }
+        }
+
+        document.getElementById('btnEnviar').addEventListener('click', async function() {
+            if (!exigeGestao()) return;
+            var msg = document.getElementById('msgEnviar');
+            msg.classList.remove('hidden');
+            msg.className = 'text-sm mt-2 text-gray-600';
+            msg.textContent = 'Enviando...';
+            var r = await IBNNuvem.enviarTudoDoAparelho();
+            if (r.sucesso) {
+                msg.className = 'text-sm mt-2 text-green-700 font-semibold';
+                msg.textContent = '✅ ' + (r.mensagem || 'Enviado com sucesso.');
+            } else {
+                msg.className = 'text-sm mt-2 text-red-600 font-semibold';
+                msg.textContent = '❌ ' + (r.mensagem || 'Falha ao enviar. Configure a nuvem.');
+            }
+        });
+
+        document.getElementById('btnCsvMembros').addEventListener('click', async function() {
+            if (!exigeGestao()) return;
+            var msg = document.getElementById('msgCsv');
+            msg.classList.remove('hidden');
+            msg.textContent = 'Gerando CSV de membros...';
+            var r = await IBNNuvem.exportarMembrosCSV();
+            if (r.sucesso) {
+                msg.className = 'text-sm mt-3 text-green-700 font-semibold';
+                msg.textContent = '✅ Download iniciado (' + r.quantidade + ' membros).';
+            } else {
+                msg.className = 'text-sm mt-3 text-red-600 font-semibold';
+                msg.textContent = '❌ ' + (r.mensagem || 'Erro');
+            }
+        });
+
+        document.getElementById('btnCsvCelulas').addEventListener('click', async function() {
+            if (!exigeGestao()) return;
+            var msg = document.getElementById('msgCsv');
+            msg.classList.remove('hidden');
+            msg.textContent = 'Gerando CSV de relatórios...';
+            var r = await IBNNuvem.exportarRelatoriosCSV(null);
+            if (r.sucesso) {
+                msg.className = 'text-sm mt-3 text-green-700 font-semibold';
+                msg.textContent = '✅ Download iniciado (' + r.quantidade + ' relatórios).';
+            } else {
+                msg.className = 'text-sm mt-3 text-red-600 font-semibold';
+                msg.textContent = '❌ ' + (r.mensagem || 'Erro');
+            }
+        });
+
+        document.getElementById('btnAtividades').addEventListener('click', async function() {
+            if (!exigeGestao()) return;
+            var box = document.getElementById('listaAtividades');
+            box.innerHTML = '<p class="text-gray-500">Carregando...</p>';
+            var r = await IBNNuvem.buscarAtividades(150);
+            if (!r.sucesso) {
+                box.innerHTML = '<p class="text-red-600">' + (r.mensagem || 'Erro') + '</p>';
+                return;
+            }
+            if (!r.lista.length) {
+                box.innerHTML = '<p class="text-gray-400">Nenhuma atividade registrada ainda.</p>';
+                return;
+            }
+            box.innerHTML = r.lista.map(function(a) {
+                var quando = a.quando ? new Date(a.quando).toLocaleString('pt-BR') : '';
+                return '<div class="border rounded-lg p-2 bg-gray-50"><span class="font-semibold text-primary">' +
+                    (a.tipo || '') + '</span> · ' + (a.usuarioNome || '—') +
+                    '<br><span class="text-xs text-gray-600">' + (a.detalhe || '') +
+                    '</span><br><span class="text-xs text-gray-400">' + quando + '</span></div>';
+            }).join('');
+        });
+        atualizarStatus();
+        // Firebase pode carregar um pouco depois
+        setTimeout(atualizarStatus, 800);
+        setTimeout(atualizarStatus, 2000);
+    </script>
+</body>
+</html>

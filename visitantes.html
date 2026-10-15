@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitantes — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { primary: '#0A1A3F', secondary: '#D4AF37', accent: '#1E3A8A', light: '#F8F9FC' } } }
+        }
+    </script>
+</head>
+<body class="bg-light min-h-screen">
+    <header class="bg-primary text-white py-4 px-4 shadow">
+        <div class="container mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h1 class="text-xl font-bold">Visitantes</h1>
+                <p class="text-secondary text-sm">Acompanhamento do ministério de Acolhimento</p>
+            </div>
+            <div class="flex gap-3 text-sm">
+                <a href="adminpainel.html" class="hover:text-secondary">← Painel</a>
+                <a href="gestao-membros.html" class="hover:text-secondary">Membros</a>
+                <a href="index.html" class="hover:text-secondary">Site</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6 max-w-4xl">
+        <div class="flex flex-wrap gap-2 items-end mb-4">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-bold text-gray-500 mb-1">Buscar</label>
+                <input type="text" id="busca" placeholder="Nome, telefone ou e-mail..." class="w-full border rounded-lg px-3 py-2 text-sm">
+            </div>
+            <button type="button" id="btnNovo" class="bg-secondary text-primary px-4 py-2 rounded-lg font-bold text-sm">
+                <i class="fa fa-user-plus"></i> Cadastrar visitante
+            </button>
+        </div>
+        <p id="qtd" class="text-sm text-gray-500 mb-3">0 visitante(s)</p>
+        <div id="lista" class="space-y-3"></div>
+        <p id="vazio" class="text-center text-gray-400 py-10 hidden">Nenhum visitante cadastrado ainda.</p>
+    </main>
+
+    <!-- Modal cadastro / edição -->
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h2 id="modalTitulo" class="text-lg font-bold text-primary mb-4">Cadastrar visitante</h2>
+            <input type="hidden" id="visId">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Nome completo *</label>
+                    <input type="text" id="visNome" class="w-full border rounded-lg px-3 py-2 text-sm" required>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Telefone</label>
+                        <input type="text" id="visTel" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="65...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Data da visita</label>
+                        <input type="date" id="visData" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">E-mail</label>
+                    <input type="email" id="visEmail" class="w-full border rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Evento(s) que participou</label>
+                    <input type="text" id="visEventos" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ex.: Culto domingo, Impacto, Conferência...">
+                    <p class="text-xs text-gray-400 mt-1">Separe por vírgula se forem vários.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Observações (contato do Acolhimento)</label>
+                    <textarea id="visObs" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Quem ligou, retorno..."></textarea>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-5">
+                <button type="button" id="btnSalvar" class="flex-1 bg-primary text-white py-2 rounded-lg font-bold">Salvar</button>
+                <button type="button" id="btnFechar" class="flex-1 border py-2 rounded-lg font-bold">Cancelar</button>
+            </div>
+            <p id="msgModal" class="text-sm text-center mt-2 hidden"></p>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        const u = getUsuarioLogado();
+        if (!u || !podeGerenciarVisitantes(u)) {
+            alert('Acesso ao cadastro de visitantes: gestores, administradores ou ministério de Acolhimento.');
+            window.location.href = 'login.html?destino=visitantes.html';
+        }
+
+        function abrirModal(v) {
+            document.getElementById('visId').value = v ? v.id : '';
+            document.getElementById('modalTitulo').textContent = v ? 'Editar visitante' : 'Cadastrar visitante';
+            document.getElementById('visNome').value = v ? (v.nome || '') : '';
+            document.getElementById('visTel').value = v ? (v.telefone || '') : '';
+            document.getElementById('visEmail').value = v ? (v.email || '') : '';
+            document.getElementById('visData').value = v ? (v.dataVisita || '') : new Date().toISOString().slice(0, 10);
+            document.getElementById('visEventos').value = v && Array.isArray(v.eventos) ? v.eventos.join(', ') : (v && v.eventos ? v.eventos : '');
+            document.getElementById('visObs').value = v ? (v.observacoes || '') : '';
+            document.getElementById('msgModal').classList.add('hidden');
+            const m = document.getElementById('modal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function fecharModal() {
+            const m = document.getElementById('modal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function dataBR(iso) {
+            if (!iso) return '—';
+            const p = String(iso).slice(0, 10).split('-');
+            if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+            return iso;
+        }
+
+        function render() {
+            const q = document.getElementById('busca').value.toLowerCase().trim();
+            let lista = lerVisitantes();
+            if (q) {
+                const qTel = q.replace(/\D/g, '');
+                lista = lista.filter(function(v) {
+                    return (v.nome || '').toLowerCase().indexOf(q) !== -1 ||
+                        (v.email || '').toLowerCase().indexOf(q) !== -1 ||
+                        (qTel && String(v.telefone || '').replace(/\D/g, '').indexOf(qTel) !== -1);
+                });
+            }
+            lista.sort(function(a, b) {
+                return String(b.dataVisita || b.criadoEm || '').localeCompare(String(a.dataVisita || a.criadoEm || ''));
+            });
+            document.getElementById('qtd').textContent = lista.length + ' visitante(s)';
+            document.getElementById('vazio').classList.toggle('hidden', lista.length > 0);
+            const box = document.getElementById('lista');
+            box.innerHTML = lista.map(function(v) {
+                const prog = progressoVisitante(v);
+                const etapasHtml = ETAPAS_VISITANTE.map(function(e) {
+                    const ok = !!(v.etapas && v.etapas[e.id]);
+                    return '<label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">' +
+                        '<input type="checkbox" class="etapa-vis accent-secondary" data-id="' + v.id + '" data-etapa="' + e.id + '" ' + (ok ? 'checked' : '') + '> ' +
+                        e.label + '</label>';
+                }).join('');
+                const ev = Array.isArray(v.eventos) ? v.eventos.join(', ') : (v.eventos || '');
+                return '<div class="bg-white rounded-xl shadow border p-4">' +
+                    '<div class="flex flex-wrap justify-between gap-2 mb-2">' +
+                    '<div>' +
+                    '<h3 class="font-bold text-primary text-lg">' + (v.nome || '—') + '</h3>' +
+                    '<p class="text-sm text-gray-500">' +
+                    (v.telefone ? '<i class="fa fa-phone"></i> ' + v.telefone + ' ' : '') +
+                    (v.dataVisita ? '<i class="fa fa-calendar ml-2"></i> Visita: ' + dataBR(v.dataVisita) : '') +
+                    '</p>' +
+                    (ev ? '<p class="text-xs text-secondary mt-1"><i class="fa fa-star"></i> Evento(s): ' + ev + '</p>' : '') +
+                    (v.observacoes ? '<p class="text-xs text-gray-500 mt-1">' + v.observacoes + '</p>' : '') +
+                    '</div>' +
+                    '<div class="flex gap-1">' +
+                    '<button type="button" class="btn-edit border rounded-lg px-2 py-1 text-sm" data-id="' + v.id + '" title="Editar"><i class="fa fa-pencil"></i></button>' +
+                    '<button type="button" class="btn-del border border-red-300 text-red-600 rounded-lg px-2 py-1 text-sm" data-id="' + v.id + '" title="Excluir"><i class="fa fa-trash"></i></button>' +
+                    '</div></div>' +
+                    '<div class="grid sm:grid-cols-2 gap-1 mt-2">' + etapasHtml + '</div>' +
+                    '<p class="text-xs text-gray-400 mt-2">Progresso: ' + prog.feitos + '/' + prog.total + '</p>' +
+                    '</div>';
+            }).join('');
+
+            box.querySelectorAll('.etapa-vis').forEach(function(cb) {
+                cb.addEventListener('change', function() {
+                    alternarEtapaVisitante(cb.getAttribute('data-id'), cb.getAttribute('data-etapa'));
+                    render();
+                });
+            });
+            box.querySelectorAll('.btn-edit').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const v = lerVisitantes().find(x => String(x.id) === btn.getAttribute('data-id'));
+                    if (v) abrirModal(v);
+                });
+            });
+            box.querySelectorAll('.btn-del').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (!confirm('Excluir este visitante do acompanhamento?')) return;
+                    removerVisitante(btn.getAttribute('data-id'));
+                    render();
+                });
+            });
+        }
+
+        document.getElementById('btnNovo').onclick = function() { abrirModal(null); };
+        document.getElementById('btnFechar').onclick = fecharModal;
+        document.getElementById('busca').addEventListener('input', render);
+        document.getElementById('btnSalvar').onclick = function() {
+            const eventosRaw = document.getElementById('visEventos').value.trim();
+            const eventos = eventosRaw ? eventosRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+            const r = salvarVisitante({
+                id: document.getElementById('visId').value || undefined,
+                nome: document.getElementById('visNome').value,
+                telefone: document.getElementById('visTel').value,
+                email: document.getElementById('visEmail').value,
+                dataVisita: document.getElementById('visData').value,
+                eventos: eventos,
+                observacoes: document.getElementById('visObs').value
+            });
+            const msg = document.getElementById('msgModal');
+            msg.classList.remove('hidden');
+            if (r.sucesso) {
+                msg.className = 'text-sm text-center mt-2 text-green-600 font-bold';
+                msg.textContent = 'Salvo!';
+                fecharModal();
+                render();
+            } else {
+                msg.className = 'text-sm text-center mt-2 text-red-500 font-bold';
+                msg.textContent = r.mensagem || 'Erro';
+            }
+        };
+
+        // puxar nuvem se houver
+        (async function() {
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarVisitantesParaLocal) {
+                    await IBNNuvem.puxarVisitantesParaLocal();
+                }
+            } catch (e) {}
+            render();
+        })();
+    </script>
+</body>
+</html>

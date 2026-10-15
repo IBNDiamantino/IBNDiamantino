@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playlist de Louvores — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0A1A3F',
+                        secondary: '#D4AF37',
+                        light: '#F8F9FC'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: linear-gradient(135deg, #0A1A3F 0%, #152A5F 100%); min-height: 100vh; }
+        .player-card { backdrop-filter: blur(10px); background: rgba(255,255,255,0.05); }
+        @keyframes girar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .tocando { animation: girar 20s linear infinite; }
+    </style>
+</head>
+<body class="text-white flex flex-col items-center justify-center px-4 py-10">
+
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold">🎵 Playlist de Louvores</h1>
+            <p class="text-gray-300 text-sm mt-1">IBN Diamantino — 180 músicas da rádio oficial</p>
+        </div>
+
+        <!-- Player Principal -->
+        <div class="player-card rounded-3xl p-8 shadow-2xl border border-white/10">
+            <div class="w-32 h-32 mx-auto mb-6 rounded-full bg-secondary/20 flex items-center justify-center">
+                <i id="iconeMusica" class="fa fa-music text-4xl text-secondary"></i>
+            </div>
+
+            <div class="text-center mb-6">
+                <h2 id="nomeMusica" class="text-xl font-bold">Carregando repertório...</h2>
+                <p id="artista" class="text-gray-400 mt-1">—</p>
+            </div>
+
+            <!-- Controles -->
+            <div class="flex items-center justify-center gap-6 mb-6">
+                <button id="btnAnterior" class="text-gray-300 hover:text-white transition-colors text-xl">
+                    <i class="fa fa-step-backward"></i>
+                </button>
+                
+                <button id="btnPlay" class="w-16 h-16 rounded-full bg-secondary text-primary flex items-center justify-center text-xl font-bold hover:bg-yellow-400 transition-colors shadow-lg">
+                    <i class="fa fa-play"></i>
+                </button>
+                
+                <button id="btnProximo" class="text-gray-300 hover:text-white transition-colors text-xl">
+                    <i class="fa fa-step-forward"></i>
+                </button>
+            </div>
+
+            <!-- Volume -->
+            <div class="flex items-center justify-center gap-3">
+                <i class="fa fa-volume-down text-gray-400"></i>
+                <input type="range" id="volume" min="0" max="100" value="70" 
+                    class="w-40 h-2 bg-gray-700 rounded-full appearance-none cursor-pointer accent-secondary">
+                <i class="fa fa-volume-up text-gray-400"></i>
+            </div>
+        </div>
+
+        <!-- Botões Inferiores -->
+        <div class="mt-6 flex justify-center gap-4">
+            <a href="https://ibndiamantino.com.br/" class="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors text-sm">
+                ← Site oficial
+            </a>
+        </div>
+
+        <p class="text-center text-xs text-gray-400 mt-4">
+            Ordem aleatória • Toca tudo antes de repetir<br>
+            Áudios oficiais da Rádio IBN Diamantino
+        </p>
+    </div>
+
+    <script>
+        // ==================================================
+        // ✅ REPERTÓRIO — 180 louvores da rádio oficial IBN
+        // ==================================================
+        let REPERTORIO = [
+            { titulo: "500 GRAUS", artista: "THALES ROBERTO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178280378-d9gm4o.mp3" },
+            { titulo: "A BOA PARTE", artista: "FHOP MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178719443-2w3g5b.mp3" },
+            { titulo: "Á ESPREITA DE TI", artista: "OS BRAVOS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770316461660-8yl81.mp3" },
+            { titulo: "A RESPOSTA", artista: "THALES ROBERTO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192874811-awrz.mp3" },
+            { titulo: "ABRE OS SELOS", artista: "NÍVEA SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192422082-dq5lqm.mp3" },
+            { titulo: "ACENDE OUTRA VEZ", artista: "JEFFERSON E SUELLEN", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769180031307-nn54nd.mp3" },
+            { titulo: "ACLAME AO SENHOR", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179563556-brd8l.mp3" },
+            { titulo: "ACLAME AO SENHOR", artista: "MEDELY- MORADA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178214485-04g4k.mp3" },
+            { titulo: "AGNUS DEI", artista: "MATEUS BRITO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195665736-dbu7qf.mp3" },
+            { titulo: "ÁGUAS PURIFICADORAS+OCEANOS", artista: "ISAÍAS SAAD", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195767953-68oitq.mp3" },
+            { titulo: "ALELUIA (QUEM MUITO FOI PERDOADO)", artista: "ALESSANDRO VILAS BOAS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192303131-qrgzo9.mp3" },
+            { titulo: "ALÉM DO IMPOSSÍVEL _ PEDRO • BRASAS  FELIPE RODRIGUES  SALVAON", artista: "IBN Diamantino", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769176011585-hh6q1.mp3" },
+            { titulo: "AMO O SENHOR", artista: "FELIPE RODRIGUES feat MARCUS SALLES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771506252464-l4gwyq.mp3" },
+            { titulo: "AOS PÉS DA CRUZ", artista: "ELI SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771507938545-0fdnyu.mp3" },
+            { titulo: "APENAS UM DIA NA SUA CASA", artista: "MATEUS BRITO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770146990442-knxf4.mp3" },
+            { titulo: "AQUELE QUE HÁ DE VIR", artista: "ELEVE MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770403916345-5rxlm.mp3" },
+            { titulo: "ATÉ QUE O SENHOR VENHA", artista: "CULTURA DO CÉU", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189669291-8qj44k.mp3" },
+            { titulo: "ATÉ QUE TODA TERRA CANTE", artista: "GABI SAMPAIO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771505734164-ks0zgb.mp3" },
+            { titulo: "BOM COMIGO", artista: "BEATRIZ CRISTINA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189809290-vb3hzi.mp3" },
+            { titulo: "BONDADE DE DEUS", artista: "ISAÍAS SAAD", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179972930-0gd3u.mp3" },
+            { titulo: "CAIA FOGO", artista: "FERNANDINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179843361-se6z7n.mp3" },
+            { titulo: "CANÇÃO AO CORDEIRO", artista: "ISRAEL SALAZAR feat GABRIEL GUEDES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179015737-rcf9gs.mp3" },
+            { titulo: "CANÇÃO DE SIMEÃO", artista: "DROPS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144373813-rbygm.mp3" },
+            { titulo: "CANÇÃO DO APOCALIPSE", artista: "CAROL BRAGA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178765272-mjxeo.mp3" },
+            { titulo: "CANÇÃO DOS REDIMIDOS", artista: "JULIA VITORIA feat NÍVEA SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770145091104-7y2ceo.mp3" },
+            { titulo: "CENTRO", artista: "GUILHERME BAPTISTA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771506053059-vl6m0d.mp3" },
+            { titulo: "CLAMO JESUS", artista: "MARCELO MARKES feat SUED SILVA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147167731-eo3ps.mp3" },
+            { titulo: "COLOSSENSES E SUAS LINHAS DE AMOR", artista: "FHOP MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769175381967-3qnd2q.mp3" },
+            { titulo: "COMUNHÃO", artista: "GABI SAMPAIO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770317636046-4032q.mp3" },
+            { titulo: "CONSOLADOR", artista: "BEATRIZ CRISTINA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770317889266-n7ra9.mp3" },
+            { titulo: "CORDEIRO E LEÃO", artista: "JEFFERSON E SUELLEN", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192142759-h7gpyn.mp3" },
+            { titulo: "CREIO", artista: "SARAH BEATRIZ", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144945536-4kqhsg.mp3" },
+            { titulo: "CRISTO", artista: "SOM DO REINO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771505988941-lk2ojh.mp3" },
+            { titulo: "CRISTO+ TUDO É TEU", artista: "DRPOS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178023823-2d5xia.mp3" },
+            { titulo: "DEUS DA MINHA VIDA", artista: "THALES ROBERTO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769174410193-wv3ic3.mp3" },
+            { titulo: "DIGNO DE TUDO", artista: "CENTRAL 3", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144581612-4xhjc.mp3" },
+            { titulo: "DIGNO DE TUDO+TE EXALTAMOS", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769190083058-v9mj6o.mp3" },
+            { titulo: "DIGNO É O SENHOR", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196203275-kuoj0q.mp3" },
+            { titulo: "DONO DA MINHA AFEIÇÃO", artista: "FHOP MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189580081-s3dez9.mp3" },
+            { titulo: "É ELE+AGNUS DEI", artista: "CAROL BRAGA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144640032-8ift5l.mp3" },
+            { titulo: "É TUDO SOBRE VOCÊ", artista: "MORADA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193780082-xa9245.mp3" },
+            { titulo: "ELE VEM", artista: "GABRIEL GUEDES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196549153-5z7sqi.mp3" },
+            { titulo: "ELE VIRÁ", artista: "SALVAON feat MATEUS BRITO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771505928846-timfw9.mp3" },
+            { titulo: "EMAÚS", artista: "MORADA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195981772-r2n5aq.mp3" },
+            { titulo: "ENCHE ESSA CASA", artista: "ISRAEL SALAZAR feat NÍVEA SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771506457626-0vylrn.mp3" },
+            { titulo: "ÉS BEM VINDO", artista: "ISRAEL SALAZAR", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195624802-x4dd5.mp3" },
+            { titulo: "ESCAPE+NUNCA PARE DE LUTA", artista: "JADSON MORENO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195248894-p73o2n.mp3" },
+            { titulo: "ESCUDO", artista: "CAROL BRAGA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769173622442-is6khi.mp3" },
+            { titulo: "ESPERO POR TI", artista: "GABI SAMPAIO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770146421853-gv4gmr.mp3" },
+            { titulo: "ESSÊNCIA DA ADORAÇÃO", artista: "MEDLEY- MORADA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769173452244-m17kvs.mp3" },
+            { titulo: "ESTAÇÕES", artista: "DUNAMIS feat MATEUS BRITO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193279754-jyzbp.mp3" },
+            { titulo: "ESTAMOS DE PÉ", artista: "GIOAVANE E LUCIANE", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771506328296-tss7dq.mp3" },
+            { titulo: "ETERNO AMOR", artista: "ISRAEL SALAZAR", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770320594088-fulbcg.mp3" },
+            { titulo: "EU CONFIO EM TI", artista: "DUDA SANTOS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193071883-o1ux5.mp3" },
+            { titulo: "EU E MINHA CASA", artista: "JULLIANY SOUZA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179888811-weguf7.mp3" },
+            { titulo: "EU SÓ QUERO TUA PRESENÇA", artista: "THEO RUBIA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179662237-06jxak.mp3" },
+            { titulo: "EU SOU DO MEU AMADO", artista: "FELIPE RODRIGUES feat GABRIELA GOMES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771507702155-vbg4js.mp3" },
+            { titulo: "EU SOU TEU PAI", artista: "VALESCA MAYSSA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147456111-5271va.mp3" },
+            { titulo: "EU SOU TEU", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769172588538-dh357q.mp3" },
+            { titulo: "EU TE VEJO EM TUDO", artista: "JULLIANY SOUZA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195564502-e9wippa.mp3" },
+            { titulo: "EU TENHO VOCÊ", artista: "MARCELO MARKES feat INCENDIÁRIOS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179720792-ovtj0j.mp3" },
+            { titulo: "EU VOU CONSTRUIR", artista: "GABI SAMPAIO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770317580570-thk3j8.mp3" },
+            { titulo: "EXCELSO CRIADOR", artista: "MATEUS BRITO feat JULLIANY SOUZA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196248793-c0zo85.mp3" },
+            { titulo: "EXISTE UM RIO", artista: "MATEUS BRITO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769194241644-f954w.mp3" },
+            { titulo: "FILHO DO HOMEM", artista: "ALESSANDRO VILAS BOAS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771506176398-upwfy.mp3" },
+            { titulo: "FILHO QUE SOFREU", artista: "MATEUS BRITO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147267262-d2bxx.mp3" },
+            { titulo: "FIRMADO NA ROCHA", artista: "ALESSANDRO VILAS BOAS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769194273294-l8xnng.mp3" },
+            { titulo: "FIRME FUNDAMENTO", artista: "RELEVANS MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770316152999-ynfwm8.mp3" },
+            { titulo: "FOGO NUNCA DORME", artista: "ALESSANDRO VILAS BOAS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769191979157-6t0kmf.mp3" },
+            { titulo: "FOGO QUE CONSOME", artista: "CAROL BRAGA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195098043-k8obxr.mp3" },
+            { titulo: "FOI NA CRUZ", artista: "JEFFERSON E SUELLEN", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178830368-7hidmo.mp3" },
+            { titulo: "FUMAÇA", artista: "CASA WORSHIP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193604469-y7texk.mp3" },
+            { titulo: "GRAÇA", artista: "ISRAEL SALAZAR", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193470408-inhoef.mp3" },
+            { titulo: "GRANDES COISAS", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178624575-xgihx.mp3" },
+            { titulo: "GRATIDÃO", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196620047-1dx48o.mp3" },
+            { titulo: "HÁ PODER", artista: "FHOP MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147116940-5tfpq.mp3" },
+            { titulo: "HÁ UM LUGAR", artista: "JULLIANY SOUZA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147305733-ju3tpr.mp3" },
+            { titulo: "HINO DA VITÓRIA", artista: "GABRIELA ROCHA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196312648-yzq7o.mp3" },
+            { titulo: "HOSANA", artista: "GABRIELA ROCHA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193651141-krlczz8.mp3" },
+            { titulo: "IMAGINAÇÃO", artista: "POIEMA MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147504633-ncwp2f.mp3" },
+            { titulo: "IMENSURÁVEL", artista: "ALINE BARROS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769194960237-hellvj.mp3" },
+            { titulo: "INFINITAMENTE MAIS", artista: "FERNANDINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192248972-p9xjwb.mp3" },
+            { titulo: "JEOVÁ JIREH", artista: "ALINE BARROS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769191400591-q6liun.mp3" },
+            { titulo: "JESUS É PODEROSO", artista: "ISRAEL SALAZAR", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196023078-pnzlvn.mp3" },
+            { titulo: "JIREH", artista: "NÍVEA SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195880882-6izz3.mp3" },
+            { titulo: "JÓ", artista: "JADSON MORENO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193731228-3i8y2u.mp3" },
+            { titulo: "JOÃO+ 1325", artista: "MORADA feat SALVAON", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195306074-pb0hs4.mp3" },
+            { titulo: "LEÃO", artista: "GUILHERME BABTISTA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770145037390-rmfcpr.mp3" },
+            { titulo: "LOUVE", artista: "LUKAS AUGUSTINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193030022-97fuws.mp3" },
+            { titulo: "LUGAR DE HABTIÇÃO", artista: "OS BRAVOS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770316217548-y6lodj.mp3" },
+            { titulo: "MARANATA MEDLEY", artista: "FERNANDA MADALONI", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770317469249-sgjdoh.mp3" },
+            { titulo: "ME AMA", artista: "JADSON MORENO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193332346-fzqi6.mp3" },
+            { titulo: "ME ATRAIU MEDLEY", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770317932476-8f57.mp3" },
+            { titulo: "ME DERRAMAR", artista: "JULLIANY SOUZA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770317529740-mi6kd.mp3" },
+            { titulo: "MEDLEY LEÃO DE JUDÁ", artista: "MORADA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769173557778-bpc1lr.mp3" },
+            { titulo: "MEIA NOITE", artista: "FHOP MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193435871-hk4lcb.mp3" },
+            { titulo: "MELHOR LUGAR", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769172330317-2uyfqj.mp3" },
+            { titulo: "MESMO SEM ENTENDER", artista: "MEDLEY- THALES ROBERTO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178886879-tre8j.mp3" },
+            { titulo: "MESSIAS", artista: "MARCELO MARKES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769177794267-lktuo.mp3" },
+            { titulo: "MEU CARPINTEIRO", artista: "JULLIANY SOUZA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771508051401-mrvkz.mp3" },
+            { titulo: "MEU JESUS", artista: "GABRIELA ROCHA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189529526-heqhol.mp3" },
+            { titulo: "MEU MESTRE", artista: "LUKAS AUGUSTINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192369050-wdt08.mp3" },
+            { titulo: "MEU RESPIRAR", artista: "GABRIELA ROCHA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769175594966-z6yrdh.mp3" },
+            { titulo: "MOISÉS", artista: "FERNANDINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178969230-0y78mf.mp3" },
+            { titulo: "NA TERRA COMO NO CÉU", artista: "GABI SAMPAIO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770318005844-qc9al5.mp3" },
+            { titulo: "NADA ALÉM DO SANGUE", artista: "MEDLEY- MORADA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192674089-dhpbcq.mp3" },
+            { titulo: "NADA MAIS", artista: "FHOP MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770320561084-y4zvd4.mp3" },
+            { titulo: "NADA MAIS+ UMA VEZ", artista: "CULTURA DO CÉU", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178102429-ohk0e.mp3" },
+            { titulo: "NÃO ME ESCONDEREI", artista: "MARCELO MARKES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189856181-cm9z4.mp3" },
+            { titulo: "NÍNGUEM PODE PARAR", artista: "THEO RUBIA feat FERNANDINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193509827-5mhzz.mp3" },
+            { titulo: "Nívea Soares  Que Se Abram Os Céus  DVD Reino de Justiça", artista: "Nívea Soares", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769176494651-yb67s.mp3" },
+            { titulo: "NÓS QUEREMOS VER", artista: "ALESSANDRO VILAS BOAS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192917704-vxxatr.mp3" },
+            { titulo: "NOSSO GENERAL", artista: "ELI SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195730085-ckvjva.mp3" },
+            { titulo: "NOVA HISTÓRIA", artista: "FAMILY WORSHIP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147053570-85p07.mp3" },
+            { titulo: "O ENCONTRO", artista: "JEFFERSON E SUELLEN feat VALESCA MAYSSA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770147368805-zobh9.mp3" },
+            { titulo: "O FOGO ARDERÁ AO VIVO", artista: "Alexsander Lucio - CÉU MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769190154409-gh746g.mp3" },
+            { titulo: "O HINO", artista: "FERNANDINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769175474955-74m62n.mp3" },
+            { titulo: "O MEDO NÃO VAI ME PARAR", artista: "SARAH BEATRIZ", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770145183568-szs6u.mp3" },
+            { titulo: "OBSSESÃO", artista: "THEO RUBIA feat SALVAON", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771507767390-afnamj.mp3" },
+            { titulo: "ONDE ESTÁ O MORTE", artista: "KALEB E JOSH", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178528011-ai2a5.mp3" },
+            { titulo: "OS QUE CONFIAM", artista: "FERNANDINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195146144-koz5ys.mp3" },
+            { titulo: "PALAVRAS", artista: "JULIA VITÓRIA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144753553-dscwdl.mp3" },
+            { titulo: "PAZ", artista: "CIDADE MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770403839843-mhg10w.mp3" },
+            { titulo: "PODEROSO DEUS ETERNO", artista: "KALEB E JOSH", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195033718-zb2qps.mp3" },
+            { titulo: "PRECISO DE TI", artista: "CASA WORSHIP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189486993-20hp2.mp3" },
+            { titulo: "PRIMAVERA", artista: "IIR MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771509069695-smnjww.mp3" },
+            { titulo: "PRIMEIRA ESSÊNCIA", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193691345-ubi96r.mp3" },
+            { titulo: "PRÓDIGO", artista: "CASA WORSHIP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769189780327-n4cm9.mp3" },
+            { titulo: "QUANDO O CÉU INVADE A TERRA", artista: "MEDLEY- BRASA MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179603498-t146zy.mp3" },
+            { titulo: "QUÃO GRANDE É O MEU DEUS", artista: "DAVID GORITO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770319564580-q9kmps.mp3" },
+            { titulo: "QUEM DIZES QUE EU SOU", artista: "THALITA COSTA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144866749-gsn4s8.mp3" },
+            { titulo: "QUEM É COMO NOSS DEUS", artista: "NÍVEA SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769172265481-5b9hc.mp3" },
+            { titulo: "QUEM É ESSE?", artista: "JULLIANY SOUZA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192477466-pop0fc.mp3" },
+            { titulo: "QUEM É TEU DEUS?", artista: "BEATRIZ CRISTINA feat JADSON MORENO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192800334-umi3ji.mp3" },
+            { titulo: "QUEM ME CHAMOU", artista: "CASA WORSHIP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769180168737-g6s15.mp3" },
+            { titulo: "RECEBO A VIDA", artista: "ISRAEL SALAZAR", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196404041-ljzv8q.mp3" },
+            { titulo: "REDENTOR", artista: "MARCELO MARKES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178586005-fwcuxt.mp3" },
+            { titulo: "REI DA GLÓRIA", artista: "ISRAEL SALAZAR", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770320406693-qwm50g.mp3" },
+            { titulo: "REI DOS REIS", artista: "SALVAON", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770401521492-on8vo.mp3" },
+            { titulo: "REI DOS REIS", artista: "SALVAON", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193115345-6zfqk8.mp3" },
+            { titulo: "REPRISE", artista: "DEVOCIONAL MANHÃ", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769516600223-ssd08q.mp4" },
+            { titulo: "REPRISE", artista: "DEVOCIONAL MANHA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1777928034754-u6ea3.mp4" },
+            { titulo: "RESPONDE COM FOGO", artista: "ISRAEL SALAZAR", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771508000283-2r2xiq.mp3" },
+            { titulo: "RUJA O LEÃO+QUE SE ABRAM OS CÉUS", artista: "ISAIAS SAAD", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178408870-ftdzkv.mp3" },
+            { titulo: "SANTO PRA SEMPRE", artista: "GABRIEL GUEDES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195924610-ls9tm6.mp3" },
+            { titulo: "SAUDADE DE CASA", artista: "JEFFERSON E SUELLEN", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769190350209-0o88us.mp3" },
+            { titulo: "SE EU CAIR", artista: "ELI SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769191369471-tm7z3p.mp3" },
+            { titulo: "SEGURANÇA", artista: "JULIA VITÓRIA feat ELI SOARES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144797934-u007qh.mp3" },
+            { titulo: "SINTO FLUIR", artista: "CENTRAL 3 feat MARCELO MARKES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144513950-hapwp8.mp3" },
+            { titulo: "SO TU ÉS SANTO", artista: "MEDLEY- MORADA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769172658555-5onf6.mp3" },
+            { titulo: "SOBRE AS ÁGUAS", artista: "DUNAMIS MUSIC feat ISAIAS SAAD", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770316401501-enr3cp8d.mp3" },
+            { titulo: "SOBRE AS ÁGUAS", artista: "FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195831084-h9swhj.mp3" },
+            { titulo: "SONDA", artista: "ME- MEDELY MORADA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769191308348-8eaphi.mp3" },
+            { titulo: "Sublime (Ao Vivo)  fhop music", artista: "IBN Diamantino", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769176369792-bdnl08.mp3" },
+            { titulo: "TE ESPERAMOS", artista: "SALVAON", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769173399559-fcu2ju.mp3" },
+            { titulo: "TEU AMO VENCEU", artista: "SALVAON", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770401304966-s8uyw7.mp3" },
+            { titulo: "Thalles Roberto", artista: "Cheios de Espírito Santo (Ao Vivo) ft. Rebeca Eloyse", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769176172244-xelgsm.mp3" },
+            { titulo: "TOCA EM MIM DE NOVO", artista: "FELIPE RODRGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144991272-dxrvox.mp3" },
+            { titulo: "TODA TERRA", artista: "GABRIELA ROCHA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769172184507-wd95ud.mp3" },
+            { titulo: "TOTALMENTE TEU", artista: "EMMILY SILVA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144464072-yz2ug.mp3" },
+            { titulo: "TU ÉS TUDO QUE TENHO", artista: "THEO RUBIA feat FELIPE RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769180083411-8o5gpj.mp3" },
+            { titulo: "TUA BONDADE", artista: "ELEVE MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770404008616-2m73lz.mp3" },
+            { titulo: "TUA GLÓRIA", artista: "OS BRAVOS feat FHOP MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770316349121-1yoofg.mp3" },
+            { titulo: "TUA PRESENÇA VALE MAIS", artista: "MATEUS BRITO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769195199888-o34nba.mp3" },
+            { titulo: "TUDO É PERDA", artista: "IBN Diamantino", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196590303-2mn299.mp3" },
+            { titulo: "TUDO HAVER COM ELE", artista: "CENTRAL 3", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770144908536-eir3f2.mp3" },
+            { titulo: "UM MILHÃO DE ANOS", artista: "THEO RUBIA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769178672357-nyfnr3.mp3" },
+            { titulo: "UM NOVO DIA", artista: "GET WORSHIP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770146359493-6075m9.mp3" },
+            { titulo: "UMA CARTA VIVA", artista: "GET WORSHIP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771508277294-zcomw.mp3" },
+            { titulo: "UMA VEZ", artista: "FHOP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769196358400-vspm9b.mp3" },
+            { titulo: "UMA VEZ", artista: "FHOP MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770320526962-bgqi8.mp3" },
+            { titulo: "ÚNICO", artista: "FERNANDINHO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193203347-y5xbco.mp3" },
+            { titulo: "VEM COM FOGO", artista: "GABI SAMPAIO", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771506139624-ffdqic.mp3" },
+            { titulo: "VEM ME BUSCAR", artista: "JEFFERSON E SUELLEN", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192534460-h5akor.mp3" },
+            { titulo: "VIDA AO SEPULCRO", artista: "GABRIELA ROCHA", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769193387674-xces1d.mp3" },
+            { titulo: "VITÓRIA NO DESERTO", artista: "ALINE BARROS", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769192184856-9ed9ss.mp3" },
+            { titulo: "VIVO PELA FÉ", artista: "KALEB E JOSH feat ADLIN RODRIGUES", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771508827241-t39zm.mp3" },
+            { titulo: "VOLTO MEUS OLHOS", artista: "DUNAMIS MUSIC", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1770316292074-1e40hw.mp3" },
+            { titulo: "YESHUA", artista: "SALVAON", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1771507664283-hkhf8r.mp3" },
+            { titulo: "YESHUA+ ESPÔNTANEO", artista: "CASA WORSHIP", url: "https://srvohdtvqsifhzccsgpe.supabase.co/storage/v1/object/public/media/radio/1769179771963-gzsy1c.mp3" }        ];
+
+        // ==================================================
+        // 🎵 SISTEMA DE REPRODUÇÃO
+        // ==================================================
+        const player = {
+            lista: [],
+            indice: -1,
+            audio: new Audio(),
+
+            embaralhar(arr) {
+                const a = [...arr];
+                for (let i = a.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [a[i], a[j]] = [a[j], a[i]];
+                }
+                return a;
+            },
+
+            iniciar() {
+                this.lista = this.embaralhar(REPERTORIO);
+                this.indice = 0;
+                this.tocar();
+            },
+
+            tocar() {
+                if (this.indice >= this.lista.length) {
+                    this.lista = this.embaralhar(REPERTORIO);
+                    this.indice = 0;
+                }
+                const m = this.lista[this.indice];
+                this.audio.src = m.url;
+                document.getElementById('nomeMusica').textContent = m.titulo;
+                document.getElementById('artista').textContent = m.artista;
+                this.audio.play().catch(() => {});
+                this.atualizarBotao(true);
+            },
+
+            proxima() { this.indice++; this.tocar(); },
+            anterior() { if (this.indice > 0) { this.indice--; this.tocar(); } },
+
+            toggle() {
+                if (this.audio.paused) { this.audio.play(); this.atualizarBotao(true); }
+                else { this.audio.pause(); this.atualizarBotao(false); }
+            },
+
+            atualizarBotao(tocando) {
+                const icone = document.querySelector('#btnPlay i');
+                icone.className = tocando ? 'fa fa-pause' : 'fa fa-play';
+                document.getElementById('iconeMusica').classList.toggle('tocando', tocando);
+            },
+
+            volume(v) { this.audio.volume = v / 100; }
+        };
+
+        // ==================================================
+        // 🎛️ Conectar botões
+        // ==================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            player.iniciar();
+            player.audio.addEventListener('ended', () => player.proxima());
+            
+            document.getElementById('btnPlay').onclick = () => player.toggle();
+            document.getElementById('btnProximo').onclick = () => player.proxima();
+            document.getElementById('btnAnterior').onclick = () => player.anterior();
+            document.getElementById('volume').oninput = (e) => player.volume(e.target.value);
+            player.volume(70);
+        });
+    </script>
+</body>
+</html>

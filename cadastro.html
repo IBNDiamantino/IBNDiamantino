@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tornar-se Membro — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#0A1A3F', secondary: '#D4AF37', light: '#F8F9FC' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light min-h-screen py-8 px-4">
+    <div class="max-w-md mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-primary">Tornar-se Membro</h1>
+            <p class="text-gray-600 mt-2">Passo 1 de 2 — Dados de acesso</p>
+            <div class="flex justify-center gap-2 mt-4">
+                <span class="w-8 h-2 rounded-full bg-secondary"></span>
+                <span class="w-8 h-2 rounded-full bg-gray-300"></span>
+            </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-xl shadow-lg">
+            <form id="formCadastro" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nome Completo *</label>
+                    <input type="text" id="nome" required class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">E-mail *</label>
+                    <input type="email" id="email" list="listaUltimosLogins" autocomplete="email" required class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none" placeholder="seu@email.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Telefone *</label>
+                    <input type="tel" id="telefone" required class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none" placeholder="(65) 9XXXX-XXXX">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Senha *</label>
+                    <input type="password" id="senha" required minlength="4" class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none" placeholder="Mínimo 4 caracteres">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Confirmar Senha *</label>
+                    <input type="password" id="confirmaSenha" required class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none">
+                </div>
+                <div id="msg" class="text-sm hidden"></div>
+                <button type="submit" class="w-full bg-primary text-white p-3 rounded-lg font-bold hover:opacity-90">
+                    <i class="fa fa-arrow-right mr-2"></i> Continuar
+                </button>
+            </form>
+
+            <p class="text-center text-sm text-gray-500 mt-6">
+                Já tem conta? <a href="login.html" class="text-secondary font-bold hover:underline">Faça login</a>
+            </p>
+            <p class="text-center mt-3">
+                <a href="index.html" class="text-primary text-sm hover:underline">← Voltar ao site</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('formCadastro').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const nome = document.getElementById('nome').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const telefone = document.getElementById('telefone').value.trim();
+            const senha = document.getElementById('senha').value;
+            const confirma = document.getElementById('confirmaSenha').value;
+            const msg = document.getElementById('msg');
+
+            if (senha.length < 4) {
+                msg.textContent = 'Senha precisa ter pelo menos 4 caracteres.';
+                msg.className = 'text-red-500 text-sm';
+                msg.classList.remove('hidden');
+                return;
+            }
+            if (senha !== confirma) {
+                msg.textContent = 'As senhas não coincidem.';
+                msg.className = 'text-red-500 text-sm';
+                msg.classList.remove('hidden');
+                return;
+            }
+
+            // Guarda dados parciais para o passo 2
+            sessionStorage.setItem('ibn_cadastro_parcial', JSON.stringify({
+                nome, email, telefone, senha
+            }));
+
+            window.location.href = 'completar-cadastro.html';
+        });
+    </script>
+</body>
+</html>

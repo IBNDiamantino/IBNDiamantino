@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#0A1A3F', secondary: '#D4AF37', light: '#F8F9FC' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light min-h-screen">
+    <header class="bg-primary text-white py-4 px-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">⚙️ Painel Administrativo</h1>
+            <div class="flex items-center gap-4">
+                <span id="nomeUsuario" class="text-sm text-secondary"></span>
+                <a href="index.html" class="text-sm hover:text-secondary">← Site</a>
+                <button id="btnSair" class="text-sm bg-red-600 px-3 py-1 rounded hover:bg-red-700">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- Sem permissão -->
+        <div id="semPermissao" class="hidden text-center py-12">
+            <i class="fa fa-lock text-5xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 text-lg">Acesso restrito a Administradores.</p>
+            <a href="login.html" class="inline-block mt-4 bg-secondary text-primary px-6 py-2 rounded font-bold">Fazer Login</a>
+        </div>
+
+        <!-- Conteúdo autorizado -->
+        <div id="conteudo" class="space-y-8">
+            
+            <!-- GESTOR APENAS: Nomear Administradores (máx. 3) — busca entre membros -->
+            <section id="secNomearAdmins" data-only-gestor="1" class="bg-white p-6 rounded-xl shadow">
+                <h2 class="text-xl font-bold text-primary mb-2">👑 Nomear Administradores</h2>
+                <p class="text-sm text-gray-500 mb-1">Escolha um <strong>membro já cadastrado</strong> (como no gestor). Máximo <strong>3 administradores</strong>.</p>
+                <p class="text-xs text-gray-400 mb-4">Admins gerenciam membros/eventos, mas não nomeiam outros. O <strong>Gestor Master</strong> continua acima de todos.</p>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <select id="selNovoAdmin" class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]">
+                        <option value="">Buscar / selecionar membro para admin...</option>
+                    </select>
+                    <button type="button" id="btnNomearAdmin" class="bg-secondary text-primary px-4 py-2 rounded-lg font-bold text-sm">+ Nomear admin</button>
+                </div>
+                <p id="msgNomearAdmin" class="text-sm mb-2 hidden"></p>
+                <p class="text-xs font-bold text-gray-600 mb-1">Administradores atuais <span id="cntAdmins">0/3</span></p>
+                <div id="listaAdmins" class="space-y-2"></div>
+            </section>
+
+            <!-- GESTOR: até 2 gestores membros + transferir -->
+            <section id="secTransferirGestor" class="bg-white rounded-xl shadow p-5 border border-secondary/30 mb-6">
+                <h2 class="font-bold text-primary mb-2">👑 Gestores (máx. 2) + Transferir</h2>
+                <p class="text-xs text-gray-500 mb-3">
+                    Até <strong>2 gestores</strong> entre os membros cadastrados. O <strong>Gestor Master</strong> (conta sistema) continua com controle total e não conta nesse limite.
+                    Use “Nomear gestor” para um segundo gestor, ou “Transferir” se o pastor mudar de igreja.
+                </p>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    <select id="selNovoGestor" class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]"></select>
+                    <button type="button" id="btnNomearGestor" class="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm">Nomear gestor</button>
+                    <button type="button" id="btnTransferirGestor" class="bg-secondary text-primary px-4 py-2 rounded-lg font-bold text-sm">Transferir titularidade</button>
+                </div>
+                <p id="msgTransferGestor" class="text-sm mt-2 hidden"></p>
+                <p class="text-xs font-bold text-gray-600 mt-3 mb-1">Gestores atuais (membros) <span id="cntGestores">0/2</span></p>
+                <div id="listaGestoresMembros" class="space-y-2"></div>
+            </section>
+
+
+            
+            <!-- Pendências de gestão (só aparece se houver algo a resolver) -->
+            <section id="cardPendenciasGestao" class="hidden rounded-xl shadow border-2 p-5 mb-2">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold flex items-center gap-2">
+                            <span id="iconePendenciasGestao">⚠️</span>
+                            <span id="tituloPendenciasGestao">Pendências na gestão</span>
+                        </h2>
+                        <p id="resumoPendenciasTexto" class="text-sm mt-1 opacity-90"></p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 text-xs font-bold">
+                        <span id="badgeVermelho" class="hidden px-3 py-1 rounded-full bg-red-600 text-white">0 cargos vagos</span>
+                        <span id="badgeLaranja" class="hidden px-3 py-1 rounded-full bg-amber-500 text-white">0 aprovações</span>
+                        <span id="badgeAzul" class="hidden px-3 py-1 rounded-full bg-blue-600 text-white">0 relatórios</span>
+                    </div>
+                </div>
+                <div id="listaPendenciasGestao" class="mt-3 grid md:grid-cols-2 gap-2 text-sm"></div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <a href="gestao-membros.html" class="text-sm font-bold underline">Abrir gestão de membros →</a>
+                    <a href="celulas.html" class="text-sm font-bold underline">Ver células →</a>
+                    <a href="ministerios.html" class="text-sm font-bold underline">Ver ministérios →</a>
+                </div>
+            </section>
+
+            <!-- Nuvem: exportações centralizadas -->
+            <section class="bg-white p-6 rounded-xl shadow border-2 border-secondary/40">
+                <h2 class="text-xl font-bold text-primary mb-2">☁️ Nuvem da igreja</h2>
+                <p class="text-sm text-gray-600 mb-3">
+                    Baixe membros e relatórios de células de <strong>todos os aparelhos</strong> que já sincronizaram.
+                    Configure uma vez em <a href="configurar-nuvem.html" class="text-secondary font-bold underline">Configurar nuvem</a>.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="configurar-nuvem.html" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-accent">
+                        <i class="fa fa-cloud"></i> Abrir nuvem / baixar CSV
+                    </a>
+                    <a href="visitantes.html" class="bg-secondary text-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-yellow-400">
+                        <i class="fa fa-user-plus"></i> Visitantes / Acolhimento
+                    </a>
+                </div>
+            </section>
+
+            <!-- Gestão de Membros -->
+            <section class="bg-white p-6 rounded-xl shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-primary">👥 Membros Cadastrados</h2>
+                    <button id="btnBaixarMembros" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">
+                        <i class="fa fa-download"></i> Baixar CSV Membros
+                    </button>
+                    <button id="btnBaixarGeralTudo" class="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-accent">
+                        <i class="fa fa-files-o"></i> Baixar relatório geral (tudo)
+                    </button>
+                </div>
+                <p class="text-sm text-gray-500 mb-3" id="qtdMembros">0 membros</p>
+                <div id="listaMembros" class="space-y-3 text-sm"></div>
+            </section>
+
+
+            
+            
+            <!-- Escala de serviços: formulário + CSV -->
+            <section class="bg-white p-6 rounded-xl shadow border border-indigo-200">
+                <h2 class="text-xl font-bold text-primary mb-1">📋 Escala de serviços</h2>
+                <p class="text-sm text-gray-500 mb-4">
+                    Cada ministério tem suas <strong>funções e quantidades</strong>.
+                    Monte o dia no formulário ou importe um CSV. O membro é avisado no dia anterior e no dia.
+                    Competência: <strong>líder do ministério</strong> (em Ministérios → escala → montar funções) e <strong>secretaria/gestor</strong> aqui.
+                </p>
+
+                <!-- Formulários enviados pelo líder — admin e gestor aprovam aqui -->
+                <div id="blocoModelosEscalaPendentes" class="hidden mb-5 border-2 border-blue-400 bg-blue-50 rounded-xl p-4">
+                    <h3 class="font-bold text-blue-900 text-sm mb-1">⏳ Formulários de escala aguardando aprovação</h3>
+                    <p class="text-xs text-blue-800 mb-3">O líder montou novas funções e quantidades. <strong>Admin (secretaria) e gestor</strong> podem aprovar ou recusar. Só depois de aprovado o formulário vale na escala.</p>
+                    <div id="listaModelosEscalaPendentes" class="space-y-3"></div>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-3 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Ministério</label>
+                        <select id="escalaMinisterioSel" class="w-full border rounded-lg px-3 py-2 text-sm"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Data do culto / evento</label>
+                        <input type="date" id="escalaDataDia" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Rótulo (opcional)</label>
+                        <input type="text" id="escalaLabelDia" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ex: DOM 12/10/26 ou CEIA">
+                    </div>
+                </div>
+
+                <div class="mb-3 flex flex-wrap gap-2 items-center">
+                    <button type="button" id="btnCarregarModeloEscala" class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-bold">Montar formulário do ministério</button>
+                    <button type="button" id="btnExportarEscalaCSV" class="bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-bold">Baixar CSV deste ministério</button>
+                </div>
+
+                <div id="formEscalaFuncoes" class="space-y-2 mb-3 hidden"></div>
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Observação do dia</label>
+                    <input type="text" id="escalaObsDia" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ex: CEIA + BATISMO">
+                </div>
+                <button type="button" id="btnSalvarDiaEscala" class="hidden bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold">Salvar escala deste dia</button>
+                <p id="msgEscalaForm" class="text-sm mt-2 hidden"></p>
+
+                <hr class="my-5 border-gray-200">
+                <p class="text-xs font-bold text-gray-600 mb-2">Ou importar CSV pronto</p>
+                <input type="file" id="importEscalaCSV" accept=".csv,text/csv" class="w-full text-sm border rounded-lg px-3 py-2 max-w-md">
+                <p id="msgEscalaImport" class="text-sm hidden mt-2"></p>
+                <p class="text-xs text-gray-400 mt-2">Modelo Atmosfera já vem com as funções. Outros ministérios: edite as linhas do formulário (função e quantas pessoas) e salve o dia.</p>
+
+                <details class="mt-4 text-sm">
+                    <summary class="cursor-pointer font-bold text-primary">Editar modelo de funções deste ministério (qtd sugerida)</summary>
+                    <div id="editorModeloEscala" class="mt-2 space-y-2"></div>
+                    <button type="button" id="btnAddFuncaoModelo" class="text-xs underline text-primary mt-1">+ Função</button>
+                    <button type="button" id="btnSalvarModeloEscala" class="ml-3 bg-secondary text-primary px-3 py-1 rounded text-xs font-bold">Salvar modelo</button>
+                </details>
+            </section>
+
+
+            <!-- Quadro de avisos do dia (cabeçalho do site) -->
+            <section id="secQuadroAvisos" class="bg-white p-6 rounded-xl shadow border border-amber-200">
+                <h2 class="text-xl font-bold text-primary mb-1">📢 Quadro de avisos</h2>
+                <p class="text-sm text-gray-500 mb-4">
+                    Escolha a data, veja ou edite o aviso daquele dia e salve.
+                    Aparece no cabeçalho amarelo do site. <strong>Datas passadas não podem ser alteradas.</strong>
+                    Só admin e gestor.
+                </p>
+                <div class="grid md:grid-cols-3 gap-3 mb-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Data</label>
+                        <input type="date" id="avisoData" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <p id="avisoDataInfo" class="text-xs mt-1 text-gray-500"></p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Texto do aviso neste dia</label>
+                        <textarea id="avisoTexto" rows="3" maxlength="220" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ao escolher a data, o texto do dia aparece aqui para você editar"></textarea>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" id="btnSalvarAviso" class="bg-secondary text-primary px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400">
+                        <i class="fa fa-save"></i> Salvar aviso deste dia
+                    </button>
+                    <button type="button" id="btnLimparAvisoDia" class="border border-red-400 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-50">
+                        Apagar aviso deste dia
+                    </button>
+                </div>
+                <p id="msgAviso" class="text-sm mt-2 hidden"></p>
+                <h3 class="font-bold text-primary text-sm mt-5 mb-2">Próximos avisos</h3>
+                <div id="listaAvisos" class="space-y-2 text-sm"></div>
+            </section>
+
+            <!-- Gestão de Eventos -->
+            <section class="bg-white p-6 rounded-xl shadow">
+                <h2 class="text-xl font-bold text-primary mb-4">📅 Gestão de Eventos</h2>
+                <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-gray-800 space-y-2">
+                    <p class="font-bold text-primary">Pagamento no site (PagBank)</p>
+                    <ol class="list-decimal ml-5 space-y-1 text-xs">
+                        <li>No app ou site <strong>PagBank</strong>, crie um <strong>Link de pagamento</strong> com o valor do evento.</li>
+                        <li>Copie o link e cole abaixo em <strong>Link PagBank</strong>.</li>
+                        <li>Preencha também a <strong>chave PIX</strong> da igreja (quem preferir PIX).</li>
+                        <li>Publique o evento. O inscrito paga pelo site e envia o comprovante; você confirma na lista.</li>
+                    </ol>
+                </div>
+                <form id="formEvento" class="grid md:grid-cols-3 gap-3 mb-6">
+                    <input type="text" id="nomeEvento" placeholder="Nome do evento" required class="p-3 border rounded-lg">
+                    <input type="date" id="dataEvento" required class="p-3 border rounded-lg">
+                    <input type="text" id="localEvento" placeholder="Local" class="p-3 border rounded-lg">
+                    <input type="number" id="valorEvento" placeholder="Valor R$ (0 = gratuito)" min="0" step="0.01" value="0" class="p-3 border rounded-lg">
+                    <input type="text" id="pixEvento" placeholder="Chave PIX da igreja" class="p-3 border rounded-lg">
+                    <input type="text" id="formaEvento" placeholder="Formas aceitas" value="PIX, Cartão (PagBank), Dinheiro" class="p-3 border rounded-lg">
+                    <input type="url" id="linkPagEvento" placeholder="Link PagBank / PagSeguro de pagamento" class="p-3 border rounded-lg md:col-span-2">
+                    <input type="url" id="fotoEvento" placeholder="Link da foto de divulgação" class="p-3 border rounded-lg">
+                    <input type="url" id="videoEvento" placeholder="Link do vídeo (YouTube)" class="p-3 border rounded-lg md:col-span-2">
+                    <label class="flex items-center gap-2 text-sm md:col-span-2"><input type="checkbox" id="visitaEvento" checked class="accent-secondary"> Visitantes podem se inscrever</label>
+                    <button type="submit" class="bg-secondary text-primary px-4 py-3 rounded-lg font-bold">
+                        <i class="fa fa-plus"></i> Publicar evento
+                    </button>
+                </form>
+                <div class="flex justify-between items-center mb-3">
+                    <p class="text-sm text-gray-500" id="qtdEventos">0 eventos</p>
+                    <button id="btnBaixarEventos" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">
+                        <i class="fa fa-download"></i> Baixar CSV
+                    </button>
+                </div>
+                <div id="listaEventos" class="space-y-2 text-sm"></div>
+                <h3 class="font-bold text-primary text-sm mt-6 mb-2">Inscrições recebidas</h3>
+                <div id="listaInscritosEventos" class="space-y-2 text-sm"></div>
+                <button type="button" id="btnBaixarInscritos" class="mt-2 text-sm font-bold text-primary underline">Baixar CSV de inscritos</button>
+            </section>
+        </div>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        // === VERIFICAÇÃO DE SESSÃO (gestor = mandachuva; admin = secretaria) ===
+        const usuarioLogado = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+        const ehGestor = typeof isGestor === 'function' ? isGestor(usuarioLogado) : (usuarioLogado && usuarioLogado.nivel === 'gestor');
+        const ehGestorMaster = typeof isGestorMaster === 'function' ? isGestorMaster(usuarioLogado) : false;
+        const ehAdmin = typeof isAdmin === 'function' ? isAdmin(usuarioLogado) : (usuarioLogado && (usuarioLogado.nivel === 'admin' || usuarioLogado.nivel === 'gestor'));
+        
+        if (!usuarioLogado || !ehAdmin) {
+            document.getElementById('semPermissao').classList.remove('hidden');
+            document.getElementById('conteudo').classList.add('hidden');
+        } else {
+            document.getElementById('nomeUsuario').textContent = 
+                (ehGestorMaster ? '👑 Gestor Master' : (ehGestor ? '👑 Gestor' : '🛡️ Secretaria')) + ': ' + (usuarioLogado.nome || '');
+            
+            // Qualquer gestor nomeia admin; só Master vê nomear/transferir gestores
+            if (!ehGestor) {
+                var sec = document.getElementById('secNomearAdmins');
+                if (sec) sec.style.display = 'none';
+            }
+            carregarTudo();
+
+        (function(){
+            var sec = document.getElementById('secTransferirGestor');
+            if (!sec) return;
+            if (!ehGestorMaster) { sec.style.display = 'none'; return; }
+            var btnT = document.getElementById('btnTransferirGestor');
+            if (btnT) btnT.addEventListener('click', function(){
+                var sel = document.getElementById('selNovoGestor');
+                var id = sel && sel.value;
+                if (!id) { alert('Selecione um membro.'); return; }
+                if (!confirm('Transferir a titularidade de GESTOR para esta pessoa?\n(Se já houver 2 gestores, os outros serão rebaixados para admin.)')) return;
+                var r = transferirTitularidadeGestor(id);
+                var msg = document.getElementById('msgTransferGestor');
+                if (msg) {
+                    msg.classList.remove('hidden');
+                    if (r && r.sucesso) {
+                        msg.className = 'text-sm mt-2 text-green-600';
+                        msg.textContent = r.mensagem || 'Transferido.';
+                    } else {
+                        msg.className = 'text-sm mt-2 text-red-600';
+                        msg.textContent = (r && r.mensagem) || 'Erro';
+                    }
+                }
+                try { preencherSelectGestor(); renderizarGestoresMembros(); renderizarAdmins(); preencherSelectAdmin(); } catch (e) {}
+            });
+        })();
+
+        }
+
+        document.getElementById('btnSair').addEventListener('click', () => {
+            if (typeof sair === 'function') sair();
+            else {
+                localStorage.removeItem('usuarioLogado');
+                localStorage.removeItem('ibn_sessao_atual');
+                window.location.href = 'login.html';
+            }
+        });
+
+        // === ADMINISTRADORES / GESTORES (busca entre membros cadastrados) ===
+        function membrosParaSelectCargos() {
+            var membros = getMembros().slice();
+            membros = membros.filter(function (m) {
+                if (!m || !m.id) return false;
+                if (typeof isContaSistema === 'function' && isContaSistema(m)) return false;
+                if (typeof ehContaMasterSistema === 'function' && ehContaMasterSistema(m)) return false;
+                return true;
+            });
+            membros.sort(function (a, b) { return String(a.nome||'').localeCompare(String(b.nome||''), 'pt-BR'); });
+            return membros;
+        }
+        function preencherSelectAdmin() {
+            var sel = document.getElementById('selNovoAdmin');
+            if (!sel) return;
+            var adminsIds = {};
+            try {
+                (typeof listarAdminsMembros === 'function' ? listarAdminsMembros() : []).forEach(function (a) {
+                    adminsIds[String(a.id)] = true;
+                });
+            } catch (e) {}
+            sel.innerHTML = '<option value="">Buscar / selecionar membro para admin...</option>';
+            membrosParaSelectCargos().forEach(function (m) {
+                if (m.nivel === 'admin' || m.nivel === 'gestor') return;
+                if (adminsIds[String(m.id)]) return;
+                sel.innerHTML += '<option value="' + m.id + '">' + (m.nome || '') + ' — ' + (m.email || m.telefone || '') + '</option>';
+            });
+        }
+        function renderizarAdmins() {
+            var container = document.getElementById('listaAdmins');
+            var cnt = document.getElementById('cntAdmins');
+            if (!container) return;
+            var lista = (typeof listarAdminsMembros === 'function') ? listarAdminsMembros() : [];
+            if (cnt) cnt.textContent = lista.length + '/3';
+            if (!lista.length) {
+                container.innerHTML = '<p class="text-gray-400 text-sm">Nenhum administrador nomeado.</p>';
+                return;
+            }
+            container.innerHTML = lista.map(function (adm) {
+                return '<div class="flex justify-between items-center p-3 bg-gray-50 rounded border">' +
+                    '<div><p class="font-bold">' + (adm.nome || '') + '</p>' +
+                    '<p class="text-sm text-gray-500">' + (adm.email || '') + ' · ' + (adm.telefone || '') + '</p></div>' +
+                    (ehGestor ? '<button type="button" class="btn-rem-admin text-red-500 hover:text-red-700 text-sm font-bold" data-id="' + adm.id + '">Remover</button>' : '') +
+                    '</div>';
+            }).join('');
+            container.querySelectorAll('.btn-rem-admin').forEach(function (btn) {
+                btn.onclick = function () {
+                    if (!confirm('REMOVER este administrador?\n\nVolta a ser apenas MEMBRO (ex.: saiu da igreja ou não é mais secretaria).\nNão apaga o cadastro.')) return;
+                    var r = removerNivelAdmin(btn.getAttribute('data-id'));
+                    alert((r && r.mensagem) || (r && r.sucesso ? 'Removido' : 'Erro'));
+                    renderizarAdmins();
+                    preencherSelectAdmin();
+                    renderizarGestoresMembros();
+                    preencherSelectGestor();
+                };
+            });
+        }
+        function preencherSelectGestor() {
+            var sel = document.getElementById('selNovoGestor');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Selecione membro para gestor...</option>';
+            membrosParaSelectCargos().forEach(function (m) {
+                if (m.nivel === 'gestor') return;
+                sel.innerHTML += '<option value="' + m.id + '">' + (m.nome || '') + ' — ' + (m.email || m.telefone || '') + (m.nivel === 'admin' ? ' (admin)' : '') + '</option>';
+            });
+        }
+        function renderizarGestoresMembros() {
+            var box = document.getElementById('listaGestoresMembros');
+            var cnt = document.getElementById('cntGestores');
+            if (!box) return;
+            var lista = (typeof listarGestoresMembros === 'function') ? listarGestoresMembros() : [];
+            if (cnt) cnt.textContent = lista.length + '/2';
+            if (!lista.length) {
+                box.innerHTML = '<p class="text-gray-400 text-sm">Nenhum gestor nomeado entre os membros (só o Master do sistema).</p>';
+                return;
+            }
+            box.innerHTML = lista.map(function (g) {
+                return '<div class="flex justify-between items-center gap-2 p-3 bg-amber-50 rounded border border-amber-200">' +
+                    '<div><p class="font-bold">' + (g.nome || '') + '</p>' +
+                    '<p class="text-sm text-gray-500">' + (g.email || '') + '</p></div>' +
+                    (ehGestorMaster ? (
+                        '<div class="flex flex-wrap gap-2">' +
+                        '<button type="button" class="btn-reb-gestor text-xs font-bold text-amber-800 border border-amber-400 px-2 py-1 rounded" data-id="' + g.id + '">Rebaixar p/ admin</button>' +
+                        '<button type="button" class="btn-rem-gestor text-xs font-bold text-red-600 border border-red-300 px-2 py-1 rounded" data-id="' + g.id + '">Remover</button>' +
+                        '</div>'
+                    ) : '') +
+                    '</div>';
+            }).join('');
+            box.querySelectorAll('.btn-reb-gestor').forEach(function (btn) {
+                btn.onclick = function () {
+                    if (!confirm('Rebaixar este gestor para administrador (secretaria)?')) return;
+                    var r = rebaixarGestorParaAdmin(btn.getAttribute('data-id'));
+                    alert((r && r.mensagem) || (r && r.sucesso ? 'Ok' : 'Erro'));
+                    renderizarGestoresMembros();
+                    renderizarAdmins();
+                    preencherSelectGestor();
+                    preencherSelectAdmin();
+                };
+            });
+            box.querySelectorAll('.btn-rem-gestor').forEach(function (btn) {
+                btn.onclick = function () {
+                    if (!confirm('REMOVER este gestor?\n\nEle volta a ser apenas MEMBRO (ex.: saiu da igreja ou não é mais liderança).\nNão apaga o cadastro de membro.')) return;
+                    var r = removerNivelGestor(btn.getAttribute('data-id'));
+                    alert((r && r.mensagem) || (r && r.sucesso ? 'Removido' : 'Erro'));
+                    renderizarGestoresMembros();
+                    renderizarAdmins();
+                    preencherSelectGestor();
+                    preencherSelectAdmin();
+                };
+            });
+        }
+        function mostrarMsgCargo(elId, ok, texto) {
+            var msg = document.getElementById(elId);
+            if (!msg) return;
+            msg.classList.remove('hidden');
+            msg.className = 'text-sm mt-2 ' + (ok ? 'text-green-600' : 'text-red-600');
+            msg.textContent = texto || '';
+        }
+        (function bindCargos() {
+            if (!ehGestor) return;
+            preencherSelectAdmin();
+            renderizarAdmins();
+            // Gestores: só Master
+            if (ehGestorMaster) {
+                preencherSelectGestor();
+                renderizarGestoresMembros();
+            }
+            var btnA = document.getElementById('btnNomearAdmin');
+            if (btnA) btnA.addEventListener('click', function () {
+                var sel = document.getElementById('selNovoAdmin');
+                var id = sel && sel.value;
+                if (!id) { alert('Selecione um membro cadastrado.'); return; }
+                if (!confirm('Nomear esta pessoa como administrador (secretaria)?')) return;
+                var r = nomearComoAdmin(id);
+                mostrarMsgCargo('msgNomearAdmin', r && r.sucesso, (r && r.mensagem) || 'Erro');
+                renderizarAdmins();
+                preencherSelectAdmin();
+            });
+            var btnG = document.getElementById('btnNomearGestor');
+            if (btnG && ehGestorMaster) btnG.addEventListener('click', function () {
+                var sel = document.getElementById('selNovoGestor');
+                var id = sel && sel.value;
+                if (!id) { alert('Selecione um membro.'); return; }
+                if (!confirm('Nomear como GESTOR? (máx. 2; Master continua acima)')) return;
+                var r = nomearComoGestor(id);
+                mostrarMsgCargo('msgTransferGestor', r && r.sucesso, (r && r.mensagem) || 'Erro');
+                renderizarGestoresMembros();
+                preencherSelectGestor();
+                renderizarAdmins();
+            });
+        })();
+
+        // === MEMBROS — FUNÇÕES COMPLETAS ===
+        function getMembros() {
+            if (typeof lerMembros === 'function') return lerMembros();
+            try { return JSON.parse(localStorage.getItem('ibn_membros') || localStorage.getItem('membrosCadastro') || '[]'); }
+            catch { return []; }
+        }
+        function salvarMembrosPainel(lista) {
+            // Carimba atualizadoEm nos itens tocados e usa salvarMembros (nuvem + sessão)
+            var agora = new Date().toISOString();
+            (lista || []).forEach(function (m) {
+                if (m && !m._skipStamp) m.atualizadoEm = agora;
+            });
+            if (typeof salvarMembros === 'function') {
+                salvarMembros(lista);
+            } else {
+                localStorage.setItem('ibn_membros', JSON.stringify(lista || []));
+                try { localStorage.setItem('membrosCadastro', JSON.stringify(lista || [])); } catch (e) {}
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.sincronizarMembros) {
+                    try {
+                        IBNNuvem.sincronizarMembros(lista).then(function (r) {
+                            if (r && !r.sucesso && typeof avisarFalhaNuvem === 'function') {
+                                avisarFalhaNuvem('Cadastro de membros', r.mensagem || '');
+                            }
+                        });
+                    } catch (e) {}
+                }
+            }
+            try { if (typeof atualizarSessaoDoCadastro === 'function') atualizarSessaoDoCadastro(); } catch (e) {}
+            renderizarMembros();
+        }
+        function renderizarMembros() {
+            let lista = getMembros().slice().filter(function(m) {
+                if (typeof isContaSistema === 'function') return !isContaSistema(m);
+                var em = String(m.email||'').toLowerCase();
+                var nm = String(m.nome||'').toLowerCase();
+                if (em === 'gestor@ibndiamantino.com.br' || em === 'admin@ibndiamantino.com.br') return false;
+                if (nm === 'gestor master' || nm === 'admin master') return false;
+                return true;
+            });
+            const buscaEl = document.getElementById('buscaMembroPainel');
+            const filtroEl = document.getElementById('filtroPendPainel');
+            const q = ((buscaEl && buscaEl.value) || '').toLowerCase().trim();
+            const filtro = (filtroEl && filtroEl.value) || '';
+
+            function contarPendencias(m) {
+                const st = (m.status || '').toLowerCase();
+                if (st === 'rejeitado' || st === 'excluido' || st === 'excluído') {
+                    return { n: -1, excluido: true };
+                }
+                let n = 0;
+                if (st === 'pendente') n++;
+                if (!(m.nascimento || m.dataNascimento)) n++;
+                const tel = String(m.telefone || '').replace(/\D/g, '');
+                if (!tel) n++;
+                if (!String(m.email || '').trim()) n++;
+                if (!Array.isArray(m.celulas) || !m.celulas.length) n++;
+                return { n: n, excluido: false };
+            }
+
+            function bolinha(info) {
+                if (info.excluido) return { cor: 'bg-black', title: 'Membro excluído / rejeitado' };
+                if (info.n <= 0) return { cor: 'bg-white border border-gray-300', title: 'Sem pendência' };
+                if (info.n === 1) return { cor: 'bg-yellow-400', title: '1 pendência' };
+                if (info.n === 2) return { cor: 'bg-orange-500', title: '2 pendências' };
+                return { cor: 'bg-red-600', title: info.n + ' pendências' };
+            }
+
+            if (q) {
+                const qTel = q.replace(/\D/g, '');
+                lista = lista.filter(function(m) {
+                    const nome = (m.nome || '').toLowerCase();
+                    const email = (m.email || '').toLowerCase();
+                    const tel = String(m.telefone || '').replace(/\D/g, '');
+                    return nome.indexOf(q) !== -1 || email.indexOf(q) !== -1 || (qTel && tel.indexOf(qTel) !== -1);
+                });
+            }
+            if (filtro === 'pendente') {
+                lista = lista.filter(function(m) { var i = contarPendencias(m); return !i.excluido && i.n > 0; });
+            } else if (filtro === 'ok') {
+                lista = lista.filter(function(m) { var i = contarPendencias(m); return !i.excluido && i.n === 0; });
+            } else if (filtro === 'excluido') {
+                lista = lista.filter(function(m) { return contarPendencias(m).excluido; });
+            }
+
+            lista.sort(function(a, b) {
+                return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' });
+            });
+
+            document.getElementById('qtdMembros').textContent = lista.length + ' membro' + (lista.length !== 1 ? 's' : '') + (q || filtro ? ' (filtrado)' : '');
+            const container = document.getElementById('listaMembros');
+            if (lista.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 p-4">Nenhum membro encontrado.</p>';
+                return;
+            }
+
+            container.innerHTML = lista.map(function(m) {
+                const info = contarPendencias(m);
+                const bol = bolinha(info);
+                const nasc = m.nascimento || m.dataNascimento || '—';
+                const tel = m.telefone || '—';
+                return (
+                    '<div class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer linha-membro" data-id="' + m.id + '">' +
+                    '<div class="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-3 gap-x-3 items-center">' +
+                    '<span class="font-semibold text-primary truncate">' + (m.nome || '—') + '</span>' +
+                    '<span class="text-gray-500 text-xs sm:text-sm">' + nasc + '</span>' +
+                    '<span class="text-gray-600 text-xs sm:text-sm truncate">' + tel + '</span>' +
+                    '</div>' +
+                    '<span class="w-3 h-3 rounded-full flex-shrink-0 ' + bol.cor + '" title="' + bol.title + '"></span>' +
+                    '</div>'
+                );
+            }).join('');
+
+            container.querySelectorAll('.linha-membro').forEach(function(row) {
+                row.addEventListener('click', function() {
+                    window.location.href = 'gestao-membros.html#membro-' + row.getAttribute('data-id');
+                });
+            });
+        }
+
+        // ✅ PROMOVER MEMBRO A ADMIN (Gestor apenas)
+        window.promoverAdmin = function(idx) {
+            if (!confirm('Promover este membro a Administrador? Ele poderá gerenciar membros e eventos.')) return;
+            const lista = getMembros();
+            const membro = lista[idx];
+            if (!membro.email) { alert('Membro sem e-mail — não é possível promover.'); return; }
+            
+            const admins = getAdminsNomeados();
+            if (admins.some(a => a.email === membro.email)) { alert('Já é administrador.'); return; }
+            
+            admins.push({ 
+                nome: membro.nome, 
+                email: membro.email, 
+                senha: membro.senha || '' 
+            });
+            localStorage.setItem('adminsNomeados', JSON.stringify(admins));
+            alert('✅ Promovido a Administrador com sucesso!');
+            renderizarMembros();
+        };
+
+        // ✅ REMOVER MEMBRO DEFINITIVAMENTE
+        window.removerMembro = function(idx) {
+            if (!confirm('⚠️ Tem certeza? Este membro será REMOVIDO DEFINITIVAMENTE da nuvem e de todos os aparelhos (não volta na sincronização).')) return;
+            const lista = getMembros();
+            const membro = lista[idx];
+            if (!membro) return;
+            // Se for admin nomeado, remove também da lista de admins
+            let admins = getAdminsNomeados();
+            admins = admins.filter(a => a.email !== membro.email);
+            localStorage.setItem('adminsNomeados', JSON.stringify(admins));
+            if (typeof excluirMembroDefinitivo === 'function') {
+                const r = excluirMembroDefinitivo(membro.id);
+                if (!r.sucesso) {
+                    alert(r.mensagem || 'Não foi possível remover.');
+                    return;
+                }
+            } else {
+                lista.splice(idx, 1);
+                salvarMembrosPainel(lista);
+            }
+            alert('✅ Membro removido. Não deve voltar após sincronizar.');
+            if (typeof renderizarMembros === 'function') renderizarMembros();
+        };
+
+
+        // Fallback CSV (funciona mesmo se conta.js antigo não tiver as funções)
+        function _csvEsc(v) {
+            var s = (v === null || v === undefined) ? '' : String(v);
+            return '"' + s.replace(/\r?\n/g, ' ').replace(/"/g, '""') + '"';
+        }
+        function _dataArqBR() {
+            if (typeof dataArquivoBR === 'function') return dataArquivoBR();
+            var d = new Date();
+            return String(d.getDate()).padStart(2,'0') + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + d.getFullYear();
+        }
+        function _fmtDataCSV(d) {
+            if (typeof formatarDataCSV === 'function') return formatarDataCSV(d);
+            if (!d) return '';
+            d = String(d).trim();
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(d)) return d.slice(0,10);
+            if (/^\d{4}-\d{2}-\d{2}/.test(d)) { var p = d.slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+            return d;
+        }
+        function _montarCSV(cols, rows) {
+            if (typeof montarCSV === 'function') return montarCSV(cols, rows);
+            var sep = ';';
+            var head = cols.map(_csvEsc).join(sep);
+            var body = (rows || []).map(function(r){ return r.map(_csvEsc).join(sep); }).join('\n');
+            return '\uFEFF' + head + '\n' + body;
+        }
+        function _exportMembrosCSV(lista) {
+            if (typeof exportarMembrosCSVDefinido === 'function') return exportarMembrosCSVDefinido(lista);
+            var cols = ['Nome','Email','Telefone','Batizado','Funções','Data de Cadastro','Nascimento','Sexo','Estado Civil','Endereço','Município','UF','Células','Ministérios','Status','Nível'];
+            var linhas = (lista || []).map(function(m) {
+                var funcoes = [];
+                if (m.cargo) funcoes.push(m.cargo);
+                if (Array.isArray(m.funcoesAprovadas)) m.funcoesAprovadas.forEach(function(f){ if (funcoes.indexOf(f)<0) funcoes.push(f); });
+                if (!funcoes.length) funcoes.push('Membro');
+                var bat = (m.batizado === true || m.batizado === 'sim' || m.batismo === 'sim') ? 'Sim' :
+                    ((m.batizado === false || m.batizado === 'nao' || m.batismo === 'nao') ? 'Não' : (m.batizado || ''));
+                var celulas = Array.isArray(m.celulas) ? m.celulas.map(function(c){ return c.nome || c.id || c; }).join(' | ') : '';
+                var mins = Array.isArray(m.ministerios) ? m.ministerios.join(' | ') : (m.ministerios || '');
+                return [
+                    m.nome||'', m.email||'', m.telefone||'', bat, funcoes.join(', '),
+                    _fmtDataCSV(m.dataCadastro || m.criadoEm || ''),
+                    _fmtDataCSV(m.nascimento||''), m.sexo||'', m.estadoCivil||'',
+                    m.endereco||'', m.municipio||'', m.uf||'', celulas, mins, m.status||'', m.nivel||''
+                ];
+            });
+            return _montarCSV(cols, linhas);
+        }
+
+        // Download CSV — colunas definidas, separador ; (Excel Brasil)
+        
+        document.getElementById('btnBaixarGeralTudo') && document.getElementById('btnBaixarGeralTudo').addEventListener('click', function() {
+            var dataArq = _dataArqBR();
+            var ok = 0;
+            // 1) Membros (completo)
+            try {
+                var listaM = getMembros();
+                if (listaM.length) {
+                    baixar(_exportMembrosCSV(listaM), 'relatorio_membros_' + dataArq + '.csv');
+                    ok++;
+                }
+            } catch (e) { console.warn(e); }
+            // 2) Eventos
+            try {
+                var listaE = getEventos();
+                if (listaE.length) {
+                    var csvE = _montarCSV(['Nome','Data','Local','Valor','PIX','Formas','LinkPagamento'],
+                        listaE.map(function(ev){
+                            return [ev.nome||'', _fmtDataCSV(ev.data), ev.local||'', ev.valor||0, ev.pix||'', ev.forma||ev.formaPagamento||'', ev.linkPagamento||''];
+                        }));
+                    baixar(csvE, 'eventos_' + dataArq + '.csv');
+                    ok++;
+                }
+            } catch (e) { console.warn(e); }
+            // 3) Inscritos em eventos
+            try {
+                var listaI = (typeof getInscritosEventos === 'function') ? getInscritosEventos() : [];
+                if (listaI.length) {
+                    var csvI = _montarCSV(
+                        ['Codigo','Nome','Evento','Telefone','Email','Valor','Status','MeioPagamento','DataInsc','DataPagamento','Tipo'],
+                        listaI.map(function(i){
+                            return [i.codigo||'', i.nome||'', i.eventoNome||'', i.telefone||'', i.email||'', i.valor||0,
+                                i.statusPagamento || (i.pago ? 'confirmado' : 'pendente'), i.meioPagamento||'', i.dataInsc||'', i.dataPagamento||'', i.tipo||''];
+                        })
+                    );
+                    baixar(csvI, 'inscritos-eventos_' + dataArq + '.csv');
+                    ok++;
+                }
+            } catch (e) { console.warn(e); }
+            // 4) Relatórios de células
+            try {
+                if (typeof exportarRelatoriosCSV === 'function') {
+                    var r = exportarRelatoriosCSV(null);
+                    if (r && r.sucesso && r.csv) {
+                        baixar(r.csv, r.nomeArquivo || ('relatorios-celulas-geral_' + dataArq + '.csv'));
+                        ok++;
+                    }
+                }
+            } catch (e) { console.warn(e); }
+            // 5) Visitantes (se houver)
+            try {
+                if (typeof exportarVisitantesCSVDefinido === 'function') {
+                    var csvV = exportarVisitantesCSVDefinido();
+                    // só baixa se tiver linha além do cabeçalho
+                    if (csvV && csvV.split('\n').length > 1) {
+                        baixar(csvV, 'visitantes_' + dataArq + '.csv');
+                        ok++;
+                    }
+                }
+            } catch (e) { console.warn(e); }
+
+            if (ok === 0) alert('Nenhum dado para exportar ainda.');
+            else alert('Relatório geral: ' + ok + ' arquivo(s) CSV baixado(s).\nColunas separadas por ; — data no nome: ' + dataArq);
+        });
+
+        document.getElementById('btnBaixarMembros').addEventListener('click', () => {
+            const lista = getMembros();
+            if (!lista.length) { alert('Sem dados para baixar.'); return; }
+            var csv = _exportMembrosCSV(lista);
+            if (!csv) { alert('Não foi possível gerar o CSV.'); return; }
+            baixar(csv, 'relatorio_membros_' + _dataArqBR() + '.csv');
+        });
+
+        // === EVENTOS ===
+        function getEventos() {
+            try {
+                var a = JSON.parse(localStorage.getItem('ibn_eventos') || 'null');
+                if (Array.isArray(a)) return a;
+                var b = JSON.parse(localStorage.getItem('eventos') || '[]');
+                return Array.isArray(b) ? b : [];
+            } catch(e) { return []; }
+        }
+        function salvarEventos(lista) {
+            localStorage.setItem('ibn_eventos', JSON.stringify(lista));
+            try { localStorage.setItem('eventos', JSON.stringify(lista)); } catch(e) {}
+            renderizarEventos();
+        }
+        function renderizarEventos() {
+            const lista = getEventos();
+            document.getElementById('qtdEventos').textContent = `${lista.length} evento${lista.length!==1?'s':''}`;
+            const container = document.getElementById('listaEventos');
+            if (lista.length === 0) {
+                container.innerHTML = '<p class="text-gray-400">Nenhum evento cadastrado.</p>';
+                return;
+            }
+            container.innerHTML = lista.map((ev, idx) => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded border">
+                    <div>
+                        <p class="font-bold">${ev.nome}</p>
+                        <p class="text-xs text-gray-500">📅 ${ev.data} · 📍 ${ev.local||'Não informado'} · ${Number(ev.valor)>0 ? 'R$ '+Number(ev.valor).toFixed(2) : 'Gratuito'}</p>
+                    </div>
+                    <button onclick="removerEvento(${idx})" class="text-red-500"><i class="fa fa-trash"></i></button>
+                </div>
+            `).join('');
+            if (typeof renderInscritosEventos === 'function') renderInscritosEventos();
+        }
+        function removerEvento(idx) {
+            if (!confirm('Remover evento?')) return;
+            const l = getEventos(); l.splice(idx, 1); salvarEventos(l);
+        }
+        document.getElementById('formEvento').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const l = getEventos();
+            l.push({
+                id: 'ev-' + Date.now(),
+                nome: document.getElementById('nomeEvento').value.trim(),
+                data: document.getElementById('dataEvento').value,
+                local: document.getElementById('localEvento').value.trim(),
+                valor: parseFloat(document.getElementById('valorEvento').value) || 0,
+                pix: (document.getElementById('pixEvento').value || '').trim() || '36.158.983/0001-36',
+                forma: (document.getElementById('formaEvento').value || 'PIX').trim(),
+                foto: (document.getElementById('fotoEvento').value || '').trim(),
+                video: (document.getElementById('videoEvento').value || '').trim(),
+                linkPagamento: (document.getElementById('linkPagEvento').value || '').trim(),
+                visitantes: document.getElementById('visitaEvento').checked
+            });
+            salvarEventos(l);
+            e.target.reset();
+        });
+        document.getElementById('btnBaixarEventos').addEventListener('click', () => {
+            const lista = getEventos();
+            if (!lista.length) { alert('Sem dados.'); return; }
+            const csv = montarCSV
+                ? montarCSV(['Nome','Data','Local','Valor','PIX','Formas','LinkPagamento'], lista.map(ev => [ev.nome, ev.data, ev.local||'', ev.valor||0, ev.pix||'', ev.forma||ev.formaPagamento||'', ev.linkPagamento||'']))
+                : ('Nome;Data;Local\n' + lista.map(ev => [ev.nome,ev.data,ev.local].map(x=>'"'+String(x||'').replace(/"/g,'""')+'"').join(';')).join('\n'));
+            var dataArqE = (typeof dataArquivoBR === 'function') ? dataArquivoBR() : '';
+            baixar(csv, 'eventos_' + (dataArqE || 'lista') + '.csv');
+        });
+
+        
+        function getInscritosEventos() {
+            try { return JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch(e) { return []; }
+        }
+        function salvarInscritosEventos(lista) {
+            localStorage.setItem('inscritosIBN', JSON.stringify(lista || []));
+            renderInscritosEventos();
+        }
+        function renderInscritosEventos() {
+            var box = document.getElementById('listaInscritosEventos');
+            if (!box) return;
+            var lista = getInscritosEventos().slice().reverse();
+            if (!lista.length) {
+                box.innerHTML = '<p class="text-gray-400">Nenhuma inscrição ainda.</p>';
+                return;
+            }
+            box.innerHTML = lista.map(function(i, idx){
+                var st = i.statusPagamento || (i.pago ? 'confirmado' : 'pendente');
+                var badge = st === 'confirmado' ? 'bg-green-100 text-green-800' :
+                    (st === 'aguardando_conferencia' || i.comprovanteEnviado ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600');
+                var label = st === 'confirmado' ? 'Confirmado' :
+                    (i.comprovanteEnviado ? 'Aguardando conferência' : 'Pendente');
+                return '<div class="border rounded-lg p-3 bg-gray-50 flex flex-wrap justify-between gap-2">' +
+                    '<div><p class="font-bold">' + (i.nome||'') + '</p>' +
+                    '<p class="text-xs text-gray-500">' + (i.eventoNome||'') + ' · ' + (i.codigo||'') +
+                    ' · R$ ' + Number(i.valor||0).toFixed(2) +
+                    (i.telefone ? ' · ' + i.telefone : '') + '</p></div>' +
+                    '<div class="flex items-center gap-2">' +
+                    '<span class="text-xs px-2 py-1 rounded-full ' + badge + '">' + label + '</span>' +
+                    (st !== 'confirmado' ? '<button type="button" data-cod="' + i.codigo + '" class="btnConfPag text-xs font-bold bg-green-600 text-white px-2 py-1 rounded">Confirmar pagamento</button>' : '') +
+                    '</div></div>';
+            }).join('');
+            box.querySelectorAll('.btnConfPag').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    var cod = btn.getAttribute('data-cod');
+                    var lista = getInscritosEventos();
+                    var ix = lista.findIndex(function(x){ return String(x.codigo) === String(cod); });
+                    if (ix < 0) return;
+                    lista[ix].pago = true;
+                    lista[ix].statusPagamento = 'confirmado';
+                    lista[ix].dataConfirmacao = new Date().toLocaleString('pt-BR');
+                    salvarInscritosEventos(lista);
+                    alert('Pagamento confirmado para ' + (lista[ix].nome||cod));
+                });
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function(){
+            if (typeof renderInscritosEventos === 'function') renderInscritosEventos();
+            var b = document.getElementById('btnBaixarInscritos');
+            if (b) b.addEventListener('click', function(){
+                var lista = getInscritosEventos();
+                if (!lista.length) return alert('Sem inscritos.');
+                var csv = (typeof montarCSV === 'function')
+                    ? montarCSV(
+                        ['Codigo','Nome','Evento','Telefone','Email','Valor','Status','MeioPagamento','DataInsc','DataPagamento','Tipo'],
+                        lista.map(function(i){
+                            return [
+                                i.codigo||'', i.nome||'', i.eventoNome||'', i.telefone||'', i.email||'',
+                                i.valor||0,
+                                i.statusPagamento || (i.pago ? 'confirmado' : 'pendente'),
+                                i.meioPagamento||'',
+                                i.dataInsc||'', i.dataPagamento||'',
+                                i.tipo||''
+                            ];
+                        })
+                      )
+                    : '';
+                var dataArqI = (typeof dataArquivoBR === 'function') ? dataArquivoBR() : '';
+                baixar(csv, 'inscritos-eventos_' + (dataArqI||'lista') + '.csv');
+            });
+        });
+
+        // === UTILITÁRIO ===
+        function baixar(conteudo, nome) {
+            if (conteudo && conteudo.charCodeAt(0) !== 0xFEFF) conteudo = '﻿' + conteudo;
+            const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = nome; a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        
+        function renderModelosEscalaPendentes() {
+            var bloco = document.getElementById('blocoModelosEscalaPendentes');
+            var listaEl = document.getElementById('listaModelosEscalaPendentes');
+            if (!bloco || !listaEl) return;
+            var pode = false;
+            try {
+                var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+                if (u && (u.nivel === 'admin' || u.nivel === 'gestor')) pode = true;
+                if (typeof isAdmin === 'function' && isAdmin(u)) pode = true;
+                if (typeof isGestor === 'function' && isGestor(u)) pode = true;
+            } catch (e) {}
+            if (!pode) {
+                bloco.classList.add('hidden');
+                return;
+            }
+            var lista = [];
+            try {
+                if (typeof listarModelosPendentes === 'function') lista = listarModelosPendentes() || [];
+            } catch (e) { lista = []; }
+            if (!lista.length) {
+                bloco.classList.add('hidden');
+                listaEl.innerHTML = '';
+                return;
+            }
+            bloco.classList.remove('hidden');
+            listaEl.innerHTML = lista.map(function (mp) {
+                var funcoes = (mp.lista || []).map(function (it) {
+                    return '<span class="inline-block bg-white border border-blue-200 rounded px-2 py-0.5 text-xs mr-1 mb-1">' +
+                        (it.funcao || '') +
+                        (it.qtd != null ? ' <strong>×' + it.qtd + '</strong>' : '') +
+                        '</span>';
+                }).join('');
+                var quando = mp.solicitadoEm ? String(mp.solicitadoEm).slice(0, 16).replace('T', ' ') : '';
+                return '<div class="bg-white rounded-lg border border-blue-300 p-3">' +
+                    '<div class="flex flex-wrap justify-between gap-2 items-start">' +
+                    '<div class="min-w-0 flex-1">' +
+                    '<p class="font-bold text-blue-900">Ministério: ' + (mp.ministerio || '') + '</p>' +
+                    '<p class="text-xs text-gray-600 mt-1">Funções e quantidades:</p>' +
+                    '<div class="mt-1">' + (funcoes || '<span class="text-xs text-gray-400">—</span>') + '</div>' +
+                    '<p class="text-xs text-gray-500 mt-1">Solicitado por <strong>' + (mp.solicitadoPor || 'líder') + '</strong>' +
+                    (quando ? ' em ' + quando : '') + '</p></div>' +
+                    '<div class="flex flex-col gap-1 shrink-0">' +
+                    '<button type="button" class="btn-aprovar-modelo-esc bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded" data-min="' +
+                    String(mp.ministerio || '').replace(/"/g, '') + '">✓ Aprovar e publicar</button>' +
+                    '<button type="button" class="btn-recusar-modelo-esc border border-red-400 text-red-700 text-xs font-bold px-3 py-1.5 rounded" data-min="' +
+                    String(mp.ministerio || '').replace(/"/g, '') + '">Recusar</button>' +
+                    '</div></div></div>';
+            }).join('');
+            listaEl.querySelectorAll('.btn-aprovar-modelo-esc').forEach(function (btn) {
+                btn.onclick = function () {
+                    var min = btn.getAttribute('data-min');
+                    if (!min || typeof aprovarModeloPendente !== 'function') return;
+                    if (!confirm('Aprovar o formulário de ' + min + '?\nAs funções e quantidades passam a valer na escala oficial.')) return;
+                    var res = aprovarModeloPendente(min);
+                    alert(res.mensagem || (res.sucesso ? 'Aprovado' : 'Erro'));
+                    renderModelosEscalaPendentes();
+                    try { renderPendenciasGestao(); } catch (e) {}
+                    try {
+                        var sel = document.getElementById('escalaMinisterioSel');
+                        if (sel) sel.value = min;
+                        if (typeof montarEditorModelo === 'function') montarEditorModelo(min);
+                        if (typeof montarFormEscalaDia === 'function') montarFormEscalaDia();
+                    } catch (e) {}
+                };
+            });
+            listaEl.querySelectorAll('.btn-recusar-modelo-esc').forEach(function (btn) {
+                btn.onclick = function () {
+                    var min = btn.getAttribute('data-min');
+                    if (!min || typeof recusarModeloPendente !== 'function') return;
+                    if (!confirm('Recusar o formulário de ' + min + '?')) return;
+                    var res = recusarModeloPendente(min);
+                    alert(res.mensagem || (res.sucesso ? 'Recusado' : 'Erro'));
+                    renderModelosEscalaPendentes();
+                    try { renderPendenciasGestao(); } catch (e) {}
+                };
+            });
+        }
+
+        function renderPendenciasGestao() {
+            var card = document.getElementById('cardPendenciasGestao');
+            if (!card || typeof resumoPendenciasGestao !== 'function') return;
+            var r = resumoPendenciasGestao();
+            if (!r || r.total === 0) {
+                card.classList.add('hidden');
+                return;
+            }
+            card.classList.remove('hidden');
+            // Cor da borda/fundo conforme gravidade
+            card.classList.remove('border-red-500', 'bg-red-50', 'border-amber-400', 'bg-amber-50', 'border-blue-400', 'bg-blue-50');
+            if (r.nVermelho > 0) {
+                card.classList.add('border-red-500', 'bg-red-50');
+                document.getElementById('tituloPendenciasGestao').className = 'text-red-800';
+            } else if (r.nLaranja > 0) {
+                card.classList.add('border-amber-400', 'bg-amber-50');
+                document.getElementById('tituloPendenciasGestao').className = 'text-amber-800';
+            } else {
+                card.classList.add('border-blue-400', 'bg-blue-50');
+                document.getElementById('tituloPendenciasGestao').className = 'text-blue-800';
+            }
+            document.getElementById('resumoPendenciasTexto').textContent =
+                'Há itens para resolver: células, ministérios, membros ou formulários de escala.';
+            var bv = document.getElementById('badgeVermelho');
+            var bl = document.getElementById('badgeLaranja');
+            var ba = document.getElementById('badgeAzul');
+            if (r.nVermelho > 0) {
+                bv.classList.remove('hidden');
+                bv.textContent = r.nVermelho + ' cargo(s) sem membro cadastrado';
+            } else bv.classList.add('hidden');
+            if (r.nLaranja > 0 || r.membrosPendentes > 0) {
+                bl.classList.remove('hidden');
+                bl.textContent = (r.nLaranja + (r.membrosPendentes ? 1 : 0)) + ' pendência(s) de aprovação';
+            } else bl.classList.add('hidden');
+            if (r.nAzul > 0) {
+                ba.classList.remove('hidden');
+                var nMod = (r.modelosPendentes && r.modelosPendentes.length) ? r.modelosPendentes.length : 0;
+                var txtAzul = [];
+                if (nMod > 0) txtAzul.push(nMod + ' modelo(s) de escala');
+                var nAzulCel = r.nAzul - nMod;
+                if (nAzulCel > 0) txtAzul.push(nAzulCel + ' célula(s) sem relatório');
+                ba.textContent = txtAzul.join(' · ') || (r.nAzul + ' pendência(s) azuis');
+            } else ba.classList.add('hidden');
+
+            var html = '';
+            (r.celulas || []).forEach(function (c) {
+                var cor = c.cor === 'vermelho' ? 'text-red-700' : (c.cor === 'azul' ? 'text-blue-700' : 'text-amber-700');
+                var bola = c.cor === 'vermelho' ? 'bg-red-500' : (c.cor === 'azul' ? 'bg-blue-500' : 'bg-amber-500');
+                html += '<div class="flex gap-2 items-start bg-white/80 rounded-lg px-3 py-2 border"><span class="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0 ' + bola + '"></span><div><p class="font-bold ' + cor + '">' + (c.nome || '') + '</p><p class="text-xs text-gray-600">' + (c.motivos || []).join(' · ') + '</p></div></div>';
+            });
+            (r.ministerios || []).forEach(function (m) {
+                var cor = m.cor === 'vermelho' ? 'text-red-700' : 'text-amber-700';
+                var bola = m.cor === 'vermelho' ? 'bg-red-500' : 'bg-amber-500';
+                html += '<div class="flex gap-2 items-start bg-white/80 rounded-lg px-3 py-2 border"><span class="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0 ' + bola + '"></span><div><p class="font-bold ' + cor + '">Ministério: ' + (m.nome || '') + '</p><p class="text-xs text-gray-600">' + (m.motivos || []).join(' · ') + '</p></div></div>';
+            });
+            if (r.membrosPendentes > 0) {
+                html += '<div class="flex gap-2 items-start bg-white/80 rounded-lg px-3 py-2 border"><span class="w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0 bg-amber-500"></span><div><p class="font-bold text-amber-700">Membros</p><p class="text-xs text-gray-600">' + r.membrosPendentes + ' cadastro(s) aguardando aprovação</p></div></div>';
+            }
+            // Modelos de escala pendentes (líder enviou formulário)
+            (r.modelosPendentes || []).forEach(function (mp) {
+                var funcoes = (mp.lista || []).map(function (it) {
+                    return (it.funcao || '') + (it.qtd ? ' (' + it.qtd + ')' : '');
+                }).join(', ');
+                html += '<div class="flex flex-wrap gap-2 items-start justify-between bg-white/80 rounded-lg px-3 py-2 border border-blue-200">' +
+                    '<div class="min-w-0 flex-1"><p class="font-bold text-blue-800">Formulário de escala: ' + (mp.ministerio || '') + '</p>' +
+                    '<p class="text-xs text-gray-600">Funções: ' + (funcoes || '—') + '</p>' +
+                    '<p class="text-xs text-gray-400">Solicitado por ' + (mp.solicitadoPor || 'líder') +
+                    (mp.solicitadoEm ? ' em ' + String(mp.solicitadoEm).slice(0, 16).replace('T', ' ') : '') + '</p></div>' +
+                    '<div class="flex gap-1 shrink-0">' +
+                    '<button type="button" class="btn-aprovar-modelo text-xs font-bold bg-blue-600 text-white px-2 py-1 rounded" data-min="' + String(mp.ministerio||'').replace(/"/g,'') + '">Aprovar</button>' +
+                    '<button type="button" class="btn-recusar-modelo text-xs font-bold border border-red-300 text-red-700 px-2 py-1 rounded" data-min="' + String(mp.ministerio||'').replace(/"/g,'') + '">Recusar</button>' +
+                    '</div></div>';
+            });
+            document.getElementById('listaPendenciasGestao').innerHTML = html || '<p class="text-sm text-gray-500">Sem detalhes.</p>';
+            document.querySelectorAll('.btn-aprovar-modelo').forEach(function(btn) {
+                btn.onclick = function() {
+                    var min = btn.getAttribute('data-min');
+                    if (!min || typeof aprovarModeloPendente !== 'function') return;
+                    if (!confirm('Aprovar o modelo de funções de ' + min + '?\nO formulário oficial da escala será atualizado.')) return;
+                    var res = aprovarModeloPendente(min);
+                    alert(res.mensagem || (res.sucesso ? 'Aprovado' : 'Erro'));
+                    renderPendenciasGestao();
+                    try { renderModelosEscalaPendentes(); } catch(e) {}
+                    try { if (typeof montarEditorModelo === 'function') montarEditorModelo(min); } catch(e) {}
+                };
+            });
+            document.querySelectorAll('.btn-recusar-modelo').forEach(function(btn) {
+                btn.onclick = function() {
+                    var min = btn.getAttribute('data-min');
+                    if (!min || typeof recusarModeloPendente !== 'function') return;
+                    if (!confirm('Recusar a solicitação de modelo de ' + min + '?')) return;
+                    var res = recusarModeloPendente(min);
+                    alert(res.mensagem || (res.sucesso ? 'Recusado' : 'Erro'));
+                    renderPendenciasGestao();
+                    try { renderModelosEscalaPendentes(); } catch(e) {}
+                };
+            });
+        }
+
+        
+        
+        // --- Escala formulário ---
+        function preencherSelectMinisteriosEscala() {
+            var sel = document.getElementById('escalaMinisterioSel');
+            if (!sel) return;
+            var lista = (typeof LISTA_MINISTERIOS !== 'undefined') ? LISTA_MINISTERIOS.slice() : ['Atmosfera','Acolhimento','Louvor'];
+            sel.innerHTML = lista.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('');
+            if (lista.indexOf('Atmosfera') >= 0) sel.value = 'Atmosfera';
+        }
+        function montarFormEscalaDia() {
+            var min = (document.getElementById('escalaMinisterioSel') || {}).value || 'Atmosfera';
+            var box = document.getElementById('formEscalaFuncoes');
+            if (!box || typeof lerModeloFuncoesMinisterio !== 'function') return;
+            var modelo = lerModeloFuncoesMinisterio(min);
+            var html = '';
+            modelo.forEach(function(item, idx) {
+                if (/^observa/i.test(item.funcao)) return;
+                var q = item.qtd > 0 ? item.qtd : 1;
+                html += '<div class="border rounded-lg p-2 bg-indigo-50/50">';
+                html += '<p class="text-xs font-bold text-primary mb-1">' + item.funcao + ' <span class="text-gray-500 font-normal">(sugerido: ' + (item.qtd || '—') + ' pessoa(s))</span></p>';
+                html += '<input type="text" class="escala-campo-funcao w-full border rounded px-2 py-1.5 text-sm" data-funcao="' + String(item.funcao).replace(/"/g,'') + '" placeholder="Nomes separados por vírgula">';
+                html += '</div>';
+            });
+            box.innerHTML = html;
+            box.classList.remove('hidden');
+            document.getElementById('btnSalvarDiaEscala').classList.remove('hidden');
+            montarEditorModelo(min);
+        }
+        function montarEditorModelo(min) {
+            var ed = document.getElementById('editorModeloEscala');
+            if (!ed || typeof lerModeloFuncoesMinisterio !== 'function') return;
+            var modelo = lerModeloFuncoesMinisterio(min);
+            ed.innerHTML = modelo.map(function(item, i) {
+                return '<div class="flex gap-2 items-center">' +
+                    '<input type="text" class="mod-fn flex-1 border rounded px-2 py-1 text-xs" value="' + String(item.funcao||'').replace(/"/g,'') + '">' +
+                    '<input type="number" min="0" max="30" class="mod-qtd w-16 border rounded px-2 py-1 text-xs" value="' + (item.qtd||0) + '" title="Qtd sugerida">' +
+                    '</div>';
+            }).join('');
+        }
+        document.getElementById('btnCarregarModeloEscala') && document.getElementById('btnCarregarModeloEscala').addEventListener('click', montarFormEscalaDia);
+        document.getElementById('escalaMinisterioSel') && document.getElementById('escalaMinisterioSel').addEventListener('change', function(){
+            montarEditorModelo(this.value);
+        });
+        document.getElementById('btnSalvarDiaEscala') && document.getElementById('btnSalvarDiaEscala').addEventListener('click', function() {
+            var min = document.getElementById('escalaMinisterioSel').value;
+            var dataIso = document.getElementById('escalaDataDia').value;
+            var label = document.getElementById('escalaLabelDia').value.trim();
+            if (!dataIso && !label) {
+                alert('Informe a data ou o rótulo do dia.');
+                return;
+            }
+            if (!label && dataIso) {
+                var p = dataIso.split('-');
+                var dt = new Date(dataIso + 'T12:00:00');
+                var dias = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+                label = (dias[dt.getDay()] || '') + ' ' + p[2] + '/' + p[1] + '/' + String(p[0]).slice(2);
+            }
+            var preenchimento = {};
+            document.querySelectorAll('.escala-campo-funcao').forEach(function(inp) {
+                var fn = inp.getAttribute('data-funcao');
+                var nomes = String(inp.value || '').split(/[,;/]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+                if (nomes.length) preenchimento[fn] = nomes;
+            });
+            var r = salvarDiaEscalaFormulario({
+                ministerio: min,
+                dataIso: dataIso,
+                dataLabel: label,
+                preenchimento: preenchimento,
+                observacao: document.getElementById('escalaObsDia').value.trim()
+            });
+            var msg = document.getElementById('msgEscalaForm');
+            msg.classList.remove('hidden');
+            msg.className = 'text-sm mt-2 ' + (r.sucesso ? 'text-green-700 font-semibold' : 'text-red-600');
+            msg.textContent = r.mensagem || (r.sucesso ? 'Salvo' : 'Erro');
+        });
+        document.getElementById('btnExportarEscalaCSV') && document.getElementById('btnExportarEscalaCSV').addEventListener('click', function() {
+            var min = (document.getElementById('escalaMinisterioSel') || {}).value || 'Atmosfera';
+            if (typeof exportarEscalaCSV !== 'function') {
+                alert('Função CSV indisponível. Atualize o conta.js.');
+                return;
+            }
+            var r = exportarEscalaCSV(min);
+            if (r && r.sucesso) alert('CSV de ' + min + ': ' + r.mensagem);
+        });
+        document.getElementById('btnSalvarModeloEscala') && document.getElementById('btnSalvarModeloEscala').addEventListener('click', function() {
+            var min = document.getElementById('escalaMinisterioSel').value;
+            var lista = [];
+            document.querySelectorAll('#editorModeloEscala > div').forEach(function(row) {
+                var fn = (row.querySelector('.mod-fn') || {}).value || '';
+                var q = parseInt((row.querySelector('.mod-qtd') || {}).value || '0', 10);
+                if (fn.trim()) lista.push({ funcao: fn.trim(), qtd: isNaN(q) ? 0 : q });
+            });
+            if (typeof salvarModeloFuncoesMinisterio === 'function') salvarModeloFuncoesMinisterio(min, lista);
+            alert('Modelo de funções salvo para ' + min);
+            montarFormEscalaDia();
+        });
+        document.getElementById('btnAddFuncaoModelo') && document.getElementById('btnAddFuncaoModelo').addEventListener('click', function() {
+            var ed = document.getElementById('editorModeloEscala');
+            var div = document.createElement('div');
+            div.className = 'flex gap-2 items-center';
+            div.innerHTML = '<input type="text" class="mod-fn flex-1 border rounded px-2 py-1 text-xs" placeholder="Nova função">' +
+                '<input type="number" min="0" max="30" class="mod-qtd w-16 border rounded px-2 py-1 text-xs" value="1">';
+            ed.appendChild(div);
+        });
+        try { preencherSelectMinisteriosEscala(); } catch(e) {}
+
+        document.getElementById('importEscalaCSV') && document.getElementById('importEscalaCSV').addEventListener('change', function(ev) {
+            var file = ev.target.files && ev.target.files[0];
+            var msg = document.getElementById('msgEscalaImport');
+            if (!file) return;
+            var min = (document.getElementById('escalaMinisterioSel') || {}).value || 'Atmosfera';
+            var reader = new FileReader();
+            reader.onload = function() {
+                if (typeof importarEscalaCSV !== 'function') {
+                    msg.className = 'text-sm text-red-600';
+                    msg.textContent = 'Função de importação indisponível. Atualize conta.js';
+                    msg.classList.remove('hidden');
+                    return;
+                }
+                var r = importarEscalaCSV(reader.result, min);
+                msg.classList.remove('hidden');
+                if (r.sucesso) {
+                    msg.className = 'text-sm text-green-700 font-semibold';
+                    msg.textContent = '✅ ' + r.mensagem;
+                } else {
+                    msg.className = 'text-sm text-red-600 font-semibold';
+                    msg.textContent = '❌ ' + (r.mensagem || 'Falha');
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        async function carregarTudo() {
+            try { renderPendenciasGestao(); } catch (e) {}
+            try { renderModelosEscalaPendentes(); } catch (e) {}
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
+                    await IBNNuvem.puxarMembrosParaLocal();
+                }
+            } catch (e) { console.warn(e); }
+            try { renderModelosEscalaPendentes(); } catch (e) {}
+            return carregarTudoLocal();
+        }
+        function carregarTudoLocal() {
+            renderizarAdmins();
+            renderizarMembros();
+            renderizarEventos();
+        }
+    </script>
+
+<script>
+(function(){
+    var CHAVE = 'ibn_avisos_dia';
+
+    function podeEditarAvisos() {
+        if (typeof getUsuarioLogado !== 'function') return false;
+        var u = getUsuarioLogado();
+        if (!u) return false;
+        if (typeof isGestor === 'function' && isGestor(u)) return true;
+        if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+        return false;
+    }
+
+    function ler() {
+        try { return JSON.parse(localStorage.getItem(CHAVE) || '[]'); } catch(e) { return []; }
+    }
+    function salvar(lista) {
+        localStorage.setItem(CHAVE, JSON.stringify(lista || []));
+        try {
+            if (typeof firebase !== 'undefined' && firebase.firestore) {
+                firebase.firestore().collection('config').doc('avisos_dia').set({
+                    lista: lista || [],
+                    atualizadoEm: new Date().toISOString()
+                }, { merge: true });
+            }
+        } catch(e) {}
+    }
+    async function puxar() {
+        try {
+            if (typeof firebase === 'undefined' || !firebase.firestore) return ler();
+            var snap = await firebase.firestore().collection('config').doc('avisos_dia').get();
+            if (snap.exists) {
+                var data = snap.data() || {};
+                var lista = Array.isArray(data.lista) ? data.lista : [];
+                localStorage.setItem(CHAVE, JSON.stringify(lista));
+                return lista;
+            }
+        } catch(e) {}
+        return ler();
+    }
+    function isoHoje() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function fmtBR(iso) {
+        if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso || '';
+        var p = String(iso).slice(0,10).split('-');
+        return p[2] + '/' + p[1] + '/' + p[0];
+    }
+    function dataPassada(iso) {
+        if (!iso) return false;
+        return String(iso).slice(0,10) < isoHoje();
+    }
+    function avisoDaData(data) {
+        var lista = ler();
+        var d = String(data || '').slice(0,10);
+        return lista.find(function(a){ return a && String(a.data).slice(0,10) === d; }) || null;
+    }
+    /** Texto sugerido conforme o dia da semana da data escolhida */
+    function sugestaoProgramacao(dataIso) {
+        if (!dataIso) return '';
+        var p = String(dataIso).slice(0,10).split('-');
+        if (p.length < 3) return '';
+        var dt = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+        var ds = dt.getDay(); // 0 dom … 6 sab
+        // 40 dias: seg–sex igreja, sáb–dom casa (campanha 05/10/2026 + 40)
+        var inicio40 = new Date(2026, 9, 5);
+        inicio40.setHours(0,0,0,0);
+        var diff = Math.floor((dt - inicio40) / 86400000);
+        var dia40 = diff + 1;
+        var em40 = dia40 >= 1 && dia40 <= 40;
+        var partes = [];
+        if (em40) {
+            if (ds >= 1 && ds <= 5) partes.push('40 Dias — ' + dia40 + 'º dia · 05:30 e 18:00 na Igreja');
+            else partes.push('40 Dias — ' + dia40 + 'º dia · jejum em casa');
+        }
+        if (ds === 1) partes.push('Futebol dos homens (se houver)');
+        if (ds === 2) partes.push('Células · 20:00');
+        if (ds === 4) partes.push('Culto da Fé · 19:30');
+        if (ds === 5) {
+            // vigília: sexta antes do 1º domingo
+            var dom = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + 2);
+            if (dom.getDay() === 0 && dom.getDate() <= 7) partes.push('Vigília');
+        }
+        if (ds === 6) partes.push('Célula Adolescentes 18:00 · Jovens 20:00');
+        if (ds === 0) partes.push('Culto de Celebração · 19:00');
+        return partes.join(' · ');
+    }
+    function carregarDia() {
+        var data = (document.getElementById('avisoData').value || '').trim();
+        var taEl = document.getElementById('avisoTexto');
+        var info = document.getElementById('avisoDataInfo');
+        var btnSalvar = document.getElementById('btnSalvarAviso');
+        var btnLimpar = document.getElementById('btnLimparAvisoDia');
+        var msg = document.getElementById('msgAviso');
+        if (msg) msg.classList.add('hidden');
+        if (!data) {
+            taEl.value = '';
+            taEl.disabled = true;
+            btnSalvar.disabled = true;
+            btnLimpar.disabled = true;
+            info.textContent = 'Escolha uma data.';
+            return;
+        }
+        var av = avisoDaData(data);
+        var sugerido = sugestaoProgramacao(data);
+        // Se já tem aviso salvo → mostra o salvo; senão preenche com a programação daquele dia
+        if (av && av.texto) {
+            taEl.value = av.texto;
+        } else {
+            taEl.value = sugerido || '';
+        }
+        var passada = dataPassada(data);
+        var pode = podeEditarAvisos() && !passada;
+        taEl.disabled = !pode;
+        btnSalvar.disabled = !pode;
+        btnLimpar.disabled = !pode || !av;
+        if (passada) {
+            info.textContent = 'Data passada — só consulta, não altera.';
+            info.className = 'text-xs mt-1 text-red-500 font-bold';
+        } else if (!podeEditarAvisos()) {
+            info.textContent = 'Somente admin ou gestor podem editar.';
+            info.className = 'text-xs mt-1 text-red-500 font-bold';
+        } else if (av && av.texto) {
+            info.textContent = 'Aviso já salvo neste dia — edite e salve de novo se quiser mudar.';
+            info.className = 'text-xs mt-1 text-green-700 font-bold';
+        } else {
+            info.textContent = 'Programação sugerida deste dia. Edite se precisar e clique em Salvar.';
+            info.className = 'text-xs mt-1 text-gray-600';
+        }
+    }
+    function renderLista() {
+        var box = document.getElementById('listaAvisos');
+        if (!box) return;
+        var hoje = isoHoje();
+        var lista = ler().slice().filter(function(a){
+            return a && String(a.data).slice(0,10) >= hoje;
+        }).sort(function(a,b){ return String(a.data).localeCompare(String(b.data)); });
+        if (!lista.length) {
+            box.innerHTML = '<p class="text-gray-400 text-sm">Nenhum aviso futuro cadastrado.</p>';
+            return;
+        }
+        box.innerHTML = lista.map(function(a){
+            return '<button type="button" data-data="' + String(a.data).slice(0,10) + '" class="btnIrData w-full text-left flex flex-wrap items-start justify-between gap-2 border rounded-lg px-3 py-2 bg-amber-50/50 hover:bg-amber-100">' +
+                '<div><span class="font-bold text-primary">' + fmtBR(a.data) + '</span> — ' +
+                '<span>' + (a.texto || '').replace(/</g,'&lt;') + '</span></div>' +
+                '<span class="text-xs text-secondary font-bold">Editar</span></button>';
+        }).join('');
+        box.querySelectorAll('.btnIrData').forEach(function(btn){
+            btn.addEventListener('click', function(){
+                document.getElementById('avisoData').value = btn.getAttribute('data-data');
+                carregarDia();
+                document.getElementById('avisoTexto').focus();
+            });
+        });
+    }
+    function msgOk(t) {
+        var msg = document.getElementById('msgAviso');
+        msg.textContent = t;
+        msg.className = 'text-sm mt-2 text-green-600 font-bold';
+        msg.classList.remove('hidden');
+    }
+    function msgErro(t) {
+        var msg = document.getElementById('msgAviso');
+        msg.textContent = t;
+        msg.className = 'text-sm mt-2 text-red-500 font-bold';
+        msg.classList.remove('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', async function(){
+        var sec = document.getElementById('secQuadroAvisos');
+        if (!sec) return;
+        if (!podeEditarAvisos()) {
+            sec.querySelectorAll('input, textarea, button').forEach(function(el){ el.disabled = true; });
+            var info = document.getElementById('avisoDataInfo');
+            if (info) {
+                info.textContent = 'Faça login como admin ou gestor para editar.';
+                info.className = 'text-xs mt-1 text-red-500 font-bold';
+            }
+        }
+        var inpData = document.getElementById('avisoData');
+        if (inpData && !inpData.value) inpData.value = isoHoje();
+        await puxar();
+        carregarDia();
+        renderLista();
+
+        inpData.addEventListener('change', carregarDia);
+        inpData.addEventListener('input', carregarDia);
+
+        document.getElementById('btnSalvarAviso').addEventListener('click', function(){
+            if (!podeEditarAvisos()) return msgErro('Sem permissão.');
+            var data = (document.getElementById('avisoData').value || '').trim();
+            var texto = (document.getElementById('avisoTexto').value || '').trim();
+            if (!data) return msgErro('Escolha a data.');
+            if (dataPassada(data)) return msgErro('Não é possível alterar data passada.');
+            if (!texto) return msgErro('Digite o texto do aviso.');
+            var lista = ler().filter(function(a){ return String(a.data).slice(0,10) !== data; });
+            lista.push({ id: 'av-' + data, data: data, texto: texto, atualizadoEm: new Date().toISOString() });
+            salvar(lista);
+            msgOk('Aviso de ' + fmtBR(data) + ' salvo. Aparece no site nesse dia.');
+            carregarDia();
+            renderLista();
+        });
+
+        document.getElementById('btnLimparAvisoDia').addEventListener('click', function(){
+            if (!podeEditarAvisos()) return msgErro('Sem permissão.');
+            var data = (document.getElementById('avisoData').value || '').trim();
+            if (!data) return;
+            if (dataPassada(data)) return msgErro('Não é possível alterar data passada.');
+            if (!confirm('Apagar o aviso de ' + fmtBR(data) + '?')) return;
+            var lista = ler().filter(function(a){ return String(a.data).slice(0,10) !== data; });
+            salvar(lista);
+            document.getElementById('avisoTexto').value = '';
+            msgOk('Aviso removido.');
+            carregarDia();
+            renderLista();
+        });
+    });
+})();
+</script>
+
+</body>
+</html>

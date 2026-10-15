@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fotos das Células — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#0A1A3F', secondary: '#D4AF37', light: '#F8F9FC' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light min-h-screen">
+    <header class="bg-primary text-white py-4 px-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Fotos das Células</h1>
+            <div class="flex gap-3 text-sm">
+                <a href="fotos.html" class="hover:text-secondary">Fotos Ministérios</a>
+                <a href="index.html" class="hover:text-secondary">Início</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+        <p class="text-gray-600 mb-6 text-center">
+            Somente integrantes da célula podem postar. Máximo 2 células por membro (terça + sábado).
+        </p>
+
+        <div id="areaPostar" class="bg-white rounded-xl shadow p-6 mb-8 hidden">
+            <h2 class="font-bold text-primary mb-4"><i class="fa fa-camera mr-2"></i>Postar foto</h2>
+            <form id="formFoto" class="space-y-3">
+                <div>
+                    <label class="block text-sm font-bold mb-1">Célula</label>
+                    <select id="fotoCelula" required class="w-full border rounded-lg px-3 py-2"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Título</label>
+                    <input type="text" id="fotoTitulo" required placeholder="Ex: Encontro de terça" class="w-full border rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Foto do celular (recomendado)</label>
+                    <input type="file" id="fotoArquivoCelula" accept="image/*,image/jpeg,image/png,.jpg,.jpeg,.png" class="w-full border rounded-lg px-3 py-2 text-sm">
+                    <p class="text-xs text-gray-400 mt-1 mb-2">Ou cole um link:</p>
+                    <label class="block text-sm font-bold mb-1">URL da imagem</label>
+                    <input type="url" id="fotoUrl" placeholder="https://..." class="w-full border rounded-lg px-3 py-2">
+                    <p class="text-xs text-gray-400 mt-1">Imgur, Drive público, etc. (opcional se escolher arquivo)</p>
+                </div>
+                <button type="submit" class="bg-secondary text-primary px-6 py-2 rounded-lg font-bold">Publicar</button>
+            </form>
+            <p id="msgFoto" class="text-sm mt-2 hidden"></p>
+        </div>
+
+        <div id="avisoLogin" class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 text-center hidden">
+            <p class="text-yellow-800">Faça <a href="login.html?destino=fotos-celulas.html" class="font-bold underline">login</a> para ver e postar fotos das suas células.</p>
+        </div>
+
+        <div class="mb-4">
+            <label class="text-sm font-bold text-gray-600">Filtrar por célula:</label>
+            <select id="filtroCelula" class="ml-2 border rounded-lg px-3 py-1.5 text-sm">
+                <option value="">Todas</option>
+            </select>
+        </div>
+
+        <div id="galeria" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        <p id="vazio" class="text-center text-gray-400 py-12 hidden">Nenhuma foto ainda.</p>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        const usuario = getUsuarioLogado();
+
+        // Preenche filtros e select de post
+        LISTA_CELULAS.forEach(c => {
+            document.getElementById('filtroCelula').innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+        });
+
+        if (usuario) {
+            document.getElementById('areaPostar').classList.remove('hidden');
+            const minhas = usuario.celulas || [];
+            const sel = document.getElementById('fotoCelula');
+            if (isAdmin(usuario)) {
+                LISTA_CELULAS.forEach(c => {
+                    sel.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+                });
+            } else if (minhas.length) {
+                minhas.forEach(c => {
+                    sel.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+                });
+            } else {
+                document.getElementById('areaPostar').innerHTML = '<p class="text-gray-500 text-sm">Você ainda não está alocado em nenhuma célula. Fale com o gestor.</p>';
+            }
+        } else {
+            document.getElementById('avisoLogin').classList.remove('hidden');
+        }
+
+        function renderGaleria() {
+            const filtro = document.getElementById('filtroCelula').value;
+            let fotos = lerFotosCelulas();
+            if (filtro) fotos = fotos.filter(f => f.celulaId === filtro);
+
+            document.getElementById('vazio').classList.toggle('hidden', fotos.length > 0);
+            document.getElementById('galeria').innerHTML = fotos.map(f => {
+                const cel = LISTA_CELULAS.find(c => c.id === f.celulaId);
+                const pode = (typeof podeRemoverFoto === 'function') && podeRemoverFoto(f);
+                const acoes = pode
+                    ? `<button type="button" class="btn-apagar-fc text-xs text-red-600 font-bold mt-2" data-id="${f.id}">Apagar foto</button>`
+                    : `<button type="button" class="btn-solicitar-fc text-xs text-amber-700 font-semibold mt-2" data-id="${f.id}" data-titulo="${(f.titulo || '').replace(/"/g, '')}">Solicitar remoção</button>`;
+                return `
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <img src="${f.url || f.imagemUrl || f.imagem || ''}" alt="${f.titulo}" class="w-full h-48 object-cover" onerror="this.src='https://via.placeholder.com/400x300?text=Imagem'">
+                    <div class="p-3">
+                        <p class="font-bold text-primary text-sm">${f.titulo}</p>
+                        <p class="text-xs text-secondary">${cel ? cel.nome : f.celulaId}</p>
+                        <p class="text-xs text-gray-400 mt-1">${f.autorNome || ''} · ${new Date(f.data).toLocaleDateString('pt-BR')}</p>
+                        ${acoes}
+                    </div>
+                </div>`;
+            }).join('');
+
+            document.querySelectorAll('.btn-apagar-fc').forEach(function(btn) {
+                btn.addEventListener('click', async function() {
+                    var id = btn.getAttribute('data-id');
+                    if (!confirm('Apagar esta foto definitivamente?\n\nSai da nuvem e deste aparelho. No aparelho de quem postou some na próxima sincronização.')) return;
+                    if (typeof removerFotoCelulaLocal === 'function') removerFotoCelulaLocal(id);
+                    try {
+                        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.removerFotoCelulaNuvem) {
+                            await IBNNuvem.removerFotoCelulaNuvem(id);
+                        }
+                        if (IBNNuvem.registrarAtividade) {
+                            IBNNuvem.registrarAtividade('apagar_foto_celula', 'Removeu foto célula id ' + id, usuario);
+                        }
+                    } catch (e) { console.warn(e); }
+                    renderGaleria();
+                    alert('Foto apagada.');
+                });
+            });
+            document.querySelectorAll('.btn-solicitar-fc').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    alert('Solicitação registrada. A liderança / admin poderá remover em até 48h.');
+                    try {
+                        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
+                            IBNNuvem.registrarAtividade('solicitar_remocao_foto_celula', 'Solicitou remoção: ' + (btn.getAttribute('data-titulo') || ''), usuario);
+                        }
+                    } catch (e) {}
+                });
+            });
+        }
+
+        document.getElementById('filtroCelula').addEventListener('change', renderGaleria);
+
+        function comprimirImgCelula(arquivo) {
+            return new Promise(async function(resolve, reject) {
+                try {
+                    if (typeof createImageBitmap === 'function') {
+                        var bmp = await createImageBitmap(arquivo);
+                        var max = 1200, w = bmp.width, h = bmp.height;
+                        if (w > max || h > max) {
+                            if (w > h) { h = Math.round(h * max / w); w = max; }
+                            else { w = Math.round(w * max / h); h = max; }
+                        }
+                        var c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+                        var q = 0.65, d = c.toDataURL('image/jpeg', q);
+                        while (d.length > 850000 && q > 0.3) { q -= 0.08; d = c.toDataURL('image/jpeg', q); }
+                        if (bmp.close) try { bmp.close(); } catch(e) {}
+                        resolve(d);
+                        return;
+                    }
+                } catch (e) {}
+                var fr = new FileReader();
+                fr.onload = function() { resolve(fr.result); };
+                fr.onerror = reject;
+                fr.readAsDataURL(arquivo);
+            });
+        }
+
+        const form = document.getElementById('formFoto');
+        if (form) {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const msg = document.getElementById('msgFoto');
+                var url = (document.getElementById('fotoUrl').value || '').trim();
+                var arq = document.getElementById('fotoArquivoCelula') && document.getElementById('fotoArquivoCelula').files[0];
+                if (!url && !arq) {
+                    msg.textContent = 'Escolha uma foto do celular ou cole a URL.';
+                    msg.className = 'text-sm mt-2 text-red-500';
+                    msg.classList.remove('hidden');
+                    return;
+                }
+                if (arq) {
+                    try {
+                        url = await comprimirImgCelula(arq);
+                    } catch (err) {
+                        msg.textContent = 'Não foi possível processar a imagem. Use JPEG/PNG.';
+                        msg.className = 'text-sm mt-2 text-red-500';
+                        msg.classList.remove('hidden');
+                        return;
+                    }
+                }
+                const r = adicionarFotoCelula({
+                    celulaId: document.getElementById('fotoCelula').value,
+                    titulo: document.getElementById('fotoTitulo').value.trim(),
+                    url: url,
+                    imagem: url.indexOf('data:') === 0 ? url : ''
+                });
+                if (!r.sucesso) {
+                    msg.textContent = r.mensagem;
+                    msg.className = 'text-sm mt-2 text-red-500';
+                    msg.classList.remove('hidden');
+                    return;
+                }
+                // Envia de forma explícita e aguarda a nuvem (antes era só local)
+                var msgExtra = '';
+                try {
+                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarFotoCelulaNuvem) {
+                        var listaLoc = (typeof lerFotosCelulas === 'function') ? lerFotosCelulas() : [];
+                        var nova = listaLoc[0];
+                        var rn = await IBNNuvem.salvarFotoCelulaNuvem(nova);
+                        msgExtra = (rn && rn.sucesso)
+                            ? ' Na nuvem para todos os aparelhos.'
+                            : ' (Só neste aparelho: ' + ((rn && rn.mensagem) || 'falha nuvem') + ')';
+                    }
+                } catch (errN) {
+                    msgExtra = ' (Só neste aparelho — falha nuvem)';
+                }
+                msg.textContent = 'Foto publicada!' + msgExtra;
+                msg.className = 'text-sm mt-2 text-green-600';
+                msg.classList.remove('hidden');
+                form.reset();
+                try {
+                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarFotosCelulasParaLocal) {
+                        await IBNNuvem.puxarFotosCelulasParaLocal();
+                    }
+                } catch (e) {}
+                renderGaleria();
+            });
+        }
+
+        // Abre filtro se veio ?celula=id
+        (function() {
+            var p = new URLSearchParams(window.location.search);
+            var cid = p.get('celula');
+            if (cid) {
+                var sel = document.getElementById('filtroCelula');
+                if (sel) sel.value = cid;
+            }
+        })();
+        renderGaleria();
+    </script>
+</body>
+</html>

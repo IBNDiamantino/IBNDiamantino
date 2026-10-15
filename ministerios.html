@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ministérios — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0A1A3F',
+                        secondary: '#D4AF37',
+                        accent: '#1E3A8A',
+                        light: '#F8F9FC',
+                        dark: '#0F172A'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .card-ministro {
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .card-ministro:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(10, 26, 63, 0.15);
+        }
+        .badge-ativo {
+            background: linear-gradient(135deg, #D4AF37, #f0d060);
+            color: #0A1A3F;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Cabeçalho -->
+    <header class="bg-primary text-white py-4 shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2">
+                <span class="text-2xl font-bold text-secondary">IBN</span>
+                <span class="hidden sm:inline text-sm">Família para pertencer</span>
+            </a>
+            <nav class="hidden md:flex gap-6 text-sm">
+                <a href="index.html" class="hover:text-secondary transition">Início</a>
+                <a href="ministerios.html" class="text-secondary font-bold">Ministérios</a>
+                <a href="eventos.html" class="hover:text-secondary transition">Eventos</a>
+                <a href="fotos.html" class="hover:text-secondary transition">Fotos</a>
+                <a href="index.html#mais" class="hover:text-secondary transition">Contato</a>
+            </nav>
+            <a href="index.html" class="text-sm hover:text-secondary transition">← Voltar</a>
+        </div>
+    </header>
+
+    <!-- Título -->
+    <section class="py-12 text-center bg-white border-b">
+        <h1 class="text-3xl md:text-4xl font-bold text-primary">Nossos Ministérios</h1>
+        <p class="text-gray-600 mt-3 max-w-2xl mx-auto px-4">
+            Cada ministério é uma engrenagem essencial. Juntos fazemos a igreja funcionar com amor, ordem e propósito.
+        </p>
+        <p class="text-sm text-gray-500 mt-2">21 ministérios servindo a família IBN</p>
+    </section>
+
+    <!-- Aviso para membros -->
+    <div class="max-w-7xl mx-auto px-4 mt-8">
+        <div class="bg-secondary/10 border border-secondary/30 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p class="text-sm text-primary text-center sm:text-left">
+                <i class="fa fa-camera text-secondary mr-2"></i>
+                <strong>Fotos e o que acontece em cada ministério</strong> estão disponíveis apenas para membros logados.
+            </p>
+            <a href="fotos.html" class="bg-primary text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-accent whitespace-nowrap">
+                Ver Galeria →
+            </a>
+        </div>
+    </div>
+
+    <!-- Grade de Ministérios -->
+    <section class="max-w-7xl mx-auto px-4 py-10">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="gradeMinisterios">
+
+            <!-- 1. Atmosfera (destaque) -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden border-2 border-secondary/40 relative">
+                <span class="absolute top-3 right-3 badge-ativo text-xs font-bold px-2 py-1 rounded-full">Muito ativo</span>
+                <div class="h-32 bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-cloud"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Atmosfera</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="atmosfera">Responsável por toda a atmosfera dos cultos, celebrações e eventos. Cuida do ambiente, da recepção sensorial e do clima espiritual que envolve cada momento.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="atmosfera"><a href="fotos.html?ministerio=atmosfera" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="atmosfera"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 2. Acolhimento -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-sky-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-heart"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Acolhimento</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="acolhimento">Recebe e orienta as pessoas com amor, organiza o acolhimento e cria os primeiros vínculos com quem chega.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="acolhimento"><a href="fotos.html?ministerio=acolhimento" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="acolhimento"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 3. Mulheres -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-rose-500 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-female"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Mulheres</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="mulheres">Fortalece, discipula e promove comunhão entre as mulheres da igreja em todos os tempos de vida.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="mulheres"><a href="fotos.html?ministerio=mulheres" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="mulheres"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 4. Homens -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-blue-800 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-male"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Homens</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="homens">Forma homens de caráter, fé e responsabilidade para a família, a igreja e a sociedade.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="homens"><a href="fotos.html?ministerio=homens" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="homens"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 5. Intercessão -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-indigo-700 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-hands"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Intercessão</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="intercessao">Sustenta a igreja em oração. Intercede pelos cultos, pelos membros e pelas necessidades da obra.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="intercessao"><a href="fotos.html?ministerio=intercessao" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="intercessao"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                    <a href="oracao-intercessao.html" class="mt-2 inline-block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition">
+                        🙏 Pedidos de Oração (líderes)
+                    </a>
+                </div>
+            </div>
+
+            <!-- 6. Evangelismo -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-red-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-bullhorn"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Evangelismo</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="evangelismo">Leva a mensagem de Jesus para fora dos muros da igreja, com ações e relacionamento.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="evangelismo"><a href="fotos.html?ministerio=evangelismo" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="evangelismo"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 7. Dança -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-fuchsia-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-music"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Dança</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="danca">Adoração por meio da dança, transmitindo mensagens de fé, esperança e amor através do movimento.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="danca"><a href="fotos.html?ministerio=danca" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="danca"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 8. Empreendedorismo -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-emerald-700 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-briefcase"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Empreendedorismo</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="empreendedorismo">Estimula o desenvolvimento profissional e de negócios com princípios cristãos e ética.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="empreendedorismo"><a href="fotos.html?ministerio=empreendedorismo" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="empreendedorismo"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 9. Batismo -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-cyan-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-tint"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Batismo</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="batismo">Acompanha novos convertidos no processo de decisão, preparação e celebração do batismo.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="batismo"><a href="fotos.html?ministerio=batismo" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="batismo"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 10. Zeladoria -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-gray-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-wrench"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Zeladoria</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="zeladoria">Cuida da estrutura física, organização e manutenção do templo e espaços da igreja.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="zeladoria"><a href="fotos.html?ministerio=zeladoria" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="zeladoria"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 11. Projetos Sociais (destaque) -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden border-2 border-secondary/40 relative">
+                <span class="absolute top-3 right-3 badge-ativo text-xs font-bold px-2 py-1 rounded-full">Muito ativo</span>
+                <div class="h-32 bg-gradient-to-br from-green-600 to-teal-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-users"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Projetos Sociais</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="projetos-sociais">Aulas e atividades para a comunidade: xadrez, violão, bateria, balé, teclado e outras ações que transformam vidas.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="projetos-sociais"><a href="fotos.html?ministerio=projetos-sociais" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="projetos-sociais"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 12. Casais -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-pink-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-heart"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Casais</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="casais">Fortalece casamentos com ensinamentos, encontros e aconselhamento para famílias saudáveis.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="casais"><a href="fotos.html?ministerio=casais" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="casais"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 13. Jovens -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-teal-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-bolt"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Jovens</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="jovens">Formação, comunhão e propósito para a juventude — vivendo a fé no dia a dia.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="jovens"><a href="fotos.html?ministerio=jovens" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="jovens"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 14. Adolescentes -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-orange-500 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-child"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Adolescentes</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="adolescentes">Formação espiritual dos adolescentes, ajudando-os a firmar a fé e crescer em comunidade.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="adolescentes"><a href="fotos.html?ministerio=adolescentes" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="adolescentes"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 15. Louvor -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-indigo-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-microphone"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Louvor</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="louvor">Conduz o povo de Deus na adoração por meio da música, preparando corações para o encontro com Deus.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="louvor"><a href="fotos.html?ministerio=louvor" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="louvor"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 16. Mídias Sociais -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-blue-500 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-camera"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Mídias Sociais</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="midias">Registra e compartilha a vida da igreja: cultos, eventos e momentos especiais. Muitas das fotos da galeria vêm daqui.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="midias"><a href="fotos.html?ministerio=midias" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="midias"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 17. Infantil -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-yellow-500 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-star"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Infantil</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="infantil">Ensina a Palavra às crianças de forma lúdica, afetiva e cuidadosa desde cedo.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="infantil"><a href="fotos.html?ministerio=infantil" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="infantil"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 18. Artes -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-purple-700 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-paint-brush"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Artes</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="artes">Expressa o evangelho por meio das artes visuais, teatro, criatividade e manifestação do louvor.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="artes"><a href="fotos.html?ministerio=artes" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="artes"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 19. Ensino -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-amber-700 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-book"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Ensino</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="ensino">Estudo profundo da Palavra, discipulado e preparo de líderes para a obra do Senhor.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="ensino"><a href="fotos.html?ministerio=ensino" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="ensino"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 20. Cantina -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-amber-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-cutlery"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Cantina</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="cantina">Prepara e serve alimentos com amor, fortalece a comunhão e gera recursos para a obra.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="cantina"><a href="fotos.html?ministerio=cantina" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="cantina"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+            <!-- 21. Projeto Kids -->
+            <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="h-32 bg-lime-600 flex items-center justify-center text-white text-4xl">
+                    <i class="fa fa-smile-o"></i>
+                </div>
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-primary">Projeto Kids</h3>
+                    <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="projeto-kids">Atividades e cuidado especial com as crianças, complementando o ministério infantil.
+                    </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="projeto-kids"><a href="fotos.html?ministerio=projeto-kids" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="projeto-kids"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Rodapé -->
+    <footer class="bg-primary text-white py-8 text-center">
+        <p class="font-bold text-secondary text-lg">Igreja Batista Nacional Diamantino</p>
+        <p class="text-sm text-gray-400 mt-2">© 2026 — 21 ministérios servindo juntos</p>
+        <p class="text-xs text-gray-500 mt-1">Cada um tem o seu valor. Juntos fazemos a igreja ser o que é.</p>
+    </footer>
+
+
+    <section id="painelGestaoMinisterio" class="container mx-auto px-4 pb-12 hidden">
+        <div class="max-w-xl mx-auto bg-white rounded-xl shadow-md border border-secondary/40 p-5">
+            <h2 class="font-bold text-primary text-lg mb-1"><i class="fa fa-users"></i> Gerenciar membros do ministério</h2>
+            <p class="text-xs text-gray-500 mb-3">Só o <strong>líder do ministério</strong> (ou admin/gestor). Remover tira só do ministério — continua na igreja.</p>
+            <label class="block text-xs font-bold text-gray-600 mb-1">Ministério</label>
+            <select id="selMinGestao" class="w-full p-2 border rounded-lg text-sm mb-3"></select>
+            <h3 class="font-semibold text-sm text-primary mb-1">Membros neste ministério</h3>
+            <ul id="listaMembrosMin" class="text-sm border rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto mb-4 space-y-1"></ul>
+            <h3 class="font-semibold text-sm text-primary mb-1">Adicionar membro cadastrado</h3>
+            <input type="text" id="buscaMembroMin" class="w-full p-2 border rounded-lg text-sm mb-2" placeholder="Buscar nome, e-mail ou telefone..." autocomplete="off">
+            <div id="resultBuscaMin" class="text-sm space-y-1 max-h-36 overflow-y-auto mb-2"></div>
+            <p id="msgGestaoMin" class="text-sm text-center hidden"></p>
+        </div>
+    </section>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+
+
+<script>
+(function() {
+        var mapaSlugNome = {
+            'atmosfera': 'Atmosfera', 'acolhimento': 'Acolhimento', 'mulheres': 'Mulheres',
+            'homens': 'Homens', 'intercessao': 'Intercessão', 'evangelismo': 'Evangelismo',
+            'danca': 'Dança', 'empreendedorismo': 'Empreendedorismo', 'batismo': 'Batismo',
+            'zeladoria': 'Zeladoria', 'projetos-sociais': 'Projetos Sociais', 'casais': 'Casais',
+            'jovens': 'Jovens', 'adolescentes': 'Adolescentes', 'louvor': 'Louvor',
+            'midias': 'Mídias Sociais', 'infantil': 'Infantil', 'artes': 'Artes',
+            'ensino': 'Ensino', 'cantina': 'Cantina', 'projeto-kids': 'Projeto Kids'
+        };
+        function normaliza(s) {
+            return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+        document.querySelectorAll('.btn-faca-parte').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var slug = btn.getAttribute('data-slug') || '';
+                var nome = mapaSlugNome[slug] || slug;
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (!u) {
+                    alert('🔒 Para solicitar participação em um ministério, entre na sua conta ou inscreva-se.');
+                    window.location.href = 'cadastro.html';
+                    return;
+                }
+                var mins = Array.isArray(u.ministerios) ? u.ministerios : [];
+                var ja = mins.some(function(m) {
+                    var a = normaliza(m), b = normaliza(nome);
+                    return a === b || a.indexOf(b) !== -1 || b.indexOf(a) !== -1;
+                });
+                if (ja) {
+                    alert('Você já participa do ministério ' + nome + '.\n\nUse "Ver o que acontece" para ver fotos e atividades.');
+                    window.location.href = 'fotos.html?ministerio=' + encodeURIComponent(slug);
+                    return;
+                }
+                // Solicita: adiciona ao cadastro local + nuvem + log
+                var lista = (typeof lerMembros === 'function') ? lerMembros() : [];
+                var idx = lista.findIndex(function(m) { return String(m.id) === String(u.id) || (m.email && u.email && m.email.toLowerCase() === u.email.toLowerCase()); });
+                if (idx >= 0) {
+                    if (!Array.isArray(lista[idx].ministerios)) lista[idx].ministerios = [];
+                    if (lista[idx].ministerios.indexOf(nome) === -1) {
+                        lista[idx].ministerios.push(nome);
+                    }
+                    if (typeof salvarMembros === 'function') salvarMembros(lista);
+                    else localStorage.setItem('ibn_membros', JSON.stringify(lista));
+                    if (typeof iniciarSessao === 'function') iniciarSessao(lista[idx]);
+                    try {
+                        if (typeof IBNNuvem !== 'undefined') {
+                            if (IBNNuvem.sincronizarUmMembro) IBNNuvem.sincronizarUmMembro(lista[idx]);
+                            if (IBNNuvem.registrarAtividade) IBNNuvem.registrarAtividade('solicitar_ministerio', 'Solicitou / entrou em: ' + nome, lista[idx]);
+                        }
+                    } catch (e) {}
+                    alert('✅ Solicitação registrada para o ministério ' + nome + '.\n\nA liderança e a secretaria poderão ver no cadastro. Você já pode acompanhar as fotos em "Ver o que acontece".');
+                } else {
+                    alert('Não encontramos seu cadastro local. Faça login novamente ou complete o cadastro.');
+                    window.location.href = 'login.html';
+                }
+            });
+        });
+    })();
+    </script>
+
+<script>
+(function() {
+    function minsQueLidera() {
+        var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+        if (!u) return [];
+        if (typeof isAdmin === 'function' && isAdmin(u)) {
+            return (typeof LISTA_MINISTERIOS !== 'undefined') ? LISTA_MINISTERIOS.slice() : [];
+        }
+        var out = [];
+        var lista = (typeof LISTA_MINISTERIOS !== 'undefined') ? LISTA_MINISTERIOS : [];
+        lista.forEach(function(nome) {
+            if (typeof isLiderMinisterio === 'function' && isLiderMinisterio(u, nome)) out.push(nome);
+        });
+        if (!out.length && Array.isArray(u.ministerios)) {
+            var cargo = String(u.cargo || u.funcaoEspecifica || '').toLowerCase();
+            if (cargo.indexOf('lider') !== -1 || cargo.indexOf('líder') !== -1 || u.nivel === 'lider_ministerio') {
+                u.ministerios.forEach(function(m) { if (out.indexOf(m) === -1) out.push(m); });
+            }
+        }
+        return out;
+    }
+    function renderListaMin() {
+        var sel = document.getElementById('selMinGestao');
+        var ul = document.getElementById('listaMembrosMin');
+        if (!sel || !ul) return;
+        var nome = sel.value;
+        var membros = (typeof membrosDoMinisterio === 'function') ? membrosDoMinisterio(nome) : [];
+        if (!membros.length) {
+            ul.innerHTML = '<li class="text-gray-400 text-xs">Nenhum membro vinculado ainda.</li>';
+            return;
+        }
+        ul.innerHTML = membros.map(function(m) {
+            return '<li class="flex justify-between items-center border-b border-gray-100 py-1"><span>' + (m.nome || '—') +
+                '</span><button type="button" class="btn-rem-min text-xs text-red-600 font-bold" data-id="' + m.id +
+                '" data-nome="' + String(m.nome||'').replace(/"/g,'') + '">Remover</button></li>';
+        }).join('');
+        ul.querySelectorAll('.btn-rem-min').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (!confirm('Remover ' + (btn.getAttribute('data-nome')||'') + ' deste ministério?\n\nContinua membro da igreja.')) return;
+                var r = removerMembroDoMinisterio(btn.getAttribute('data-id'), nome);
+                var msg = document.getElementById('msgGestaoMin');
+                msg.classList.remove('hidden');
+                if (r.sucesso) { msg.className = 'text-sm text-center text-green-600 font-bold'; msg.textContent = 'Removido do ministério.'; renderListaMin(); }
+                else { msg.className = 'text-sm text-center text-red-500 font-bold'; msg.textContent = r.mensagem || 'Erro'; }
+            });
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        var painel = document.getElementById('painelGestaoMinisterio');
+        var sel = document.getElementById('selMinGestao');
+        if (!painel || !sel) return;
+        var mins = minsQueLidera();
+        if (!mins.length) return;
+        painel.classList.remove('hidden');
+        sel.innerHTML = mins.map(function(n) { return '<option value="' + n + '">' + n + '</option>'; }).join('');
+        renderListaMin();
+        sel.addEventListener('change', function() {
+            document.getElementById('buscaMembroMin').value = '';
+            document.getElementById('resultBuscaMin').innerHTML = '';
+            renderListaMin();
+        });
+        document.getElementById('buscaMembroMin').addEventListener('input', function() {
+            var box = document.getElementById('resultBuscaMin');
+            var nomeMin = sel.value;
+            var lista = (typeof buscarMembrosParaMinisterio === 'function') ? buscarMembrosParaMinisterio(this.value, nomeMin) : [];
+            if (!lista.length) {
+                box.innerHTML = this.value.trim().length >= 2 ? '<p class="text-xs text-gray-400">Nenhum resultado ou já está no ministério.</p>' : '';
+                return;
+            }
+            box.innerHTML = lista.map(function(m) {
+                return '<button type="button" class="btn-add-min w-full text-left p-2 rounded border hover:bg-yellow-50 text-sm" data-id="' + m.id + '"><strong>' + (m.nome||'') + '</strong> <span class="text-xs text-gray-500">' + (m.telefone||m.email||'') + '</span></button>';
+            }).join('');
+            box.querySelectorAll('.btn-add-min').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var r = adicionarMembroAoMinisterio(btn.getAttribute('data-id'), nomeMin);
+                    var msg = document.getElementById('msgGestaoMin');
+                    msg.classList.remove('hidden');
+                    if (r.sucesso) {
+                        msg.className = 'text-sm text-center text-green-600 font-bold';
+                        msg.textContent = 'Membro adicionado ao ministério.';
+                        document.getElementById('buscaMembroMin').value = '';
+                        box.innerHTML = '';
+                        renderListaMin();
+                    } else {
+                        msg.className = 'text-sm text-center text-red-500 font-bold';
+                        msg.textContent = r.mensagem || 'Erro';
+                    }
+                });
+            });
+        });
+    });
+})();
+</script>
+
+
+    <!-- Editar texto do ministério (líder / admin / gestor) -->
+    <div id="modalEditarDescMin" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6">
+            <h2 class="text-lg font-bold text-primary mb-1">Editar texto do ministério</h2>
+            <p id="editDescNome" class="text-sm text-gray-500 mb-3"></p>
+            <textarea id="editDescTexto" rows="5" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea>
+            <p class="text-xs text-gray-400 mt-1">Visível para todos na página de Ministérios.</p>
+            <div class="flex gap-2 mt-4">
+                <button type="button" id="btnSalvarDescMin" class="flex-1 bg-primary text-white py-2 rounded-lg font-bold">Salvar</button>
+                <button type="button" id="btnCancelDescMin" class="flex-1 border py-2 rounded-lg font-bold">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        var CHAVE = 'ibn_textos_ministerios';
+        var slugAtual = '';
+        var nomePorSlug = {
+            atmosfera: 'Atmosfera', acolhimento: 'Acolhimento', mulheres: 'Mulheres', homens: 'Homens',
+            intercessao: 'Intercessão', evangelismo: 'Evangelismo', danca: 'Dança', empreendedorismo: 'Empreendedorismo',
+            batismo: 'Batismo', zeladoria: 'Zeladoria', 'projetos-sociais': 'Projetos Sociais', projetos: 'Projetos Sociais',
+            casais: 'Casais', jovens: 'Jovens', adolescentes: 'Adolescentes', louvor: 'Louvor',
+            'midias-sociais': 'Mídias Sociais', midias: 'Mídias Sociais', infantil: 'Infantil', artes: 'Artes',
+            ensino: 'Ensino', cantina: 'Cantina', 'projeto-kids': 'Projeto Kids', kids: 'Projeto Kids'
+        };
+
+        function lerTextos() {
+            try { return JSON.parse(localStorage.getItem(CHAVE) || '{}'); } catch (e) { return {}; }
+        }
+        function salvarTextos(obj) {
+            localStorage.setItem(CHAVE, JSON.stringify(obj || {}));
+        }
+        function podeEditarSlug(slug) {
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (!u) return false;
+            // Somente admin e gestor — líderes de ministério não editam textos públicos
+            if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+            if (typeof isGestor === 'function' && isGestor(u)) return true;
+            return false;
+        }
+        function aplicarTextos() {
+            var textos = lerTextos();
+            document.querySelectorAll('[data-desc-slug]').forEach(function(el) {
+                var slug = el.getAttribute('data-desc-slug');
+                if (textos[slug]) el.textContent = textos[slug];
+            });
+        }
+        function colocarBotoesEditar() {
+            document.querySelectorAll('[data-desc-slug]').forEach(function(el) {
+                var slug = el.getAttribute('data-desc-slug');
+                if (!podeEditarSlug(slug)) return;
+                if (el.parentElement.querySelector('.btn-edit-desc-min')) return;
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn-edit-desc-min text-xs text-secondary font-bold mt-1 hover:underline';
+                btn.innerHTML = '<i class="fa fa-pencil"></i> Editar texto';
+                btn.setAttribute('data-slug', slug);
+                btn.addEventListener('click', function() {
+                    slugAtual = slug;
+                    document.getElementById('editDescNome').textContent = nomePorSlug[slug] || slug;
+                    document.getElementById('editDescTexto').value = el.textContent.trim();
+                    var m = document.getElementById('modalEditarDescMin');
+                    m.classList.remove('hidden');
+                    m.classList.add('flex');
+                });
+                el.insertAdjacentElement('afterend', btn);
+            });
+        }
+        document.getElementById('btnCancelDescMin').addEventListener('click', function() {
+            var m = document.getElementById('modalEditarDescMin');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        });
+        document.getElementById('btnSalvarDescMin').addEventListener('click', function() {
+            var texto = document.getElementById('editDescTexto').value.trim();
+            if (!texto) { alert('Escreva o texto do ministério.'); return; }
+            if (!podeEditarSlug(slugAtual)) { alert('Sem permissão.'); return; }
+            var textos = lerTextos();
+            textos[slugAtual] = texto;
+            salvarTextos(textos);
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarConfigNuvem) {
+                    IBNNuvem.salvarConfigNuvem('textos_ministerios', textos);
+                } else if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+                    firebase.firestore().collection('config').doc('textos_ministerios').set(textos, { merge: true });
+                }
+            } catch (e) {}
+            aplicarTextos();
+            var m = document.getElementById('modalEditarDescMin');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        });
+        async function puxarDaNuvem() {
+            try {
+                if (typeof firebase === 'undefined' || !firebase.apps.length) return;
+                var snap = await firebase.firestore().collection('config').doc('textos_ministerios').get();
+                if (snap.exists) {
+                    var data = snap.data() || {};
+                    var local = lerTextos();
+                    var merged = Object.assign({}, local, data);
+                    salvarTextos(merged);
+                }
+            } catch (e) {}
+        }
+        document.addEventListener('DOMContentLoaded', async function() {
+            await puxarDaNuvem();
+            aplicarTextos();
+            colocarBotoesEditar();
+        });
+        // se conta.js carregar depois
+        setTimeout(function() { aplicarTextos(); colocarBotoesEditar(); }, 400);
+    })();
+    </script>
+
+
+
+
+<script>
+(function(){
+    var MAPA_SLUG = {
+        atmosfera: 'Atmosfera', acolhimento: 'Acolhimento', mulheres: 'Mulheres', homens: 'Homens',
+        intercessao: 'Intercessão', evangelismo: 'Evangelismo', danca: 'Dança',
+        empreendedorismo: 'Empreendedorismo', batismo: 'Batismo', zeladoria: 'Zeladoria',
+        'projetos-sociais': 'Projetos Sociais', casais: 'Casais', jovens: 'Jovens',
+        adolescentes: 'Adolescentes', louvor: 'Louvor', midias: 'Mídias Sociais',
+        'midias-sociais': 'Mídias Sociais', infantil: 'Infantil', artes: 'Artes',
+        ensino: 'Ensino', cantina: 'Cantina', kids: 'Projeto Kids', 'projeto-kids': 'Projeto Kids'
+    };
+
+    var minAtualModal = '';
+    var escFormSujo = false;
+    var escSelecoes = {};
+    var escIntegrantesBase = [];
+    var escModelo = [];
+
+    function usuario() {
+        try { return (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null; }
+        catch (e) { return null; }
+    }
+    function ehGestao(u) {
+        if (!u) return false;
+        try {
+            if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+        } catch (e) {}
+        return u.nivel === 'admin' || u.nivel === 'gestor';
+    }
+
+    function fecharModalEscala() {
+        var modal = document.getElementById('modalEscalaMin');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        escFormSujo = false;
+    }
+
+    function tentarFecharModalEscala(forcarSemSalvar) {
+        try {
+            if (forcarSemSalvar) {
+                if (escFormSujo && !window.confirm('Sair sem salvar?\n\nAlterações não salvas serão perdidas.')) return;
+                fecharModalEscala();
+                return;
+            }
+            if (escFormSujo && !window.confirm('Há alterações não salvas.\nOK = sair sem salvar\nCancelar = continuar')) return;
+            fecharModalEscala();
+        } catch (e) {
+            fecharModalEscala();
+        }
+    }
+
+    function dataIsoForm() {
+        var el = document.getElementById('escNovoData');
+        return el && el.value ? el.value : '';
+    }
+
+    function nomesUsadosNoForm() {
+        var u = {};
+        Object.keys(escSelecoes).forEach(function(fn) {
+            (escSelecoes[fn] || []).forEach(function(n) { u[n] = true; });
+        });
+        return u;
+    }
+
+    function ocupadosOutrosMinisterios(dataIso) {
+        var mapa = {};
+        if (!dataIso || typeof lerTodasEscalasCultos !== 'function') return mapa;
+        try {
+            var all = lerTodasEscalasCultos() || {};
+            Object.keys(all).forEach(function(min) {
+                if (String(min).toLowerCase() === String(minAtualModal).toLowerCase()) return;
+                (all[min] || []).forEach(function(linha) {
+                    if (String(linha.dataIso || '') !== String(dataIso)) return;
+                    var funcoes = linha.funcoes || {};
+                    Object.keys(funcoes).forEach(function(fn) {
+                        (funcoes[fn] || []).forEach(function(nomeE) {
+                            var nome = String(nomeE || '').trim();
+                            if (!nome) return;
+                            mapa[nome] = min;
+                            escIntegrantesBase.forEach(function(p) {
+                                if (typeof nomeBateEscala === 'function' && nomeBateEscala(p.nome, nomeE)) {
+                                    mapa[p.nome] = min;
+                                }
+                            });
+                        });
+                    });
+                });
+            });
+        } catch (e) {}
+        return mapa;
+    }
+
+    function disponiveisParaFuncao() {
+        var usados = nomesUsadosNoForm();
+        var ocup = ocupadosOutrosMinisterios(dataIsoForm());
+        return escIntegrantesBase.filter(function(p) {
+            return !usados[p.nome] && !ocup[p.nome];
+        }).sort(function(a, b) {
+            return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+        });
+    }
+
+    function renderLinhasFuncoes() {
+        var box = document.getElementById('escNovoFuncoes');
+        if (!box) return;
+        var html = '';
+        if (!escIntegrantesBase.length) {
+            html += '<p class="text-xs text-amber-700 mb-2">Sem integrantes cadastrados neste ministério. Digite os nomes abaixo.</p>';
+        }
+        escModelo.forEach(function(it) {
+            var fn = String(it.funcao || '');
+            var sel = escSelecoes[fn] || [];
+            var chips = sel.length
+                ? sel.map(function(n) {
+                    return '<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-900 text-[11px] font-semibold px-1.5 py-0.5 rounded mr-1 mb-0.5">' +
+                        n + ' <button type="button" data-rm-fn="' + encodeURIComponent(fn) + '" data-rm-nome="' + encodeURIComponent(n) + '" class="esc-rm text-red-600 font-bold leading-none">×</button></span>';
+                }).join('')
+                : '<span class="text-gray-400 text-[11px]">Ninguém — clique para escolher</span>';
+            html += '<div class="border rounded-lg mb-1.5 bg-white">' +
+                '<button type="button" class="esc-open w-full flex items-center gap-2 px-2.5 py-2 text-left hover:bg-gray-50" data-open-fn="' + encodeURIComponent(fn) + '">' +
+                '<span class="text-gray-500 text-xs">▶</span>' +
+                '<span class="flex-1 min-w-0"><span class="text-xs font-bold text-gray-800">' + fn +
+                (it.qtd ? ' <span class="font-normal text-gray-500">(até ' + it.qtd + ')</span>' : '') +
+                '</span><span class="block mt-0.5">' + chips + '</span></span></button>' +
+                '<div class="esc-panel hidden border-t bg-gray-50 max-h-40 overflow-y-auto px-1 py-1" data-panel-fn="' + encodeURIComponent(fn) + '"></div></div>';
+        });
+        if (!escIntegrantesBase.length) {
+            escModelo.forEach(function(it) {
+                html += '<input type="text" class="esc-nf w-full border rounded px-2 py-1 text-xs mb-1" data-fn="' +
+                    String(it.funcao).replace(/"/g, '') + '" placeholder="' + String(it.funcao) + ' — nomes separados por vírgula">';
+            });
+        }
+        box.innerHTML = html;
+
+        box.querySelectorAll('.esc-rm').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var f = decodeURIComponent(btn.getAttribute('data-rm-fn') || '');
+                var n = decodeURIComponent(btn.getAttribute('data-rm-nome') || '');
+                escSelecoes[f] = (escSelecoes[f] || []).filter(function(x) { return x !== n; });
+                escFormSujo = true;
+                renderLinhasFuncoes();
+            });
+        });
+
+        box.querySelectorAll('.esc-open').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var fn = decodeURIComponent(btn.getAttribute('data-open-fn') || '');
+                var panels = box.querySelectorAll('.esc-panel');
+                panels.forEach(function(p) { p.classList.add('hidden'); p.innerHTML = ''; });
+                var panel = null;
+                panels.forEach(function(p) {
+                    if (decodeURIComponent(p.getAttribute('data-panel-fn') || '') === fn) panel = p;
+                });
+                if (!panel) return;
+                panel.classList.remove('hidden');
+                var disp = disponiveisParaFuncao();
+                var ocup = ocupadosOutrosMinisterios(dataIsoForm());
+                var info = '';
+                if (!dataIsoForm()) {
+                    info += '<p class="text-[11px] text-amber-700 px-2 py-1">Informe a data acima para evitar conflito com outros ministérios.</p>';
+                }
+                var bloqueados = escIntegrantesBase.filter(function(p) { return ocup[p.nome]; });
+                if (bloqueados.length) {
+                    info += '<p class="text-[11px] text-gray-500 px-2 py-1 border-b">Já em outro ministério neste dia:<br>' +
+                        bloqueados.map(function(p) { return p.nome + ' → ' + ocup[p.nome]; }).join('<br>') + '</p>';
+                }
+                if (!disp.length) {
+                    panel.innerHTML = info + '<p class="text-[11px] text-gray-500 px-2 py-1">Nenhum disponível.</p>';
+                    return;
+                }
+                panel.innerHTML = info + disp.map(function(p) {
+                    return '<button type="button" class="esc-pick w-full text-left text-xs px-2 py-1.5 hover:bg-indigo-100 border-b border-gray-100" data-fn="' +
+                        encodeURIComponent(fn) + '" data-nome="' + encodeURIComponent(p.nome) + '">' + p.nome +
+                        (p.papel ? ' <span class="text-gray-400">(' + p.papel + ')</span>' : '') + '</button>';
+                }).join('');
+                panel.querySelectorAll('.esc-pick').forEach(function(b) {
+                    b.addEventListener('click', function() {
+                        var f = decodeURIComponent(b.getAttribute('data-fn') || '');
+                        var n = decodeURIComponent(b.getAttribute('data-nome') || '');
+                        if (!escSelecoes[f]) escSelecoes[f] = [];
+                        var max = 0;
+                        escModelo.forEach(function(m) { if (m.funcao === f) max = m.qtd || 0; });
+                        if (max > 0 && escSelecoes[f].length >= max) {
+                            if (!window.confirm('Limite sugerido: ' + max + '. Incluir mesmo assim?')) return;
+                        }
+                        if (escSelecoes[f].indexOf(n) === -1) escSelecoes[f].push(n);
+                        escFormSujo = true;
+                        renderLinhasFuncoes();
+                    });
+                });
+            });
+        });
+    }
+
+    function montarCamposNovoDia(nomeMin) {
+        escModelo = [];
+        escSelecoes = {};
+        escIntegrantesBase = [];
+        try {
+            var modelo = (typeof lerModeloFuncoesMinisterio === 'function') ? lerModeloFuncoesMinisterio(nomeMin) : [];
+            escModelo = (modelo || []).filter(function(it) { return it && it.funcao && !/^observa/i.test(it.funcao); });
+            escModelo.forEach(function(it) { escSelecoes[it.funcao] = []; });
+            var integrantes = (typeof membrosDoMinisterio === 'function') ? membrosDoMinisterio(nomeMin) : [];
+            escIntegrantesBase = (integrantes || []).map(function(p) {
+                return { id: p.id, nome: String(p.nome || '').trim(), papel: p.papel || '' };
+            }).filter(function(p) { return p.nome; });
+        } catch (e) {
+            console.warn('montarCamposNovoDia', e);
+        }
+        renderLinhasFuncoes();
+    }
+
+    function renderListaEscalaModal() {
+        var box = document.getElementById('listaEscalaModal');
+        var bloco36 = document.getElementById('bloco36hEscala');
+        var box36 = document.getElementById('listaConfirmacao36h');
+        if (!box) return;
+        try {
+            if (bloco36 && box36 && typeof listaEscaladosJanela36h === 'function') {
+                var lista36 = listaEscaladosJanela36h(minAtualModal) || [];
+                if (lista36.length) {
+                    bloco36.classList.remove('hidden');
+                    box36.innerHTML = lista36.map(function(p) {
+                        var st = p.confirmou ? '✓ Confirmou' : '⏳ Não confirmou';
+                        var nf = p.notifLabel || '';
+                        var tel = p.telefone || 'sem telefone';
+                        var btns = '';
+                        if (p.linkTel) btns += '<a href="' + p.linkTel + '" class="text-xs font-bold text-primary underline mr-2">Ligar</a>';
+                        if (p.linkWa) btns += '<a href="' + p.linkWa + '" target="_blank" class="text-xs font-bold text-green-700 underline">WhatsApp</a>';
+                        return '<div class="bg-white rounded border px-2 py-1.5 text-xs mb-1"><b>' + (p.nome||'') + '</b> — ' + st +
+                            '<br>' + (p.funcao||'') + ' · ' + tel + (nf ? ' · ' + nf : '') + '<br>' + btns + '</div>';
+                    }).join('');
+                } else {
+                    bloco36.classList.add('hidden');
+                }
+            }
+        } catch (e) {
+            if (bloco36) bloco36.classList.add('hidden');
+        }
+
+        var linhas = [];
+        try {
+            if (typeof escalaCompletaMinisterio === 'function') {
+                linhas = escalaCompletaMinisterio(minAtualModal, 120) || [];
+            }
+        } catch (e) { linhas = []; }
+
+        if (!linhas.length) {
+            box.innerHTML = '<p class="text-gray-400 text-sm">Nenhum dia cadastrado ainda. Use o formulário abaixo.</p>';
+            return;
+        }
+        var incompletas = linhas.filter(function(l) { return l.status !== 'finalizada'; });
+        var completas = linhas.filter(function(l) { return l.status === 'finalizada'; });
+        function cardDia(l, aberta) {
+            var funcoesHtml = '';
+            var f = l.funcoes || {};
+            var nFun = 0;
+            Object.keys(f).forEach(function(fn) {
+                var nomes = Array.isArray(f[fn]) ? f[fn].join(', ') : f[fn];
+                if (nomes) nFun++;
+                funcoesHtml += '<p class="text-xs"><span class="font-semibold">' + fn + ':</span> ' + (nomes || '—') + '</p>';
+            });
+            var isFin = l.status === 'finalizada';
+            var badge = isFin
+                ? '<span class="text-[10px] font-bold bg-green-100 text-green-800 px-1.5 py-0.5 rounded">Completa</span>'
+                : '<span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">⚠ Incompleta</span>';
+            var iso = l.dataIso || '';
+            return '<div class="border rounded-lg mb-2 overflow-hidden ' + (isFin ? 'border-green-200' : 'border-amber-300') + '">' +
+                '<button type="button" class="btn-toggle-dia w-full text-left px-3 py-2 flex justify-between items-center gap-2 ' +
+                (isFin ? 'bg-green-50' : 'bg-amber-50') + '" data-iso="' + iso + '">' +
+                '<span class="font-bold text-primary text-sm">▶ ' + (l.dataLabel || iso) + ' ' + badge +
+                ' <span class="text-gray-500 font-normal text-xs">(' + nFun + ' função(ões))</span></span>' +
+                '<span class="text-[10px] text-primary font-bold shrink-0">ver escala</span></button>' +
+                '<div class="detalhe-dia px-3 pb-3 pt-1 ' + (aberta ? '' : 'hidden') + '" data-iso="' + iso + '">' +
+                funcoesHtml +
+                (l.observacao ? '<p class="text-xs text-amber-800 mt-1"><b>Obs:</b> ' + l.observacao + '</p>' : '') +
+                '<div class="flex flex-wrap gap-2 mt-2">' +
+                '<button type="button" class="btn-png-dia text-xs font-bold bg-emerald-600 text-white px-2 py-1 rounded" data-iso="' + iso + '">PNG WhatsApp</button>' +
+                '<button type="button" class="btn-edit-dia text-xs font-bold bg-primary text-white px-2 py-1 rounded" data-iso="' + iso + '">Editar</button>' +
+                '<button type="button" class="btn-rem-dia text-xs font-bold border border-red-400 text-red-600 px-2 py-1 rounded" data-iso="' + iso + '">Excluir</button>' +
+                '</div></div></div>';
+        }
+        var html = '';
+        html += '<div class="mb-3"><p class="text-xs font-bold text-amber-800 mb-1">⚠ Incompletas / rascunhos (' + incompletas.length + ')</p>';
+        if (!incompletas.length) html += '<p class="text-xs text-gray-400 mb-2">Nenhuma incompleta.</p>';
+        else incompletas.forEach(function(l) { html += cardDia(l, false); });
+        html += '</div>';
+        html += '<div class="mb-2"><p class="text-xs font-bold text-green-800 mb-1">✓ Completas / finalizadas (' + completas.length + ')</p>';
+        if (!completas.length) html += '<p class="text-xs text-gray-400">Nenhuma finalizada ainda.</p>';
+        else completas.forEach(function(l) { html += cardDia(l, false); });
+        html += '</div>';
+        html += '<p class="text-[10px] text-gray-500">Toque no dia para ver a escala. Use <b>Editar</b> para alterar.</p>';
+        box.innerHTML = html;
+        box.querySelectorAll('.btn-toggle-dia').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var iso = btn.getAttribute('data-iso');
+                var det = box.querySelector('.detalhe-dia[data-iso="' + iso + '"]');
+                if (!det) return;
+                var aberto = !det.classList.contains('hidden');
+                // fecha outros
+                box.querySelectorAll('.detalhe-dia').forEach(function(d) { d.classList.add('hidden'); });
+                box.querySelectorAll('.btn-toggle-dia').forEach(function(b) {
+                    b.innerHTML = b.innerHTML.replace(/^▼/, '▶').replace('▲', '▶');
+                });
+                if (!aberto) {
+                    det.classList.remove('hidden');
+                    btn.innerHTML = btn.innerHTML.replace('▶', '▼');
+                }
+            });
+        });
+
+        box.querySelectorAll('.btn-png-dia').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var iso = btn.getAttribute('data-iso');
+                var l = linhas.find(function(x) { return String(x.dataIso) === String(iso); });
+                if (!l) return window.alert('Dia não encontrado.');
+                if (typeof gerarCartazEscalaPng !== 'function') {
+                    return window.alert('Função PNG indisponível. Atualize o conta.js.');
+                }
+                var r = gerarCartazEscalaPng(
+                    minAtualModal,
+                    l,
+                    (document.getElementById('escMinVersiculo') || {}).value,
+                    (document.getElementById('escMinRef') || {}).value
+                );
+                if (!r.sucesso) window.alert(r.mensagem || 'Não foi possível gerar o PNG.');
+                else window.alert('Cartaz PNG baixado!\nAbra a pasta de downloads e envie no WhatsApp para a equipe.');
+            });
+        });
+        box.querySelectorAll('.btn-rem-dia').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (!window.confirm('Excluir este dia da escala?')) return;
+                try {
+                    if (typeof removerDiaEscala === 'function') removerDiaEscala(minAtualModal, btn.getAttribute('data-iso'));
+                } catch (e) {}
+                renderListaEscalaModal();
+            });
+        });
+        box.querySelectorAll('.btn-edit-dia').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (!window.confirm('Carregar este dia no formulário para editar?')) return;
+                var iso = btn.getAttribute('data-iso');
+                var l = linhas.find(function(x) { return String(x.dataIso) === String(iso); });
+                if (!l) return;
+                document.getElementById('escNovoData').value = l.dataIso || '';
+                document.getElementById('escNovoLabel').value = l.dataLabel || '';
+                document.getElementById('escNovoObs').value = l.observacao || '';
+                escModelo.forEach(function(it) { escSelecoes[it.funcao] = []; });
+                Object.keys(l.funcoes || {}).forEach(function(fn) {
+                    escSelecoes[fn] = (l.funcoes[fn] || []).slice();
+                });
+                escFormSujo = false;
+                renderLinhasFuncoes();
+            });
+        });
+    }
+
+    function podeEditarModeloMinisterio(nomeMin) {
+        var u = usuario();
+        if (!u) return false;
+        if (ehGestao(u)) return true;
+        try {
+            if (typeof isLiderDoMinisterio === 'function' && isLiderDoMinisterio(u, nomeMin)) return true;
+        } catch (e) {}
+        return false;
+    }
+    function renderEditorModeloLider() {
+        var box = document.getElementById('listaModeloLider');
+        if (!box) return;
+        var modelo = [];
+        try {
+            if (typeof lerModeloFuncoesMinisterio === 'function') {
+                modelo = lerModeloFuncoesMinisterio(minAtualModal) || [];
+            }
+        } catch (e) {}
+        if (!modelo.length) {
+            modelo = [
+                { funcao: 'Função 1', qtd: 1 },
+                { funcao: 'Função 2', qtd: 2 }
+            ];
+        }
+        box.innerHTML = modelo.map(function(it, i) {
+            return '<div class="flex gap-2 items-center mod-lider-row">' +
+                '<input type="text" class="mod-lider-fn flex-1 border rounded px-2 py-1 text-xs" value="' +
+                String(it.funcao || '').replace(/"/g, '&quot;') + '" placeholder="Nome da função">' +
+                '<input type="number" min="0" max="50" class="mod-lider-qtd w-16 border rounded px-2 py-1 text-xs" value="' +
+                (it.qtd != null ? it.qtd : 1) + '" title="Qtd sugerida">' +
+                '<button type="button" class="mod-lider-rm text-red-600 font-bold text-sm px-1" title="Remover">×</button>' +
+                '</div>';
+        }).join('');
+        box.querySelectorAll('.mod-lider-rm').forEach(function(btn) {
+            btn.onclick = function() {
+                var row = btn.closest('.mod-lider-row');
+                if (row) row.remove();
+            };
+        });
+    }
+    function atualizarBlocoModeloLider() {
+        var bloco = document.getElementById('blocoModeloFuncoesLider');
+        var painel = document.getElementById('painelModeloLider');
+        if (!bloco) return;
+        if (podeEditarModeloMinisterio(minAtualModal)) {
+            bloco.classList.remove('hidden');
+            renderEditorModeloLider();
+        } else {
+            bloco.classList.add('hidden');
+            if (painel) painel.classList.add('hidden');
+        }
+    }
+    function abrirModalEscala(nomeMin) {
+        minAtualModal = nomeMin;
+        escFormSujo = false;
+        var modal = document.getElementById('modalEscalaMin');
+        var tit = document.getElementById('modalEscalaTitulo');
+        if (tit) tit.textContent = 'Escala — ' + nomeMin;
+        function preencher() {
+            try { if (typeof preencherSelectsVersaoBiblia === 'function') preencherSelectsVersaoBiblia(); } catch (e0) {}
+            try { if (typeof ligarBotaoAtualizarVersiculo === 'function') ligarBotaoAtualizarVersiculo('btnAtualizarVersiculoMin'); } catch (e1) {}
+            try {
+                var vv = (typeof obterVersiculoEscala === 'function') ? obterVersiculoEscala('ministerio', nomeMin) : null;
+                var elV = document.getElementById('escMinVersiculo');
+                var elR = document.getElementById('escMinRef');
+                if (elV && vv) elV.value = vv.texto || '';
+                if (elR && vv) elR.value = vv.referencia || '';
+            } catch (eV) {}
+            try { renderListaEscalaModal(); } catch (e) { console.warn(e); }
+            try { montarCamposNovoDia(nomeMin); } catch (e) { console.warn(e); }
+            try { atualizarBlocoModeloLider(); } catch (e) { console.warn(e); }
+            try { if (typeof atualizarAvisoPendenteLider === 'function') atualizarAvisoPendenteLider(); } catch (e) {}
+        }
+        var boxLista = document.getElementById('listaEscalaModal');
+        if (boxLista) {
+            boxLista.innerHTML = '<p class="text-sm text-blue-700 font-semibold">☁ Buscando escalas na nuvem…</p>';
+        }
+        preencher();
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        // Puxa membros + escalas da nuvem (celular continua de onde parou no PC)
+        try {
+            var promessas = [];
+            if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
+                promessas.push(IBNNuvem.puxarMembrosParaLocal());
+            }
+            if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarEscalasParaLocal) {
+                promessas.push(IBNNuvem.puxarEscalasParaLocal());
+            }
+            if (promessas.length) {
+                Promise.all(promessas).then(function (res) {
+                    try { if (typeof atualizarSessaoDoCadastro === 'function') atualizarSessaoDoCadastro(); } catch (e) {}
+                    preencher();
+                    var falhou = (res || []).some(function (r) { return r && r.sucesso === false; });
+                    if (falhou && boxLista && !boxLista.querySelector('.btn-toggle-dia')) {
+                        var msg = document.createElement('p');
+                        msg.className = 'text-xs text-red-600 mt-1';
+                        msg.textContent = 'Não foi possível baixar da nuvem. Verifique internet ou regras do Firebase (escalas_ministerio).';
+                        boxLista.appendChild(msg);
+                    }
+                }).catch(function (err) {
+                    preencher();
+                    if (boxLista) {
+                        var msg = document.createElement('p');
+                        msg.className = 'text-xs text-red-600 mt-1';
+                        msg.textContent = 'Falha ao sincronizar escala: ' + ((err && err.message) || 'rede');
+                        boxLista.appendChild(msg);
+                    }
+                });
+            }
+        } catch (e) {}
+    }
+
+    function coletarPreenchimento() {
+        var preenchimento = {};
+        Object.keys(escSelecoes).forEach(function(fn) {
+            if (escSelecoes[fn] && escSelecoes[fn].length) preenchimento[fn] = escSelecoes[fn].slice();
+        });
+        document.querySelectorAll('.esc-nf').forEach(function(inp) {
+            var fn = inp.getAttribute('data-fn');
+            var nomes = String(inp.value || '').split(/[,;/]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+            if (!nomes.length) return;
+            if (!preenchimento[fn]) preenchimento[fn] = [];
+            nomes.forEach(function(n) {
+                if (preenchimento[fn].indexOf(n) === -1) preenchimento[fn].push(n);
+            });
+        });
+        return preenchimento;
+    }
+
+    function salvarDiaUI(status) {
+        try {
+            var dataIso = document.getElementById('escNovoData').value;
+            var label = (document.getElementById('escNovoLabel').value || '').trim();
+            if (!dataIso && !label) {
+                window.alert('Informe a data.');
+                return;
+            }
+            if (!label && dataIso) {
+                var p = dataIso.split('-');
+                var dt = new Date(dataIso + 'T12:00:00');
+                var dias = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+                label = (dias[dt.getDay()] || '') + ' ' + p[2] + '/' + p[1] + '/' + String(p[0]).slice(2);
+            }
+            var msg = status === 'finalizada'
+                ? 'Finalizar a escala deste dia?'
+                : 'Salvar como rascunho (incompleta)?';
+            if (!window.confirm(msg)) return;
+
+            if (typeof salvarDiaEscalaFormulario !== 'function') {
+                window.alert('Função de salvar indisponível. Envie o arquivo conta.js atualizado para o GitHub.');
+                return;
+            }
+            var r = salvarDiaEscalaFormulario({
+                ministerio: minAtualModal,
+                dataIso: dataIso,
+                dataLabel: label,
+                preenchimento: coletarPreenchimento(),
+                observacao: (document.getElementById('escNovoObs').value || '').trim(),
+                status: status
+            });
+            if (!r || !r.sucesso) {
+                window.alert((r && r.mensagem) || 'Falha ao salvar.');
+                return;
+            }
+            window.alert((status === 'finalizada' ? 'Escala finalizada: ' : 'Rascunho salvo: ') + label);
+            escFormSujo = false;
+            Object.keys(escSelecoes).forEach(function(k) { escSelecoes[k] = []; });
+            try { document.getElementById('escNovoObs').value = ''; } catch (e) {}
+            renderLinhasFuncoes();
+            renderListaEscalaModal();
+        } catch (e) {
+            console.error(e);
+            window.alert('Erro ao salvar: ' + (e.message || e));
+        }
+    }
+
+    // Botões do modal (sempre fecham / salvam com try)
+    function bindModalBtns() {
+        var x = document.getElementById('btnFecharModalEscala');
+        var sair = document.getElementById('btnFecharModalEscala2');
+        var sairSem = document.getElementById('btnSairSemSalvarEsc');
+        var rasc = document.getElementById('btnSalvarRascunhoEsc');
+        var fin = document.getElementById('btnSalvarNovoDiaEsc');
+        var wa = document.getElementById('btnWhatsEscalaModal');
+        var csvBtn = document.getElementById('btnCsvEscalaModal');
+        var modal = document.getElementById('modalEscalaMin');
+        if (x) x.onclick = function() { tentarFecharModalEscala(false); };
+        if (sair) sair.onclick = function() { tentarFecharModalEscala(false); };
+        if (sairSem) sairSem.onclick = function() { tentarFecharModalEscala(true); };
+        if (rasc) rasc.onclick = function() { salvarDiaUI('rascunho'); };
+        if (fin) fin.onclick = function() { salvarDiaUI('finalizada'); };
+        if (csvBtn) csvBtn.onclick = function() {
+            try {
+                if (typeof exportarEscalaCSV !== 'function') {
+                    window.alert('Função CSV indisponível. Atualize o conta.js.');
+                    return;
+                }
+                var r = exportarEscalaCSV(minAtualModal);
+                if (r && r.sucesso) window.alert('CSV baixado: ' + (r.mensagem || 'ok') + '\nInclui dias em rascunho e finalizados.');
+            } catch (e) {
+                window.alert('Erro ao gerar CSV: ' + (e.message || e));
+            }
+        };
+        if (wa) wa.onclick = function() {
+            try {
+                var linhas = (typeof escalaCompletaMinisterio === 'function') ? escalaCompletaMinisterio(minAtualModal, 14) : [];
+                if (!linhas.length) return window.alert('Nenhum dia na escala.');
+                if (!window.confirm('Abrir WhatsApp do próximo dia?')) return;
+                if (typeof montarLembretesWhatsAppEscala === 'function') {
+                    var lista = montarLembretesWhatsAppEscala(minAtualModal, linhas[0].dataIso) || [];
+                    lista.forEach(function(item, i) {
+                        if (item.link) setTimeout(function() { window.open(item.link, '_blank'); }, i * 700);
+                    });
+                }
+            } catch (e) { window.alert('Erro WhatsApp'); }
+        };
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target.id === 'modalEscalaMin') tentarFecharModalEscala(false);
+            });
+        }
+        var dataEl = document.getElementById('escNovoData');
+        if (dataEl) {
+            dataEl.addEventListener('change', function() {
+                Object.keys(escSelecoes).forEach(function(k) { escSelecoes[k] = []; });
+                escFormSujo = true;
+                renderLinhasFuncoes();
+            });
+        }
+        var tog = document.getElementById('btnToggleModeloLider');
+        if (tog) {
+            tog.onclick = function() {
+                var p = document.getElementById('painelModeloLider');
+                if (!p) return;
+                var aberto = !p.classList.contains('hidden');
+                if (aberto) {
+                    p.classList.add('hidden');
+                    tog.textContent = '▶ Montar / editar funções deste ministério (formulário da escala)';
+                } else {
+                    p.classList.remove('hidden');
+                    tog.textContent = '▼ Ocultar edição do formulário';
+                    renderEditorModeloLider();
+                    if (typeof atualizarAvisoPendenteLider === 'function') atualizarAvisoPendenteLider();
+                }
+            };
+        }
+        var addF = document.getElementById('btnAddFuncaoLider');
+        if (addF) {
+            addF.onclick = function() {
+                var box = document.getElementById('listaModeloLider');
+                if (!box) return;
+                var div = document.createElement('div');
+                div.className = 'flex gap-2 items-center mod-lider-row';
+                div.innerHTML = '<input type="text" class="mod-lider-fn flex-1 border rounded px-2 py-1 text-xs" placeholder="Nova função">' +
+                    '<input type="number" min="0" max="50" class="mod-lider-qtd w-16 border rounded px-2 py-1 text-xs" value="1">' +
+                    '<button type="button" class="mod-lider-rm text-red-600 font-bold text-sm px-1">×</button>';
+                box.appendChild(div);
+                div.querySelector('.mod-lider-rm').onclick = function() { div.remove(); };
+            };
+        }
+        function coletarListaModeloLider() {
+            var lista = [];
+            document.querySelectorAll('#listaModeloLider .mod-lider-row').forEach(function(row) {
+                var fn = ((row.querySelector('.mod-lider-fn') || {}).value || '').trim();
+                var q = parseInt((row.querySelector('.mod-lider-qtd') || {}).value || '0', 10);
+                if (fn) lista.push({ funcao: fn, qtd: isNaN(q) ? 0 : q });
+            });
+            return lista;
+        }
+        function atualizarAvisoPendenteLider() {
+            var av = document.getElementById('avisoModeloPendenteLider');
+            var pub = document.getElementById('btnPublicarModeloLider');
+            if (!av) return;
+            var u = usuario();
+            var gestao = ehGestao(u);
+            if (pub) {
+                if (gestao) pub.classList.remove('hidden');
+                else pub.classList.add('hidden');
+            }
+            try {
+                if (typeof temModeloPendente === 'function' && temModeloPendente(minAtualModal)) {
+                    var p = obterModeloPendente(minAtualModal);
+                    av.classList.remove('hidden');
+                    av.textContent = '⏳ Há um formulário aguardando aprovação' +
+                        (p && p.solicitadoPor ? ' (por ' + p.solicitadoPor + ')' : '') +
+                        '. Admin/gestor precisa aprovar no Painel Administrativo.';
+                } else {
+                    av.classList.add('hidden');
+                    av.textContent = '';
+                }
+            } catch (e) { av.classList.add('hidden'); }
+        }
+        var salM = document.getElementById('btnSalvarModeloLider');
+        if (salM) {
+            salM.onclick = function() {
+                if (!podeEditarModeloMinisterio(minAtualModal)) {
+                    window.alert('Sem permissão. Apenas o líder deste ministério, admin ou gestor.');
+                    return;
+                }
+                var lista = coletarListaModeloLider();
+                if (!lista.length) {
+                    window.alert('Inclua pelo menos uma função.');
+                    return;
+                }
+                var u = usuario();
+                // Líder → solicita aprovação; admin/gestor também pode só enviar se quiser
+                if (!window.confirm('Enviar o formulário de ' + minAtualModal + ' para aprovação da secretaria/gestor?\n\nEle só vale na escala depois de aprovado.')) return;
+                if (typeof solicitarAprovacaoModeloEscala !== 'function') {
+                    window.alert('Função indisponível. Atualize o conta.js.');
+                    return;
+                }
+                var r = solicitarAprovacaoModeloEscala(minAtualModal, lista, (u && u.nome) || '');
+                var msg = document.getElementById('msgModeloLider');
+                if (msg) {
+                    msg.classList.remove('hidden');
+                    msg.className = 'text-xs mt-2 ' + (r.sucesso ? 'text-green-700' : 'text-red-600') + ' font-semibold';
+                    msg.textContent = r.mensagem || (r.sucesso ? 'Enviado.' : 'Erro');
+                }
+                atualizarAvisoPendenteLider();
+            };
+        }
+        var pubM = document.getElementById('btnPublicarModeloLider');
+        if (pubM) {
+            pubM.onclick = function() {
+                if (!ehGestao(usuario())) {
+                    window.alert('Só admin/gestor publica direto.');
+                    return;
+                }
+                var lista = coletarListaModeloLider();
+                if (!lista.length) return window.alert('Inclua pelo menos uma função.');
+                if (!window.confirm('Publicar agora o formulário oficial de ' + minAtualModal + ' (sem fila de aprovação)?')) return;
+                if (typeof salvarModeloFuncoesMinisterio !== 'function') return window.alert('conta.js desatualizado');
+                salvarModeloFuncoesMinisterio(minAtualModal, lista);
+                // limpa pendente se houver
+                try {
+                    if (typeof recusarModeloPendente === 'function' && temModeloPendente(minAtualModal)) {
+                        // remove pendente sem “recusar” semanticamente — usa recusar ou aprovar
+                        var all = lerModelosPendentes();
+                        delete all[minAtualModal];
+                        salvarTodosModelosPendentes(all);
+                    }
+                } catch (e) {}
+                try {
+                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
+                        IBNNuvem.registrarAtividade('modelo_escala', 'Publicou formulário de escala: ' + minAtualModal, usuario());
+                    }
+                } catch (e) {}
+                var msg = document.getElementById('msgModeloLider');
+                if (msg) {
+                    msg.classList.remove('hidden');
+                    msg.className = 'text-xs mt-2 text-green-700 font-semibold';
+                    msg.textContent = 'Formulário publicado. A escala abaixo já usa estas funções.';
+                }
+                try { montarCamposNovoDia(minAtualModal); } catch (e) {}
+                atualizarAvisoPendenteLider();
+            };
+        }
+    }
+
+    function aplicarIndicadoresMinisterios() {
+        document.querySelectorAll('[data-ministerio-slug]').forEach(function(el) {
+            try {
+                var slug = el.getAttribute('data-ministerio-slug') || '';
+                var nome = MAPA_SLUG[slug] || slug;
+                var st = (typeof statusPendenciasMinisterio === 'function') ? statusPendenciasMinisterio(nome) : null;
+                var card = el.closest('.card-ministro') || el.closest('.bg-white') || el.parentElement;
+                if (!card) return;
+                if (st && st.cor && !card.querySelector('.bola-status-min')) {
+                    var h = card.querySelector('h3, h2');
+                    var bola = document.createElement('span');
+                    bola.className = 'bola-status-min inline-block w-3 h-3 rounded-full ml-2 align-middle ' +
+                        (st.cor === 'vermelho' ? 'bg-red-500' : (st.cor === 'azul' ? 'bg-blue-500' : 'bg-amber-500'));
+                    bola.title = (st.motivos || []).join(' · ');
+                    if (h) h.appendChild(bola);
+                }
+                if (card.querySelector('.painel-integrantes-min')) return;
+                var u = usuario();
+                var podeVerEquipe = ehGestao(u) || (typeof isLiderDoMinisterio === 'function' && isLiderDoMinisterio(u, nome));
+                var integrantes = (typeof membrosDoMinisterio === 'function') ? membrosDoMinisterio(nome) : [];
+                if (!podeVerEquipe) return;
+                var painel = document.createElement('div');
+                painel.className = 'painel-integrantes-min mt-3 border-t pt-3 text-sm';
+                var html = '<p class="font-bold text-primary text-xs mb-1">Integrantes e cargos</p>';
+                if (!integrantes.length) html += '<p class="text-xs text-red-600">Nenhum membro neste ministério.</p>';
+                else {
+                    html += '<ul class="space-y-1 max-h-36 overflow-y-auto">';
+                    integrantes.forEach(function(p) {
+                        html += '<li class="flex justify-between text-xs border-b border-gray-50 py-0.5"><span class="font-semibold">' +
+                            String(p.nome||'').replace(/</g,'') + '</span><span class="text-gray-500">' + (p.papel||'') + '</span></li>';
+                    });
+                    html += '</ul>';
+                }
+                html += '<p class="font-bold text-primary text-xs mt-2 mb-1">Escala de serviços</p>';
+                var linhas = [];
+                try { linhas = (typeof escalaCompletaMinisterio === 'function') ? escalaCompletaMinisterio(nome, 45) : []; } catch (e) {}
+                if (!linhas.length) html += '<p class="text-xs text-gray-400">Nenhuma escala próxima.</p>';
+                else {
+                    html += '<ul class="text-xs space-y-1">';
+                    linhas.slice(0,5).forEach(function(l) {
+                        html += '<li class="font-semibold">' + (l.dataLabel||l.dataIso) +
+                            (l.status === 'finalizada' ? '' : ' ⚠') + '</li>';
+                    });
+                    html += '</ul>';
+                }
+                html += '<button type="button" class="btn-abrir-escala-full mt-2 text-xs font-bold text-primary underline" data-min="' +
+                    String(nome).replace(/"/g,'') + '">Ver / editar escala completa</button>';
+                painel.innerHTML = html;
+                el.appendChild(painel);
+            } catch (e) { console.warn(e); }
+        });
+        document.querySelectorAll('.btn-abrir-escala-full').forEach(function(btn) {
+            btn.onclick = function() { abrirModalEscala(btn.getAttribute('data-min')); };
+        });
+    }
+
+    function init() {
+        bindModalBtns();
+        setTimeout(aplicarIndicadoresMinisterios, 400);
+        try {
+            if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarEscalasParaLocal) {
+                IBNNuvem.puxarEscalasParaLocal().then(function () {
+                    try { aplicarIndicadoresMinisterios(); } catch (e) {}
+                }).catch(function () {});
+            }
+        } catch (e) {}
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
+
+        document.getElementById('btnSalvarVersiculoMin') && document.getElementById('btnSalvarVersiculoMin').addEventListener('click', function () {
+            var min = (typeof minAtualModal !== 'undefined') ? minAtualModal : '';
+            if (!min) { alert('Abra a escala de um ministério.'); return; }
+            if (typeof salvarVersiculoEscala !== 'function') {
+                alert('Atualize o conta.js (Ctrl+F5).');
+                return;
+            }
+            var texto = ((document.getElementById('escMinVersiculo') || {}).value || '').trim();
+            var ref = ((document.getElementById('escMinRef') || {}).value || '').trim();
+            if (!texto) { alert('Digite o versículo antes de salvar.'); return; }
+            var v = salvarVersiculoEscala('ministerio', min, texto, ref);
+            var elV = document.getElementById('escMinVersiculo');
+            var elR = document.getElementById('escMinRef');
+            if (elV) elV.value = v.texto || texto;
+            if (elR) elR.value = v.referencia || ref;
+            alert('Versículo salvo para este ministério e aplicado nas escalas já cadastradas.\n' + (v.referencia || '') + '\n\nGere o PNG de novo para ver a mudança.');
+        });
+
+</script>
+
+
+
+
+<!-- Modal escala completa (líder / admin / gestor) -->
+<div id="modalEscalaMin" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-3">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="bg-primary text-white px-4 py-3 flex justify-between items-center">
+      <h3 id="modalEscalaTitulo" class="font-bold text-lg">Escala completa</h3>
+      <button type="button" id="btnFecharModalEscala" class="text-white text-xl leading-none">&times;</button>
+    </div>
+    <div class="p-4 overflow-y-auto flex-1 text-sm">
+      <p class="text-gray-500 text-xs mb-3">Escala cadastrada. Nas <strong>36h antes</strong> aparece a lista com telefone, WhatsApp e quem já confirmou no site.</p>
+      <div id="bloco36hEscala" class="mb-4 hidden border-2 border-green-500 rounded-lg p-3 bg-green-50">
+        <p class="font-bold text-green-900 text-sm mb-1">📞 Janela de 36h — confirme com a equipe</p>
+        <p class="text-xs text-green-800 mb-2">Ligue ou mande WhatsApp. O membro confirma no site com “Confirmei que recebi”.</p>
+        <div id="listaConfirmacao36h" class="space-y-2 max-h-48 overflow-y-auto"></div>
+      </div>
+      <div id="listaEscalaModal" class="space-y-3"></div>
+
+      <!-- Líder / admin / gestor: montar funções do ministério -->
+      <div id="blocoModeloFuncoesLider" class="mt-4 border-t pt-3 hidden">
+        <button type="button" id="btnToggleModeloLider" class="text-xs font-bold text-primary underline mb-2">
+          ▶ Montar / editar funções deste ministério (formulário da escala)
+        </button>
+        <div id="painelModeloLider" class="hidden border rounded-lg p-3 bg-slate-50 mb-2">
+          <p class="text-[11px] text-gray-600 mb-2">
+            Defina as <strong>funções</strong> e quantas pessoas cada uma precisa.
+            Ex.: Câmera (2), Transmissão (1). Depois use abaixo para escalar os membros por data.
+            <span class="block mt-1 text-amber-800">Hierarquia: <strong>Atmosfera</strong> escala primeiro no dia; nos outros ministérios só entram quem ainda estiver livre.</span>
+          </p>
+          <div id="listaModeloLider" class="space-y-1.5 mb-2"></div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="btnAddFuncaoLider" class="text-xs border px-2 py-1 rounded font-bold">+ Função</button>
+            <button type="button" id="btnSalvarModeloLider" class="text-xs bg-primary text-white px-3 py-1 rounded font-bold">Enviar para aprovação (líder)</button>
+            <button type="button" id="btnPublicarModeloLider" class="text-xs bg-emerald-700 text-white px-3 py-1 rounded font-bold hidden">Publicar agora (admin/gestor)</button>
+            <p id="avisoModeloPendenteLider" class="text-[11px] text-amber-800 mt-1 hidden"></p>
+          </div>
+          <p id="msgModeloLider" class="text-xs mt-2 hidden"></p>
+        </div>
+      </div>
+
+      <div class="mt-4 border-t pt-3">
+        <p class="font-bold text-primary text-xs mb-2">Novo dia / evento</p>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <input type="date" id="escNovoData" class="border rounded px-2 py-1.5 text-sm">
+          <input type="text" id="escNovoLabel" class="border rounded px-2 py-1.5 text-sm" placeholder="Ex: DOM 12/10/26">
+        </div>
+        <div id="escNovoFuncoes" class="space-y-1 max-h-56 overflow-y-auto mb-2"></div>
+        <input type="text" id="escNovoObs" class="w-full border rounded px-2 py-1.5 text-sm mb-2" placeholder="Observação (CEIA, evento...)">
+        <div class="flex flex-wrap gap-2">
+          <button type="button" id="btnSalvarRascunhoEsc" class="bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-bold">Salvar rascunho (incompleta)</button>
+          <button type="button" id="btnSalvarNovoDiaEsc" class="bg-primary text-white px-3 py-2 rounded-lg text-sm font-bold">Finalizar escala do dia</button>
+        </div>
+        <p class="text-[11px] text-gray-500 mt-1">Rascunho fica marcado como incompleto. Finalizar indica escala pronta.</p>
+      </div>
+    </div>
+    <div class="border-t px-4 py-2 flex flex-wrap gap-2 justify-end bg-gray-50">
+
+                <div class="border rounded-lg p-3 my-3 space-y-2" style="background:#faf6ef">
+                    <p class="text-xs font-bold text-primary">Versículo no cartaz PNG (editável · NVI padrão)</p>
+                    <textarea id="escMinVersiculo" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Texto do versículo"></textarea>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="text" id="escMinRef" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Referência (ex: 1 Pedro 4:10)">
+                        <select id="escMinVersao" class="sel-versao-biblia w-full border rounded-lg px-3 py-2 text-sm"></select>
+                    </div>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <button type="button" id="btnAtualizarVersiculoMin" class="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold"
+                            data-texto="escMinVersiculo" data-ref="escMinRef" data-versao="escMinVersao" data-msg="msgVersiculoMin">Atualizar texto</button>
+                        <button type="button" id="btnSalvarVersiculoMin" class="text-xs font-bold text-primary underline">Salvar padrão deste ministério</button>
+                    </div>
+                    <p id="msgVersiculoMin" class="text-xs hidden"></p>
+                </div>
+      <button type="button" id="btnCsvEscalaModal" class="bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Baixar CSV (todos os dias)</button>
+      <button type="button" id="btnWhatsEscalaModal" class="bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Lembretes WhatsApp (próximo dia)</button>
+      <button type="button" id="btnSairSemSalvarEsc" class="border border-red-300 text-red-700 px-3 py-2 rounded-lg text-xs font-bold">Sair sem salvar</button>
+      <button type="button" id="btnFecharModalEscala2" class="border px-3 py-2 rounded-lg text-xs font-bold">Sair</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

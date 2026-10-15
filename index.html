@@ -2592,7 +2592,6 @@
 
 
     <script>
-    <script>
     (function () {
         var selV = document.getElementById('bibHomeVersao');
         var selL = document.getElementById('bibHomeLivro');
@@ -2808,8 +2807,16 @@
                 if (elMsg) elMsg.textContent = 'Bíblia pronta neste aparelho. Use Anterior / Próximo ou Continuar lendo.';
             }).catch(function (err) {
                 carregando = false;
-                setStatus('Não foi possível carregar a Bíblia. Verifique a internet.', false);
+                selL.disabled = false;
+                selL.innerHTML = '<option value="">Falhou — clique para tentar de novo</option>';
+                setStatus((err && err.message) || 'Não foi possível carregar a Bíblia.', false);
                 if (elMsg) elMsg.textContent = (err && err.message) || 'Erro de rede';
+                selL.onclick = function () {
+                    selL.onclick = null;
+                    carregando = false;
+                    bibData = null;
+                    carregar(selV.value || 'nvi');
+                };
             });
         }
 

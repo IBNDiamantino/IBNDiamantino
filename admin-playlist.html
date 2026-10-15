@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Playlist — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0A1A3F',
+                        secondary: '#D4AF37'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen py-8 px-4">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-2xl font-bold text-primary mb-6">🎛️ Gerenciar Playlist de Louvores</h1>
+
+        <!-- Sem permissão -->
+        <div id="semPermissao" class="bg-red-50 border border-red-200 p-6 rounded-lg text-center">
+            <i class="fa fa-lock text-3xl text-red-400 mb-2"></i>
+            <p class="text-red-600 font-bold">Acesso Restrito</p>
+            <p class="text-gray-600 text-sm mt-1">Apenas Administradores e Gestores podem editar</p>
+            <a href="index.html" class="inline-block mt-4 text-primary hover:underline">← Voltar ao site</a>
+        </div>
+
+        <!-- Área Admin -->
+        <div id="conteudoAdmin" class="hidden">
+            <!-- Formulário Adicionar -->
+            <div class="bg-white p-6 rounded-lg shadow mb-6">
+                <h2 class="font-bold text-lg mb-4">➕ Adicionar Música</h2>
+                <form id="formAdd" class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700">Título</label>
+                        <input type="text" id="titulo" required class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700">Artista</label>
+                        <input type="text" id="artista" required class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700">Caminho do Arquivo</label>
+                        <input type="text" id="url" placeholder="audios/nome-do-arquivo.mp3" required class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-opacity-90">
+                        Adicionar
+                    </button>
+                </form>
+            </div>
+
+            <!-- Lista Atual -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="font-bold text-lg mb-4">📋 Repertório Atual (<span id="qtd">0</span> músicas)</h2>
+                <div id="listaMusicas" class="space-y-2 max-h-96 overflow-y-auto">
+                    <!-- Carregado via JS -->
+                </div>
+                <div class="mt-4 flex gap-3 flex-wrap">
+                    <button id="btnSalvar" class="bg-secondary text-primary px-4 py-2 rounded-lg font-bold hover:bg-yellow-400">
+                        💾 Salvar Alterações
+                    </button>
+                    <a href="index.html" class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50">
+                        ← Voltar ao site
+                    </a>
+                </div>
+                <p class="text-xs text-green-600 mt-2">✅ Salve e a playlist no site atualiza automaticamente!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar permissão
+        const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+        if (usuario.nivel === 'admin' || usuario.nivel === 'gestor') {
+            document.getElementById('semPermissao').classList.add('hidden');
+            document.getElementById('conteudoAdmin').classList.remove('hidden');
+        }
+
+        // Repertório padrão (se não houver nada salvo)
+        const PADRAO = [
+            { titulo: "A Ele a Glória", artista: "Aline Barros", url: "audios/a-ele-a-gloria.mp3" },
+            { titulo: "Além do Rio Azul", artista: "Toque no Altar", url: "audios/alem-do-rio-azul.mp3" },
+            { titulo: "Amor de Deus", artista: "Fernandinho", url: "audios/amor-de-deus.mp3" },
+            { titulo: "Ao Único", artista: "Aline Barros", url: "audios/ao-unico.mp3" },
+            { titulo: "Aquieta Minh'Alma", artista: "Arianne", url: "audios/aquieta-minha-alma.mp3" }
+        ];
+
+        // Carregar lista salva ou usar padrão
+        let lista = [];
+        const salvo = localStorage.getItem('playlistLouvores');
+        if (salvo) {
+            try { lista = JSON.parse(salvo); }
+            catch (e) { lista = [...PADRAO]; }
+        } else {
+            lista = [...PADRAO];
+        }
+
+        function atualizarLista() {
+            const container = document.getElementById('listaMusicas');
+            container.innerHTML = '';
+            document.getElementById('qtd').textContent = lista.length;
+
+            lista.forEach((musica, indice) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border';
+                item.innerHTML = `
+                    <div class="flex-1 pr-2">
+                        <p class="font-bold text-sm">${musica.titulo}</p>
+                        <p class="text-xs text-gray-500">${musica.artista}</p>
+                        <p class="text-xs text-gray-400 truncate">${musica.url}</p>
+                    </div>
+                    <button data-i="${indice}" class="text-red-500 hover:text-red-700 btn-remover p-1" title="Remover">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+
+            // Remover
+            document.querySelectorAll('.btn-remover').forEach(btn => {
+                btn.onclick = () => {
+                    if (confirm('Remover esta música?')) {
+                        lista.splice(parseInt(btn.dataset.i), 1);
+                        atualizarLista();
+                    }
+                };
+            });
+        }
+
+        // Adicionar
+        document.getElementById('formAdd').onsubmit = (e) => {
+            e.preventDefault();
+            lista.push({
+                titulo: document.getElementById('titulo').value.trim(),
+                artista: document.getElementById('artista').value.trim(),
+                url: document.getElementById('url').value.trim()
+            });
+            document.getElementById('formAdd').reset();
+            atualizarLista();
+        };
+
+        // Salvar
+        document.getElementById('btnSalvar').onclick = () => {
+            localStorage.setItem('playlistLouvores', JSON.stringify(lista));
+            alert('✅ Salvo com sucesso!\nA playlist atualiza no site automaticamente.');
+        };
+
+        atualizarLista();
+    </script>
+</body>
+</html>

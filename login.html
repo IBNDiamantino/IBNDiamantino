@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso — IBN Diamantino</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#0A1A3F', secondary: '#D4AF37', light: '#F8F9FC' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-light min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-md">
+        <div class="text-center mb-8">
+            <i class="fa fa-lock text-4xl text-primary mb-2"></i>
+            <h1 class="text-2xl font-bold text-primary">Acesso</h1>
+            <p class="text-gray-500">IBN Diamantino</p>
+        </div>
+
+        <div class="bg-white p-8 rounded-2xl shadow-lg">
+            <form id="formLogin" class="space-y-5">
+                <div>
+                    <label for="identificador" class="block text-sm font-bold text-gray-700 mb-1">E-mail ou Telefone</label>
+                    <input type="text" id="identificador" required placeholder="seu@email.com ou telefone"
+                        list="listaUltimosLogins" autocomplete="username"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none" autocomplete="username">
+                </div>
+                <div>
+                    <label for="senha" class="block text-sm font-bold text-gray-700 mb-1">Senha</label>
+                    <div class="relative">
+                        <input type="password" id="senha" required placeholder="Digite sua senha"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none pr-12" autocomplete="current-password">
+                        <button type="button" id="btnOlho" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:opacity-90 flex items-center justify-center gap-2">
+                    <i class="fa fa-sign-in"></i> Entrar
+                </button>
+                <p id="mensagem" class="text-sm text-center hidden mt-2"></p>
+            <datalist id="listaUltimosLogins"></datalist>
+            </form>
+
+            <div class="mt-6 text-center space-y-3">
+                <p class="text-sm">
+                    <a href="recuperar-senha.html" class="text-secondary font-bold hover:underline">Esqueci minha senha</a>
+                </p>
+                <p class="text-sm text-gray-500">
+                    Quer se tornar membro?
+                    <a href="cadastro.html" class="text-secondary font-bold hover:underline">Cadastre-se</a>
+                </p>
+                <a href="index.html" class="inline-block text-primary font-medium hover:underline text-sm">← Voltar ao site</a>
+                <button type="button" id="btnLimparAparelho" class="block w-full mt-4 text-xs text-gray-400 hover:text-red-500 underline">
+                    Problemas neste aparelho? Limpar dados locais de login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
+    <script>
+        document.getElementById('btnOlho').addEventListener('click', function() {
+            const campo = document.getElementById('senha');
+            const icone = this.querySelector('i');
+            if (campo.type === 'password') {
+                campo.type = 'text';
+                icone.className = 'fa fa-eye-slash';
+            } else {
+                campo.type = 'password';
+                icone.className = 'fa fa-eye';
+            }
+        });
+
+        (function preencherUltimosLogins() {
+            var dl = document.getElementById('listaUltimosLogins');
+            if (!dl || typeof lerUltimosLogins !== 'function') return;
+            lerUltimosLogins().forEach(function(id) {
+                var o = document.createElement('option');
+                o.value = id;
+                dl.appendChild(o);
+            });
+        })();
+
+        document.getElementById('formLogin').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('identificador').value.trim();
+            const senha = document.getElementById('senha').value;
+            const msg = document.getElementById('mensagem');
+
+            const r = fazerLogin(id, senha);
+            if (!r.sucesso) {
+                msg.textContent = r.mensagem;
+                msg.className = 'text-sm text-center text-red-500 mt-2';
+                msg.classList.remove('hidden');
+                return;
+            }
+
+            const u = r.usuario;
+            // Redireciona conforme nível
+            if (u.nivel === 'gestor' || u.nivel === 'admin') {
+                window.location.href = 'adminpainel.html';
+            } else if (u.deveTrocarSenha) {
+                window.location.href = 'area-membro.html?trocarSenha=1';
+            } else {
+                // Após login: volta ao site; área do membro é opcional
+                const params = new URLSearchParams(window.location.search);
+                const dest = params.get('destino') || 'index.html';
+                window.location.href = dest;
+            }
+        });
+    </script>
+
+    <script>
+    (function () {
+        var b = document.getElementById('btnLimparAparelho');
+        if (!b) return;
+        b.addEventListener('click', function () {
+            if (!confirm('Apaga só neste aparelho a sessão e a cópia local dos membros/senhas.\n\nO cadastro na nuvem continua.\n\nDepois peça senha temporária ao gestor ou use Esqueci minha senha.')) return;
+            try {
+                localStorage.removeItem('ibn_sessao_atual');
+                localStorage.removeItem('ibn_membros');
+                localStorage.removeItem('membrosCadastro');
+                localStorage.removeItem('ibn_ultimos_logins');
+                sessionStorage.clear();
+            } catch (e) {}
+            alert('Dados locais limpos. A página vai recarregar.');
+            location.reload();
+        });
+    })();
+    </script>
+
+</body>
+</html>
