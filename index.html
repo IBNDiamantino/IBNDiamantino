@@ -354,58 +354,62 @@
 
 
         <!-- 📖 BÍBLIA — busca rápida livro → capítulo → versículo -->
-        <section id="biblia" class="py-12 md:py-16 bg-gradient-to-b from-[#faf6ef] to-white border-y border-[#e8dcc8]">
-            <div class="container mx-auto px-4">
+        <section id="biblia" class="py-6 md:py-12 bg-gradient-to-b from-[#faf6ef] to-white border-y border-[#e8dcc8]">
+            <div class="container mx-auto px-3 md:px-4">
                 <div class="max-w-4xl mx-auto">
-                    <div class="flex flex-col md:flex-row gap-6 md:gap-10 items-stretch bg-white rounded-2xl shadow-lg border border-[#d4c4a8]/60 overflow-hidden">
-                        <div class="md:w-2/5 bg-gradient-to-br from-primary to-accent text-white p-8 flex flex-col items-center justify-center text-center relative">
-                            <div class="text-7xl md:text-8xl mb-3 leading-none" aria-hidden="true">📖</div>
-                            <h2 class="text-2xl md:text-3xl font-bold text-secondary tracking-wide">Bíblia Sagrada</h2>
-                            <p class="text-sm text-white/80 mt-2 max-w-xs">Consulte a Palavra aqui no site — NVI ou Almeida Corrigida Fiel</p>
-                            <p class="text-xs text-white/50 mt-4">IBN Diamantino</p>
+                    <div class="flex flex-col md:flex-row gap-0 md:gap-0 items-stretch bg-white rounded-2xl shadow-lg border border-[#d4c4a8]/60 overflow-hidden">
+                        <!-- Cabeçalho compacto no celular / lateral no PC -->
+                        <div class="md:w-2/5 bg-gradient-to-br from-primary to-accent text-white px-4 py-3 md:p-8 flex md:flex-col items-center md:justify-center text-left md:text-center gap-3 md:gap-0">
+                            <div class="text-4xl md:text-8xl leading-none shrink-0" aria-hidden="true">📖</div>
+                            <div class="md:mt-3">
+                                <h2 class="text-lg md:text-3xl font-bold text-secondary tracking-wide leading-tight">Bíblia Sagrada</h2>
+                                <p class="text-xs md:text-sm text-white/80 mt-0.5 md:mt-2 max-w-xs">NVI ou ACF · leitura no site</p>
+                            </div>
                         </div>
-                        <div class="md:w-3/5 p-6 md:p-8 flex flex-col">
-                            <p class="text-sm text-gray-600 mb-4">Escolha <strong>versão</strong>, depois <strong>livro</strong>, <strong>capítulo</strong> e <strong>versículo</strong> — só aparecem opções que existem na Bíblia.</p>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div class="md:w-3/5 p-3 md:p-8 flex flex-col">
+                            <p class="text-xs md:text-sm text-gray-600 mb-2 md:mb-4 hidden sm:block">Escolha versão, livro, capítulo e versículo.</p>
+                            <!-- Versão + Livro + Cap + Verso em grade 2 colunas (celular e PC) -->
+                            <div class="grid grid-cols-2 gap-2 mb-2 md:mb-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-primary mb-1">Versão</label>
-                                    <select id="bibHomeVersao" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white">
-                                        <option value="nvi" selected>NVI — Nova Versão Internacional</option>
-                                        <option value="acf">ACF — Almeida Corrigida Fiel</option>
+                                    <label class="block text-[10px] md:text-xs font-bold text-primary mb-0.5">Versão</label>
+                                    <select id="bibHomeVersao" class="w-full border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2.5 text-xs md:text-sm bg-white">
+                                        <option value="nvi" selected>NVI</option>
+                                        <option value="acf">ACF</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-primary mb-1">Livro</label>
-                                    <select id="bibHomeLivro" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white" disabled>
+                                    <label class="block text-[10px] md:text-xs font-bold text-primary mb-0.5">Livro</label>
+                                    <select id="bibHomeLivro" class="w-full border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2.5 text-xs md:text-sm bg-white" disabled>
                                         <option value="">Aguardando…</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-primary mb-1">Capítulo</label>
-                                    <select id="bibHomeCap" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white" disabled>
+                                    <label class="block text-[10px] md:text-xs font-bold text-primary mb-0.5">Capítulo</label>
+                                    <select id="bibHomeCap" class="w-full border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2.5 text-xs md:text-sm bg-white" disabled>
                                         <option value="">—</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-primary mb-1">Versículo</label>
-                                    <select id="bibHomeVer" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white" disabled>
+                                    <label class="block text-[10px] md:text-xs font-bold text-primary mb-0.5">Versículo</label>
+                                    <select id="bibHomeVer" class="w-full border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2.5 text-xs md:text-sm bg-white" disabled>
                                         <option value="">—</option>
                                     </select>
                                 </div>
                             </div>
-                            <div id="bibHomeResultado" class="mt-2 flex-1 min-h-[100px] rounded-xl border border-[#e8dcc8] bg-[#faf6ef] p-4">
-                                <p id="bibHomeStatus" class="text-sm text-gray-500">Selecione livro, capítulo e versículo para ler.</p>
-                                <p id="bibHomeRef" class="hidden text-xs font-bold text-primary mb-2"></p>
-                                <div id="bibHomeTexto" class="hidden text-base text-gray-800 leading-relaxed font-serif space-y-2"></div>
+                            <div id="bibHomeResultado" class="mt-1 flex-1 min-h-[90px] max-h-[42vh] md:max-h-[320px] overflow-y-auto rounded-xl border border-[#e8dcc8] bg-[#faf6ef] p-3 md:p-4 scroll-smooth">
+                                <p id="bibHomeStatus" class="text-xs md:text-sm text-gray-500">Selecione livro, capítulo e versículo para ler.</p>
+                                <p id="bibHomeRef" class="hidden text-[11px] md:text-xs font-bold text-primary mb-2 sticky top-0 bg-[#faf6ef] py-1"></p>
+                                <div id="bibHomeTexto" class="hidden text-sm md:text-base text-gray-800 leading-relaxed font-serif space-y-2"></div>
                             </div>
-                            <div id="bibHomeNav" class="hidden flex flex-wrap gap-2 mt-3 items-center justify-between">
-                                <button type="button" id="bibHomeAnt" class="px-3 py-2 rounded-lg border border-primary/30 text-primary text-sm font-bold hover:bg-primary/5">← Anterior</button>
-                                <div class="flex flex-wrap gap-2">
-                                    <button type="button" id="bibHomeCont" class="px-3 py-2 rounded-lg bg-secondary text-primary text-sm font-bold hover:bg-yellow-400">Continuar lendo (+3)</button>
-                                    <button type="button" id="bibHomeProx" class="px-3 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-accent">Próximo →</button>
+                            <div id="bibHomeNav" class="hidden flex flex-wrap gap-1.5 md:gap-2 mt-2 items-center justify-between">
+                                <button type="button" id="bibHomeAnt" class="px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg border border-primary/30 text-primary text-xs md:text-sm font-bold hover:bg-primary/5">← Ant.</button>
+                                <div class="flex flex-wrap gap-1.5 md:gap-2">
+                                    <button type="button" id="bibHomeAuto" class="px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg border border-secondary text-primary text-xs md:text-sm font-bold hover:bg-secondary/20" title="Rolagem automática do texto">▶ Auto</button>
+                                    <button type="button" id="bibHomeCont" class="px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg bg-secondary text-primary text-xs md:text-sm font-bold hover:bg-yellow-400">+3</button>
+                                    <button type="button" id="bibHomeProx" class="px-2.5 py-1.5 md:px-3 md:py-2 rounded-lg bg-primary text-white text-xs md:text-sm font-bold hover:bg-accent">Próx. →</button>
                                 </div>
                             </div>
-                            <p id="bibHomeMsg" class="text-xs text-gray-400 mt-2">Na primeira consulta a Bíblia é baixada uma vez; depois fica rápida neste aparelho.</p>
+                            <p id="bibHomeMsg" class="text-[10px] md:text-xs text-gray-400 mt-1.5">Bíblia no aparelho após a 1ª carga. Auto = rolagem automática.</p>
                         </div>
                     </div>
                 </div>
@@ -2605,12 +2609,70 @@
         var btnAnt = document.getElementById('bibHomeAnt');
         var btnProx = document.getElementById('bibHomeProx');
         var btnCont = document.getElementById('bibHomeCont');
+        var btnAuto = document.getElementById('bibHomeAuto');
+        var elResultado = document.getElementById('bibHomeResultado');
         if (!selV || !selL) return;
 
         var bibData = null;
         var carregando = false;
-        // posição atual da leitura contínua
         var pos = { livroIdx: 0, cap: 1, ver: 1 };
+        var autoTimer = null;
+        var autoLigado = false;
+
+        function pararAuto() {
+            autoLigado = false;
+            if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+            if (btnAuto) {
+                btnAuto.textContent = '▶ Auto';
+                btnAuto.classList.remove('bg-secondary');
+            }
+        }
+        function iniciarAuto() {
+            if (!elResultado) return;
+            autoLigado = true;
+            if (btnAuto) {
+                btnAuto.textContent = '⏸ Pausar';
+                btnAuto.classList.add('bg-secondary');
+            }
+            if (autoTimer) clearInterval(autoTimer);
+            autoTimer = setInterval(function () {
+                if (!elResultado) return;
+                var max = elResultado.scrollHeight - elResultado.clientHeight;
+                if (max <= 0) {
+                    // sem overflow: avança leitura
+                    var n = avancarPos(pos);
+                    if (n) {
+                        mostrarLeitura(n, 2);
+                        elResultado.scrollTop = 0;
+                    } else {
+                        pararAuto();
+                    }
+                    return;
+                }
+                if (elResultado.scrollTop >= max - 2) {
+                    // chegou ao fim do bloco → carrega +3 e continua
+                    var n2 = avancarPos(pos);
+                    if (n2) {
+                        // avança a partir do último visível
+                        var cur = pos;
+                        for (var i = 0; i < 3; i++) {
+                            var nx = avancarPos(cur);
+                            if (!nx) break;
+                            cur = nx;
+                        }
+                        mostrarLeitura(pos, 3);
+                        // reposiciona no meio para leitura contínua
+                        try { elResultado.scrollTop = Math.max(0, elResultado.scrollHeight * 0.25); } catch (e) {}
+                        pos = cur;
+                        sincronizarSelects(pos);
+                    } else {
+                        pararAuto();
+                    }
+                } else {
+                    elResultado.scrollTop += 1; // rolagem suave (~60px/s a 60fps interval 16ms -> use 30ms * 2)
+                }
+            }, 40);
+        }
 
         function setStatus(t, ok) {
             if (elStatus) {
@@ -2727,6 +2789,13 @@
             if (btnAnt) btnAnt.disabled = !voltarPos(pos);
             if (btnProx) btnProx.disabled = !avancarPos(pos);
             sincronizarSelects(pos);
+            // leva o texto à vista e começa do topo do quadro
+            try {
+                if (elResultado) {
+                    elResultado.scrollTop = 0;
+                    elResultado.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            } catch (eScr) {}
         }
 
         function preencherLivros() {
@@ -2837,7 +2906,6 @@
             if (n) mostrarLeitura(n, 0);
         });
         if (btnCont) btnCont.addEventListener('click', function () {
-            // mostra o atual + 3 seguintes e avança a posição para o último mostrado
             var inicio = pos;
             mostrarLeitura(inicio, 3);
             var cur = inicio;
@@ -2851,6 +2919,15 @@
             if (btnAnt) btnAnt.disabled = !voltarPos(pos);
             if (btnProx) btnProx.disabled = !avancarPos(pos);
         });
+        if (btnAuto) btnAuto.addEventListener('click', function () {
+            if (autoLigado) pararAuto();
+            else iniciarAuto();
+        });
+        // pausa auto se o usuário rolar com o dedo
+        if (elResultado) {
+            elResultado.addEventListener('touchstart', function () { if (autoLigado) pararAuto(); }, { passive: true });
+            elResultado.addEventListener('wheel', function () { if (autoLigado) pararAuto(); }, { passive: true });
+        }
 
         function iniciar() {
             if (bibData || carregando) return;
