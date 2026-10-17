@@ -41,6 +41,21 @@
             </button>
         </div>
 
+
+            <!-- Resumo frequência (pastor / gestão) -->
+            <div id="painelResumoFreq" class="hidden mb-6 bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                <h3 class="font-bold text-primary mb-2"><i class="fa fa-bar-chart"></i> Frequência das células</h3>
+                <p class="text-xs text-gray-600 mb-3">Visão mensal para pastor e gestão: encontros, média de membros e visitantes.</p>
+                <div class="flex flex-wrap gap-2 items-end mb-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-600">Mês</label>
+                        <input type="month" id="filtroMesFreq" class="border rounded-lg px-2 py-1.5 text-sm">
+                    </div>
+                    <button type="button" id="btnAtualizarFreq" class="bg-primary text-white text-sm font-bold px-3 py-1.5 rounded-lg">Atualizar</button>
+                </div>
+                <div id="listaResumoFreq" class="text-sm space-y-2"></div>
+            </div>
+
         <div id="listaCelulas" class="space-y-3"></div>
 
         <!-- Painel detalhe da célula -->
@@ -134,12 +149,12 @@
                 <p id="localSabadoPublico" class="text-sm text-gray-700 mb-3">Ainda não definido pelo líder.</p>
                 <a id="linkLocalSabado" href="#" target="_blank" rel="noopener" class="hidden text-sm text-secondary font-bold underline mb-3 inline-block">Abrir no Google Maps / localização</a>
                 <div id="formLocalSabado" class="hidden space-y-2 border-t border-amber-200 pt-3 mt-2">
-                    <p class="text-xs text-gray-600">Você é líder desta célula — informe onde será o encontro:</p>
+                    <p class="text-xs text-gray-600">Você é líder ou anfitrião — informe onde será o encontro (publica na hora, sem precisar da gestão):</p>
                     <input type="text" id="localAnfitriao" placeholder="Hoje na casa de..." class="w-full p-2 border rounded-lg text-sm">
                     <input type="text" id="localEndereco" placeholder="Endereço completo (rua, número, bairro)" class="w-full p-2 border rounded-lg text-sm">
                     <input type="url" id="localMaps" placeholder="Link do Google Maps (opcional)" class="w-full p-2 border rounded-lg text-sm">
                     <button type="button" id="btnSalvarLocalSabado" class="w-full bg-primary text-white py-2 rounded-lg font-bold text-sm hover:bg-accent">
-                        <i class="fa fa-save"></i> Publicar local deste sábado
+                        <i class="fa fa-save"></i> Publicar local (líder / anfitrião)
                     </button>
                     <p id="msgLocalSabado" class="text-xs text-center hidden"></p>
                 </div>
@@ -165,16 +180,21 @@
                 <form id="formRelatorio" class="space-y-3 mb-6 bg-gray-50 p-4 rounded-xl border">
                     <input type="hidden" id="relCelulaId">
                     <input type="hidden" id="relId" value="">
-                    <div class="grid sm:grid-cols-2 gap-3">
+                    <div class="grid sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-gray-600 mb-1">Data do encontro</label>
                             <input type="date" id="relData" required class="w-full p-2 border rounded-lg">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-600 mb-1">Qtd. presentes (se não marcar nomes)</label>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Qtd. membros (se não marcar nomes)</label>
                             <input type="number" id="relQtd" min="0" class="w-full p-2 border rounded-lg" placeholder="Opcional">
                         </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Qtd. visitantes</label>
+                            <input type="number" id="relQtdVisitantes" min="0" value="0" class="w-full p-2 border rounded-lg" placeholder="0">
+                        </div>
                     </div>
+                    <p class="text-[11px] text-gray-500 -mt-1">Membros: marque na lista abaixo. Visitantes: informe só a quantidade (não precisam estar cadastrados).</p>
                     <div>
                         <label class="block text-xs font-bold text-gray-600 mb-1">Presentes (marque os nomes)</label>
                         <div id="relCheckPresentes" class="max-h-36 overflow-y-auto border rounded-lg p-2 bg-white text-sm space-y-1"></div>
@@ -349,7 +369,17 @@
             document.getElementById('painelMeta').textContent = (meta.dia || '') + ' · ' + textoEnderecoCelula(id);
             document.getElementById('papelLider').textContent = nomeOuTraco(eq.lider);
             document.getElementById('papelAnfitriao').textContent = nomeOuTraco(eq.anfitriao);
-            document.getElementById('papelTreino').textContent = nomeOuTraco(eq.liderTreino);
+            var treinos = eq.lideresTreino || (eq.liderTreino ? [eq.liderTreino] : []);
+            if (!treinos.length) {
+                document.getElementById('papelTreino').textContent = '— (nenhum ou em aberto)';
+            } else {
+                document.getElementById('papelTreino').innerHTML = treinos.map(function(m) {
+                    var st = (typeof statusPapelCelula === 'function') ? statusPapelCelula(m, id) : 'ok';
+                    var info = (typeof corStatusAnalise === 'function') ? corStatusAnalise(st) : { label: '', classe: '' };
+                    var badge = info.label ? (' <span class="text-[10px] px-1.5 py-0.5 rounded border ' + info.classe + '">' + info.label + '</span>') : '';
+                    return (m.nome || '—') + badge;
+                }).join('<br>');
+            }
             var blEsc0 = document.getElementById('blocoEscalaCelula');
             if (blEsc0) {
                 if ((typeof podeEditarEscalaCelula === 'function' && podeEditarEscalaCelula(id)) || (typeof isAdmin === 'function' && isAdmin())) {
@@ -431,7 +461,9 @@
                     document.getElementById('localEndereco').value = '';
                     document.getElementById('localMaps').value = '';
                 }
-                var podeEditarLocal = (typeof podeEditarRelatorioCelula === 'function' && podeEditarRelatorioCelula(id)) ||
+                var podeEditarLocal = (typeof podeAjustarLocalCelula === 'function' && podeAjustarLocalCelula(id)) ||
+                    (typeof podeEditarRelatorioCelula === 'function' && podeEditarRelatorioCelula(id)) ||
+                    (usuario && (typeof isAnfitriaoCelula === 'function' && isAnfitriaoCelula(usuario, id))) ||
                     (usuario && (typeof isAdmin === 'function' && isAdmin(usuario)));
                 document.getElementById('formLocalSabado').classList.toggle('hidden', !podeEditarLocal);
             } else {
@@ -470,6 +502,7 @@
             document.getElementById('relEspecie').value = 0;
             document.getElementById('relObs').value = '';
             document.getElementById('relQtd').value = '';
+            var rv = document.getElementById('relQtdVisitantes'); if (rv) rv.value = 0;
             document.querySelectorAll('.rel-presente').forEach(function(cb) { cb.checked = false; });
             var ban = document.getElementById('relModoBanner');
             if (ban) ban.classList.add('hidden');
@@ -481,6 +514,7 @@
             document.getElementById('relId').value = r.id || '';
             document.getElementById('relData').value = r.data || '';
             document.getElementById('relQtd').value = r.qtdPresentes || '';
+            var rv2 = document.getElementById('relQtdVisitantes'); if (rv2) rv2.value = r.qtdVisitantes != null ? r.qtdVisitantes : 0;
             document.getElementById('relPix').value = r.ofertaPix != null ? r.ofertaPix : 0;
             document.getElementById('relEspecie').value = r.ofertaEspecie != null ? r.ofertaEspecie : 0;
             document.getElementById('relObs').value = r.observacoes || '';
@@ -511,7 +545,7 @@
                 return '<div class="border rounded-lg p-3 bg-white">' +
                     '<div class="flex flex-wrap justify-between gap-2 items-start">' +
                     '<div class="min-w-0 flex-1">' +
-                    '<p class="font-bold text-primary">' + (r.data || '') + ' · ' + (r.qtdPresentes || 0) + ' presentes</p>' +
+                    '<p class="font-bold text-primary">' + (r.data || '') + ' · ' + (r.qtdPresentes || 0) + ' membros' + ((r.qtdVisitantes|0) ? (' · ' + (r.qtdVisitantes||0) + ' visit.') : '') + ' · total ' + ((r.qtdTotal != null) ? r.qtdTotal : ((r.qtdPresentes||0)+(r.qtdVisitantes||0))) + '</p>' +
                     '<p class="text-xs text-gray-600">PIX: R$ ' + (Number(r.ofertaPix) || 0).toFixed(2).replace('.', ',') +
                     ' · Espécie: R$ ' + (Number(r.ofertaEspecie) || 0).toFixed(2).replace('.', ',') +
                     ' · <strong>Total: R$ ' + (Number(r.totalOfertas) || 0).toFixed(2).replace('.', ',') + '</strong></p>' +
@@ -559,6 +593,7 @@
                 data: document.getElementById('relData').value,
                 presentes: presentes,
                 qtdPresentes: document.getElementById('relQtd').value || presentes.length,
+                qtdVisitantes: (document.getElementById('relQtdVisitantes') || {}).value || 0,
                 ofertaPix: document.getElementById('relPix').value,
                 ofertaEspecie: document.getElementById('relEspecie').value,
                 observacoes: document.getElementById('relObs').value,
@@ -953,6 +988,48 @@
             }
         });
 
-    </script>
+    
+        (function initResumoFreq() {
+            var painel = document.getElementById('painelResumoFreq');
+            if (!painel) return;
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            var pode = u && (typeof isAdmin === 'function' ? (isAdmin(u) || isGestor(u)) : (u.nivel === 'admin' || u.nivel === 'gestor'));
+            // pastor também se cargo mencionar pastor
+            if (!pode && u) {
+                var blob = ((u.cargo || '') + ' ' + (u.funcaoEspecifica || '') + ' ' + (u.nome || '')).toLowerCase();
+                if (blob.indexOf('pastor') !== -1) pode = true;
+            }
+            if (!pode) return;
+            painel.classList.remove('hidden');
+            var inp = document.getElementById('filtroMesFreq');
+            if (inp && !inp.value) {
+                var d = new Date();
+                inp.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+            }
+            function renderFreq() {
+                var mes = (document.getElementById('filtroMesFreq') || {}).value || null;
+                var dados = (typeof resumoFrequenciaCelulas === 'function') ? resumoFrequenciaCelulas(mes) : [];
+                var el = document.getElementById('listaResumoFreq');
+                if (!el) return;
+                if (!dados.length) {
+                    el.innerHTML = '<p class="text-gray-500 text-xs">Nenhum relatório neste período.</p>';
+                    return;
+                }
+                el.innerHTML = dados.map(function (x) {
+                    var dias = (x.dias || []).map(function (d) {
+                        return '<li class="text-xs text-gray-600">' + (d.data || '') + ': ' + d.membros + ' membros, ' + d.visitantes + ' visit. (total ' + d.total + ')</li>';
+                    }).join('');
+                    return '<div class="bg-white border rounded-lg p-3">' +
+                        '<p class="font-bold text-primary">' + (x.nome || x.celulaId) + '</p>' +
+                        '<p class="text-xs text-gray-600">' + x.encontros + ' encontro(s) · média ' + x.mediaMembros.toFixed(1) + ' membros · ' +
+                        x.mediaVisitantes.toFixed(1) + ' visit. · total médio ' + x.mediaTotal.toFixed(1) + '</p>' +
+                        '<ul class="mt-1 ml-4 list-disc">' + dias + '</ul></div>';
+                }).join('');
+            }
+            document.getElementById('btnAtualizarFreq').addEventListener('click', renderFreq);
+            renderFreq();
+        })();
+
+</script>
 </body>
 </html>

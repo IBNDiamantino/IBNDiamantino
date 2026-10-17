@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Playlist — IBN Diamantino</title>
+    <title>Mídia do site — Playlist e Banner | IBN Diamantino</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
@@ -19,139 +19,367 @@
         }
     </script>
 </head>
-<body class="bg-gray-50 min-h-screen py-8 px-4">
-    <div class="max-w-2xl mx-auto">
-        <h1 class="text-2xl font-bold text-primary mb-6">🎛️ Gerenciar Playlist de Louvores</h1>
-
-        <!-- Sem permissão -->
-        <div id="semPermissao" class="bg-red-50 border border-red-200 p-6 rounded-lg text-center">
-            <i class="fa fa-lock text-3xl text-red-400 mb-2"></i>
-            <p class="text-red-600 font-bold">Acesso Restrito</p>
-            <p class="text-gray-600 text-sm mt-1">Apenas Administradores e Gestores podem editar</p>
-            <a href="index.html" class="inline-block mt-4 text-primary hover:underline">← Voltar ao site</a>
+<body class="bg-gray-50 min-h-screen py-6 px-4">
+    <div class="max-w-3xl mx-auto">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <h1 class="text-2xl font-bold text-primary">🎛️ Mídia do site</h1>
+            <a href="index.html" class="text-sm text-primary hover:underline">← Voltar ao site</a>
         </div>
 
-        <!-- Área Admin -->
-        <div id="conteudoAdmin" class="hidden">
-            <!-- Formulário Adicionar -->
-            <div class="bg-white p-6 rounded-lg shadow mb-6">
-                <h2 class="font-bold text-lg mb-4">➕ Adicionar Música</h2>
-                <form id="formAdd" class="space-y-3">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700">Título</label>
-                        <input type="text" id="titulo" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700">Artista</label>
-                        <input type="text" id="artista" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700">Caminho do Arquivo</label>
-                        <input type="text" id="url" placeholder="audios/nome-do-arquivo.mp3" required class="w-full px-3 py-2 border rounded-lg">
-                    </div>
-                    <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-opacity-90">
-                        Adicionar
-                    </button>
-                </form>
-            </div>
+        <div id="semPermissao" class="bg-red-50 border border-red-200 p-6 rounded-lg text-center">
+            <i class="fa fa-lock text-3xl text-red-400 mb-2"></i>
+            <p class="text-red-600 font-bold">Acesso restrito</p>
+            <p class="text-gray-600 text-sm mt-1">Apenas <strong>Administradores</strong> e <strong>Gestores</strong> podem editar playlist e banner.</p>
+            <a href="login.html?destino=admin-playlist.html" class="inline-block mt-4 bg-primary text-white px-4 py-2 rounded-lg font-bold">Fazer login</a>
+        </div>
 
-            <!-- Lista Atual -->
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="font-bold text-lg mb-4">📋 Repertório Atual (<span id="qtd">0</span> músicas)</h2>
-                <div id="listaMusicas" class="space-y-2 max-h-96 overflow-y-auto">
-                    <!-- Carregado via JS -->
-                </div>
-                <div class="mt-4 flex gap-3 flex-wrap">
-                    <button id="btnSalvar" class="bg-secondary text-primary px-4 py-2 rounded-lg font-bold hover:bg-yellow-400">
-                        💾 Salvar Alterações
+        <div id="conteudoAdmin" class="hidden space-y-8">
+            <p class="text-sm text-gray-600">Olá, <strong id="nomeAdmin">—</strong>. Aqui você gerencia a <strong>playlist de louvores</strong> e o <strong>banner</strong> da página inicial.</p>
+
+            <!-- PLAYLIST -->
+            <section class="bg-white p-5 md:p-6 rounded-xl shadow border border-gray-100">
+                <h2 class="font-bold text-lg text-primary mb-1">🎵 Playlist de louvores</h2>
+                <p class="text-xs text-gray-500 mb-4">Adicione por link do YouTube (recomendado) ou caminho de arquivo de áudio no site.</p>
+
+                <form id="formAdd" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Título</label>
+                        <input type="text" id="titulo" required class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Ex: A Ele a Glória">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Artista / ministério</label>
+                        <input type="text" id="artista" class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="Ex: Aline Barros">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Tipo</label>
+                        <select id="tipoUrl" class="w-full px-3 py-2 border rounded-lg text-sm">
+                            <option value="youtube">Link do YouTube</option>
+                            <option value="audio">Arquivo de áudio no site</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-gray-700 mb-1" id="labelUrl">Link do YouTube</label>
+                        <input type="text" id="url" required class="w-full px-3 py-2 border rounded-lg text-sm" placeholder="https://www.youtube.com/watch?v=...">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-opacity-90">
+                            <i class="fa fa-plus"></i> Adicionar à playlist
+                        </button>
+                    </div>
+                </form>
+
+                <h3 class="font-bold text-sm mb-2">Repertório atual (<span id="qtd">0</span>)</h3>
+                <div id="listaMusicas" class="space-y-2 max-h-80 overflow-y-auto mb-4"></div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="btnSalvarPlaylist" class="bg-secondary text-primary px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400">
+                        💾 Salvar playlist
                     </button>
-                    <a href="index.html" class="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50">
-                        ← Voltar ao site
-                    </a>
+                    <span id="msgPlaylist" class="text-xs text-gray-500 self-center"></span>
                 </div>
-                <p class="text-xs text-green-600 mt-2">✅ Salve e a playlist no site atualiza automaticamente!</p>
-            </div>
+            </section>
+
+            <!-- BANNER -->
+            <section class="bg-white p-5 md:p-6 rounded-xl shadow border border-gray-100">
+                <h2 class="font-bold text-lg text-primary mb-1">🖼️ Banner da página inicial</h2>
+                <p class="text-xs text-gray-500 mb-4">Envie 2 ou mais imagens e escolha qual aparece no topo do site. A imagem fica salva neste aparelho e na nuvem (quando conectada).</p>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Enviar nova imagem</label>
+                    <input type="file" id="fileBanner" accept="image/*" class="block w-full text-sm text-gray-600">
+                    <p class="text-[11px] text-gray-400 mt-1">JPG ou PNG. Será redimensionada automaticamente (máx. ~1600px).</p>
+                </div>
+
+                <div id="listaBanners" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4"></div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="btnSalvarBanner" class="bg-secondary text-primary px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400">
+                        💾 Salvar banner
+                    </button>
+                    <span id="msgBanner" class="text-xs text-gray-500 self-center"></span>
+                </div>
+            </section>
         </div>
     </div>
 
+    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="nuvem.js"></script>
+    <script src="conta.js"></script>
     <script>
-        // Verificar permissão
-        const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-        if (usuario.nivel === 'admin' || usuario.nivel === 'gestor') {
-            document.getElementById('semPermissao').classList.add('hidden');
-            document.getElementById('conteudoAdmin').classList.remove('hidden');
-        }
+(function () {
+    var KEY_PL = 'playlistLouvores';
+    var KEY_BN = 'ibn_banners_config';
 
-        // Repertório padrão (se não houver nada salvo)
-        const PADRAO = [
-            { titulo: "A Ele a Glória", artista: "Aline Barros", url: "audios/a-ele-a-gloria.mp3" },
-            { titulo: "Além do Rio Azul", artista: "Toque no Altar", url: "audios/alem-do-rio-azul.mp3" },
-            { titulo: "Amor de Deus", artista: "Fernandinho", url: "audios/amor-de-deus.mp3" },
-            { titulo: "Ao Único", artista: "Aline Barros", url: "audios/ao-unico.mp3" },
-            { titulo: "Aquieta Minh'Alma", artista: "Arianne", url: "audios/aquieta-minha-alma.mp3" }
-        ];
+    var PADRAO = [
+        { titulo: 'A Ele a Glória', artista: 'Aline Barros', url: 'audios/a-ele-a-gloria.mp3' },
+        { titulo: 'Além do Rio Azul', artista: 'Toque no Altar', url: 'audios/alem-do-rio-azul.mp3' },
+        { titulo: 'Amor de Deus', artista: 'Fernandinho', url: 'audios/amor-de-deus.mp3' }
+    ];
 
-        // Carregar lista salva ou usar padrão
-        let lista = [];
-        const salvo = localStorage.getItem('playlistLouvores');
-        if (salvo) {
-            try { lista = JSON.parse(salvo); }
-            catch (e) { lista = [...PADRAO]; }
+    function usuarioOk() {
+        var u = null;
+        try {
+            if (typeof getUsuarioLogado === 'function') u = getUsuarioLogado();
+            else u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        } catch (e) { u = null; }
+        if (!u) return null;
+        var ok = false;
+        if (typeof isAdmin === 'function') ok = isAdmin(u) || (typeof isGestor === 'function' && isGestor(u));
+        else ok = (u.nivel === 'admin' || u.nivel === 'gestor');
+        return ok ? u : null;
+    }
+
+    var u = usuarioOk();
+    if (!u) return;
+    document.getElementById('semPermissao').classList.add('hidden');
+    document.getElementById('conteudoAdmin').classList.remove('hidden');
+    document.getElementById('nomeAdmin').textContent = u.nome || u.email || 'Admin';
+
+    /* ——— Playlist ——— */
+    var lista = [];
+    try {
+        var salvo = localStorage.getItem(KEY_PL);
+        lista = salvo ? JSON.parse(salvo) : PADRAO.slice();
+        if (!Array.isArray(lista)) lista = PADRAO.slice();
+    } catch (e) { lista = PADRAO.slice(); }
+
+    var tipoUrl = document.getElementById('tipoUrl');
+    var labelUrl = document.getElementById('labelUrl');
+    var inputUrl = document.getElementById('url');
+    tipoUrl.addEventListener('change', function () {
+        if (tipoUrl.value === 'youtube') {
+            labelUrl.textContent = 'Link do YouTube';
+            inputUrl.placeholder = 'https://www.youtube.com/watch?v=...';
         } else {
-            lista = [...PADRAO];
+            labelUrl.textContent = 'Caminho do áudio no site';
+            inputUrl.placeholder = 'audios/nome-do-arquivo.mp3';
         }
+    });
 
-        function atualizarLista() {
-            const container = document.getElementById('listaMusicas');
-            container.innerHTML = '';
-            document.getElementById('qtd').textContent = lista.length;
-
-            lista.forEach((musica, indice) => {
-                const item = document.createElement('div');
-                item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border';
-                item.innerHTML = `
-                    <div class="flex-1 pr-2">
-                        <p class="font-bold text-sm">${musica.titulo}</p>
-                        <p class="text-xs text-gray-500">${musica.artista}</p>
-                        <p class="text-xs text-gray-400 truncate">${musica.url}</p>
-                    </div>
-                    <button data-i="${indice}" class="text-red-500 hover:text-red-700 btn-remover p-1" title="Remover">
-                        <i class="fa fa-trash"></i>
-                    </button>
-                `;
-                container.appendChild(item);
-            });
-
-            // Remover
-            document.querySelectorAll('.btn-remover').forEach(btn => {
-                btn.onclick = () => {
-                    if (confirm('Remover esta música?')) {
-                        lista.splice(parseInt(btn.dataset.i), 1);
-                        atualizarLista();
-                    }
-                };
-            });
+    function renderPlaylist() {
+        var box = document.getElementById('listaMusicas');
+        document.getElementById('qtd').textContent = String(lista.length);
+        if (!lista.length) {
+            box.innerHTML = '<p class="text-sm text-gray-400">Nenhuma música. Adicione acima.</p>';
+            return;
         }
-
-        // Adicionar
-        document.getElementById('formAdd').onsubmit = (e) => {
-            e.preventDefault();
-            lista.push({
-                titulo: document.getElementById('titulo').value.trim(),
-                artista: document.getElementById('artista').value.trim(),
-                url: document.getElementById('url').value.trim()
+        box.innerHTML = lista.map(function (m, i) {
+            var tipo = /youtube\.com|youtu\.be/i.test(m.url || '') ? 'YouTube' : 'Áudio';
+            return '<div class="flex items-center gap-2 border rounded-lg px-3 py-2 text-sm">' +
+                '<span class="text-gray-400 w-6">' + (i + 1) + '</span>' +
+                '<div class="flex-1 min-w-0">' +
+                '<p class="font-bold text-primary truncate">' + esc(m.titulo) + '</p>' +
+                '<p class="text-xs text-gray-500 truncate">' + esc(m.artista || '') + ' · ' + tipo + '</p>' +
+                '</div>' +
+                '<button type="button" data-up="' + i + '" class="btn-up text-gray-500 hover:text-primary px-1" title="Subir">↑</button>' +
+                '<button type="button" data-dn="' + i + '" class="btn-dn text-gray-500 hover:text-primary px-1" title="Descer">↓</button>' +
+                '<button type="button" data-rm="' + i + '" class="btn-rm text-red-500 hover:text-red-700 px-1" title="Remover"><i class="fa fa-trash"></i></button>' +
+                '</div>';
+        }).join('');
+        box.querySelectorAll('.btn-rm').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var i = parseInt(b.getAttribute('data-rm'), 10);
+                if (!confirm('Remover esta música da playlist?')) return;
+                lista.splice(i, 1);
+                renderPlaylist();
             });
-            document.getElementById('formAdd').reset();
-            atualizarLista();
-        };
+        });
+        box.querySelectorAll('.btn-up').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var i = parseInt(b.getAttribute('data-up'), 10);
+                if (i <= 0) return;
+                var t = lista[i - 1]; lista[i - 1] = lista[i]; lista[i] = t;
+                renderPlaylist();
+            });
+        });
+        box.querySelectorAll('.btn-dn').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var i = parseInt(b.getAttribute('data-dn'), 10);
+                if (i >= lista.length - 1) return;
+                var t = lista[i + 1]; lista[i + 1] = lista[i]; lista[i] = t;
+                renderPlaylist();
+            });
+        });
+    }
+    function esc(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
 
-        // Salvar
-        document.getElementById('btnSalvar').onclick = () => {
-            localStorage.setItem('playlistLouvores', JSON.stringify(lista));
-            alert('✅ Salvo com sucesso!\nA playlist atualiza no site automaticamente.');
-        };
+    document.getElementById('formAdd').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var titulo = document.getElementById('titulo').value.trim();
+        var artista = document.getElementById('artista').value.trim();
+        var url = document.getElementById('url').value.trim();
+        if (!titulo || !url) return;
+        lista.push({ titulo: titulo, artista: artista || '—', url: url });
+        document.getElementById('formAdd').reset();
+        tipoUrl.dispatchEvent(new Event('change'));
+        renderPlaylist();
+        document.getElementById('msgPlaylist').textContent = 'Adicionada (lembre de salvar).';
+    });
 
-        atualizarLista();
+    function salvarPlaylistLocalENuvem() {
+        localStorage.setItem(KEY_PL, JSON.stringify(lista));
+        var msg = document.getElementById('msgPlaylist');
+        msg.textContent = 'Salva neste aparelho…';
+        salvarMidiaNuvem().then(function () {
+            msg.textContent = 'Playlist salva' + (nuvemOk() ? ' (nuvem + local).' : ' (local). Atualize o site (F5).');
+        }).catch(function () {
+            msg.textContent = 'Salva local. Nuvem indisponível no momento.';
+        });
+    }
+    document.getElementById('btnSalvarPlaylist').addEventListener('click', salvarPlaylistLocalENuvem);
+
+    /* ——— Banner ——— */
+    var banners = { itens: [], ativoId: null };
+    try {
+        var bSalvo = localStorage.getItem(KEY_BN);
+        if (bSalvo) banners = JSON.parse(bSalvo);
+        if (!banners.itens) banners.itens = [];
+    } catch (e2) { banners = { itens: [], ativoId: null }; }
+
+    function renderBanners() {
+        var box = document.getElementById('listaBanners');
+        if (!banners.itens.length) {
+            box.innerHTML = '<p class="text-sm text-gray-400 sm:col-span-2">Nenhuma imagem enviada. O site usa o arquivo padrão <code>banner-ibn.jpg</code> do GitHub.</p>';
+            return;
+        }
+        box.innerHTML = banners.itens.map(function (b) {
+            var ativo = banners.ativoId === b.id;
+            return '<div class="border rounded-xl overflow-hidden ' + (ativo ? 'ring-2 ring-secondary' : '') + '">' +
+                '<div class="h-28 bg-cover bg-center" style="background-image:url(\'' + b.dataUrl.replace(/'/g, '%27') + '\')"></div>' +
+                '<div class="p-2 flex items-center gap-2">' +
+                '<button type="button" data-at="' + b.id + '" class="btn-ativo flex-1 text-xs font-bold py-1.5 rounded ' +
+                (ativo ? 'bg-secondary text-primary' : 'bg-gray-100 text-gray-700') + '">' +
+                (ativo ? '✓ Em uso no site' : 'Usar esta') + '</button>' +
+                '<button type="button" data-del="' + b.id + '" class="btn-del-b text-red-500 px-2" title="Remover"><i class="fa fa-trash"></i></button>' +
+                '</div></div>';
+        }).join('');
+        box.querySelectorAll('.btn-ativo').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                banners.ativoId = btn.getAttribute('data-at');
+                renderBanners();
+            });
+        });
+        box.querySelectorAll('.btn-del-b').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-del');
+                if (!confirm('Remover esta imagem?')) return;
+                banners.itens = banners.itens.filter(function (x) { return x.id !== id; });
+                if (banners.ativoId === id) banners.ativoId = banners.itens[0] ? banners.itens[0].id : null;
+                renderBanners();
+            });
+        });
+    }
+
+    function redimensionar(file, maxW, cb) {
+        var reader = new FileReader();
+        reader.onload = function () {
+            var img = new Image();
+            img.onload = function () {
+                var w = img.width, h = img.height;
+                if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+                var c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                var dataUrl = c.toDataURL('image/jpeg', 0.72);
+                cb(dataUrl);
+            };
+            img.onerror = function () { cb(null); };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    document.getElementById('fileBanner').addEventListener('change', function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        if (banners.itens.length >= 8) {
+            alert('Máximo de 8 imagens. Remova uma antes.');
+            return;
+        }
+        document.getElementById('msgBanner').textContent = 'Processando imagem…';
+        redimensionar(f, 1600, function (dataUrl) {
+            if (!dataUrl) {
+                document.getElementById('msgBanner').textContent = 'Não foi possível ler a imagem.';
+                return;
+            }
+            if (dataUrl.length > 900000) {
+                document.getElementById('msgBanner').textContent = 'Imagem ainda grande demais. Tente outra menor.';
+                return;
+            }
+            var id = 'b' + Date.now();
+            banners.itens.push({ id: id, nome: f.name || id, dataUrl: dataUrl, criado: new Date().toISOString() });
+            if (!banners.ativoId) banners.ativoId = id;
+            renderBanners();
+            document.getElementById('msgBanner').textContent = 'Imagem adicionada (salve para publicar).';
+            e.target.value = '';
+        });
+    });
+
+    function salvarBannerLocalENuvem() {
+        localStorage.setItem(KEY_BN, JSON.stringify(banners));
+        var msg = document.getElementById('msgBanner');
+        msg.textContent = 'Salvo neste aparelho…';
+        salvarMidiaNuvem().then(function () {
+            msg.textContent = 'Banner salvo' + (nuvemOk() ? ' (nuvem + local). Abra o início e atualize (F5).' : ' (local). Abra o início e atualize (F5).');
+        }).catch(function () {
+            msg.textContent = 'Salvo local. Nuvem indisponível.';
+        });
+    }
+    document.getElementById('btnSalvarBanner').addEventListener('click', salvarBannerLocalENuvem);
+
+    function nuvemOk() {
+        try {
+            return !!(typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && firebase.firestore);
+        } catch (e) { return false; }
+    }
+
+    function salvarMidiaNuvem() {
+        if (!nuvemOk()) return Promise.resolve();
+        try {
+            var db = firebase.firestore();
+            // Playlist sempre; banners só metadados de ativo se muito pesado — tenta salvar completo
+            var payload = {
+                playlist: lista,
+                bannerAtivoId: banners.ativoId || null,
+                banners: banners.itens,
+                atualizadoEm: new Date().toISOString(),
+                atualizadoPor: (u && (u.nome || u.email)) || 'admin'
+            };
+            return db.collection('config').doc('site_midia').set(payload, { merge: true });
+        } catch (e) {
+            return Promise.reject(e);
+        }
+    }
+
+    function carregarMidiaNuvem() {
+        if (!nuvemOk()) return Promise.resolve();
+        try {
+            return firebase.firestore().collection('config').doc('site_midia').get().then(function (snap) {
+                if (!snap.exists) return;
+                var d = snap.data() || {};
+                if (Array.isArray(d.playlist) && d.playlist.length) {
+                    lista = d.playlist;
+                    localStorage.setItem(KEY_PL, JSON.stringify(lista));
+                }
+                if (d.banners && Array.isArray(d.banners)) {
+                    banners.itens = d.banners;
+                    banners.ativoId = d.bannerAtivoId || (d.banners[0] && d.banners[0].id) || null;
+                    localStorage.setItem(KEY_BN, JSON.stringify(banners));
+                }
+            });
+        } catch (e) { return Promise.resolve(); }
+    }
+
+    carregarMidiaNuvem().then(function () {
+        renderPlaylist();
+        renderBanners();
+    }).catch(function () {
+        renderPlaylist();
+        renderBanners();
+    });
+})();
     </script>
 </body>
 </html>

@@ -188,6 +188,31 @@
                     <h4 class="font-bold text-primary mb-2">Próximos 8 dias</h4>
                     <div id="listaAnivProx" class="space-y-2"></div>
                 </div>
+                <div class="border-t pt-4 space-y-2">
+                    <h4 class="font-bold text-primary">📅 Aniversariantes por mês</h4>
+                    <p class="text-xs text-gray-500">Escolha o mês para ver a lista completa (o de hoje e os próximos dias continuam acima).</p>
+                    <div class="flex flex-wrap gap-2 items-end">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-600">Mês</label>
+                            <select id="selMesAniv" class="border rounded-lg px-2 py-1.5 text-sm">
+                                <option value="1">Janeiro</option>
+                                <option value="2">Fevereiro</option>
+                                <option value="3">Março</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Maio</option>
+                                <option value="6">Junho</option>
+                                <option value="7">Julho</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
+                        <button type="button" id="btnVerMesAniv" class="bg-primary text-white text-sm font-bold px-3 py-1.5 rounded-lg">Ver mês</button>
+                    </div>
+                    <div id="listaAnivMes" class="space-y-1 max-h-48 overflow-y-auto text-sm"></div>
+                </div>
                 <div id="boxEnviarAniv" class="border-t pt-4 space-y-3">
                     <h4 class="font-bold text-primary">Enviar feliz aniversário</h4>
                     <p class="text-xs text-gray-500">Para: <strong id="nomeDestAniv"></strong></p>
@@ -252,6 +277,7 @@
                 <a href="ministerios.html" class="hover:text-secondary transition-colors">Ministérios</a>
                 <a href="fotos.html" class="hover:text-secondary transition-colors">Fotos</a>
                 <a href="#biblia" class="hover:text-secondary transition-colors">Bíblia</a>
+                <a href="#aniversariantes" id="linkMenuAniv" class="hover:text-secondary transition">Aniversariantes</a>
                 <a href="#devocional" class="hover:text-secondary transition-colors">Devocional</a>
                 <a href="#oracao" class="hover:text-secondary transition-colors flex items-center gap-1">
                     <i class="fa fa-heart text-xs"></i> Oração
@@ -290,6 +316,7 @@
                 <a href="eventos.html" class="menu-link py-3 border-b border-white/15 font-bold" style="color:#D4AF37;">Eventos</a>
                 <a href="ministerios.html" class="menu-link py-3 border-b border-white/15">Ministérios</a>
                 <a href="#biblia" class="menu-link py-3 border-b border-white/15">Bíblia</a>
+                    <a href="#aniversariantes" id="linkMenuAnivMobile" class="block py-2 hover:text-secondary">Aniversariantes</a>
                 <a href="#devocional" class="menu-link py-3 border-b border-white/15">Devocional</a>
                 <a href="#oracao" class="menu-link py-3 border-b border-white/15">Oração</a>
                 <a href="adminlogin.html" id="linkGestaoMobile" class="menu-link py-3 border-b border-white/15 hidden font-semibold">Gestão</a>
@@ -310,7 +337,7 @@
 
     <main>
         <!-- ✅ Seção Hero — com destaque de vídeo restaurado -->
-        <section id="inicio" class="hero-banner text-white py-20">
+        <section id="inicio" id="heroBanner" class="hero-banner text-white py-20">
             <div class="container mx-auto px-4 text-center">
                 <p class="inline-block bg-white/10 px-4 py-1 rounded-full text-sm mb-8">● Boas-vindas à nossa família</p>
                 <h1 class="text-5xl md:text-7xl font-bold mb-4 text-secondary tracking-wider">JESUS</h1>
@@ -425,6 +452,36 @@
                         <h3 class="font-bold text-xl text-primary">Segunda-feira</h3>
                         <p class="font-semibold">Futebol dos Homens</p>
                         <p class="text-sm text-gray-500 mt-1">Encontro e comunhão entre os homens da igreja</p>
+                        <p id="textoLocalFutebolProg" class="text-sm text-primary mt-1"><i class="fa fa-map-marker text-secondary"></i> <span id="spanLocalFutebolProg">Carregando local…</span></p>
+                        <div id="painelAgendaFutebol" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-left">
+                            <p class="text-xs font-bold text-primary mb-1">Local do jogo — líder(es) Homens</p>
+                            <p class="text-[11px] text-gray-500 mb-2">No campo: informe o nome do lugar e use o GPS. Cada data fica na lista (não apaga). Semana que vem em outro lugar? Cadastre outra data.</p>
+                            <div class="space-y-2 mb-2">
+                                <div>
+                                    <label class="text-[10px] font-bold text-gray-600">Data do jogo</label>
+                                    <input type="date" id="futData" class="w-full border rounded-lg px-2 py-1.5 text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-gray-600">Nome do local (ex.: Campo do Setor X)</label>
+                                    <input type="text" id="futLocal" class="w-full border rounded-lg px-2 py-1.5 text-sm" placeholder="Nome do campo / quadra / lugar">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-gray-600">Observação (opcional)</label>
+                                    <input type="text" id="futObs" class="w-full border rounded-lg px-2 py-1.5 text-sm" placeholder="Ex.: entrada pelos fundos">
+                                </div>
+                                <p id="futGpsStatus" class="text-[11px] text-gray-500">GPS: ainda não capturado</p>
+                                <input type="hidden" id="futLat" value="">
+                                <input type="hidden" id="futLng" value="">
+                                <input type="hidden" id="futMaps" value="">
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" id="btnGpsFut" class="border border-primary text-primary text-sm font-bold px-3 py-1.5 rounded-lg">📍 Usar minha localização</button>
+                                <button type="button" id="btnSalvarFut" class="bg-primary text-white text-sm font-bold px-3 py-1.5 rounded-lg">Salvar este local</button>
+                            </div>
+                            <p id="msgFut" class="text-xs mt-1 hidden"></p>
+                            <p class="text-[10px] font-bold text-gray-600 mt-3 mb-1">Locais já cadastrados</p>
+                            <div id="listaAgendaFut" class="space-y-1 text-xs max-h-40 overflow-y-auto"></div>
+                        </div>
                     </div>
                     <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
                         <h3 class="font-bold text-xl text-primary">Terça-feira</h3>
@@ -750,7 +807,7 @@
                     <input type="range" id="volume" min="0" max="100" value="65" 
                         class="w-16 h-1 bg-gray-600 rounded-full appearance-none cursor-pointer">
                 </div>
-                <button id="linkAdmin" class="hidden ml-2 text-xs text-gray-300 hover:text-secondary" title="Gerenciar Playlist">
+                <button id="linkAdmin" class="hidden ml-2 text-xs text-gray-300 hover:text-secondary" title="Playlist e Banner (Admin)">
                     <i class="fa fa-cog"></i>
                 </button>
             </div>
@@ -1925,7 +1982,7 @@
             }
 
             if (diaSemana === 1) { // Segunda
-                texto = '⚽ Hoje: Futebol dos Homens — comunhão e esporte!';
+                texto = '⚽ Hoje: Futebol dos Homens — ' + (typeof textoLocalFutebolParaData === 'function' ? textoLocalFutebolParaData(new Date().toISOString().slice(0,10)) : 'local a confirmar');
                 link = 'Ver programação →';
                 href = '#eventos';
             } else if (diaSemana === 2) { // Terça
@@ -1939,9 +1996,15 @@
                 link = 'Ver programação →';
                 href = '#eventos';
             } else if (diaSemana === 6) { // Sábado
-                texto = '🔥 Hoje: Célula de Adolescentes (18h) e Jovens (20h) — local definido pelo líder (consulte a célula ou o líder).';
+                texto = '🔥 Hoje: Célula de Adolescentes (18h) e Jovens (20h) — ' + (typeof textoLocalSabadoCelulasHoje === 'function' ? textoLocalSabadoCelulasHoje() : 'local com o líder');
                 link = 'Ver programação →';
                 href = '#eventos';
+                if (typeof textoLocalSabadoCelulasHoje === 'function') {
+                    var locSab = textoLocalSabadoCelulasHoje();
+                    if (texto && texto.indexOf('Local') < 0) texto = texto + ' · ' + locSab;
+                    else if (!texto) texto = '📅 Células de sábado · ' + locSab;
+                }
+
             } else if (diaSemana === 0) { // Domingo
                 if (isPrimeiroDomingo) {
                     texto = '🍞 Hoje: Culto de Celebração + Culto de Ceia às 19:00.';
@@ -1968,7 +2031,7 @@
                     // mais simples: campanha + programação do dia
                     if (diaSemana === 1) texto = texto40 + ' · Também: Futebol dos Homens.';
                     else if (diaSemana === 4) texto = texto40 + ' · Também: Culto da Fé 19:30.';
-                    else if (diaSemana === 6) texto = texto40 + ' · À noite: células de Adolescentes e Jovens.';
+                    else if (diaSemana === 6) texto = texto40 + ' · À noite: células — ' + (typeof textoLocalSabadoCelulasHoje === 'function' ? textoLocalSabadoCelulasHoje() : 'local com o líder');
                     else if (diaSemana === 0) texto = texto40 + ' · À noite: Culto de Celebração 19:00.';
                     else if (isSextaVigilia) texto = texto40 + ' · Também: Vigília.';
                     else texto = texto40;
@@ -2324,8 +2387,13 @@
         if (!m) return;
         m.classList.remove('hidden');
         m.classList.add('flex');
-        renderAniv();
-    }
+        try { renderAniv(); } catch (e1) { console.warn(e1); }
+        try {
+            var _s = document.getElementById('selMesAniv');
+            if (_s) _s.value = String((new Date()).getMonth() + 1);
+            renderAnivMes();
+        } catch (eAn) { console.warn(eAn); }
+    };
     function fecharModalAniv() {
         var m = document.getElementById('modalAniversariantes');
         if (!m) return;
@@ -2336,11 +2404,15 @@
         destAtual = a;
         var box = document.getElementById('boxEnviarAniv');
         var u = soMembros();
-        if (!box || !u) return;
+        if (!box || !u || !a) return;
         box.classList.remove('hidden');
-        document.getElementById('nomeDestAniv').textContent = a.nome + (a.idade ? ' (' + a.idade + ' anos)' : '');
-        document.getElementById('textoMsgAniv').value = mensagemAniversarioPadrao(a.nome, u.nome);
-        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        var nd = document.getElementById('nomeDestAniv');
+        if (nd) nd.textContent = a.nome + (a.idade ? ' (' + a.idade + ' anos)' : '');
+        var ta = document.getElementById('textoMsgAniv');
+        if (ta && typeof mensagemAniversarioPadrao === 'function') {
+            ta.value = mensagemAniversarioPadrao(a.nome, u.nome);
+        }
+        try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
     }
     function renderAniv() {
         var u = soMembros();
@@ -2350,145 +2422,197 @@
         var boxHoje = document.getElementById('listaAnivHoje');
         var boxProx = document.getElementById('listaAnivProx');
         var boxProp = document.getElementById('boxAnivProprio');
-        if (ehAniversarioHojeMembro(u)) {
-            boxProp.classList.remove('hidden');
-            document.getElementById('nomeAnivProprio').textContent = (u.nome || '').split(' ')[0];
-        } else {
-            boxProp.classList.add('hidden');
+        if (boxProp) {
+            if (typeof ehAniversarioHojeMembro === 'function' && ehAniversarioHojeMembro(u)) {
+                boxProp.classList.remove('hidden');
+                var np = document.getElementById('nomeAnivProprio');
+                if (np) np.textContent = (u.nome || '').split(' ')[0];
+            } else {
+                boxProp.classList.add('hidden');
+            }
         }
-        if (!hoje.length) {
-            boxHoje.innerHTML = '<p class="text-gray-400">Nenhum aniversariante hoje.</p>';
-        } else {
-            boxHoje.innerHTML = hoje.map(function(a){
-                var eu = String(a.id) === String(u.id);
-                return '<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg px-3 py-2 bg-pink-50/80">' +
-                    '<div><span class="font-bold text-primary">' + (a.nome||'').replace(/</g,'&lt;') + '</span>' +
-                    (a.idade ? ' <span class="text-xs text-gray-500">· ' + a.idade + ' anos</span>' : '') +
-                    (eu ? ' <span class="text-xs font-bold text-pink-600">· é você!</span>' : '') +
-                    '</div>' +
-                    (eu ? '' : '<button type="button" data-id="'+a.id+'" class="btnHomenagear text-xs font-bold bg-pink-600 text-white px-3 py-1.5 rounded-lg hover:bg-pink-700">Homenagear</button>') +
-                    '</div>';
-            }).join('');
+        if (boxHoje) {
+            if (!hoje.length) {
+                boxHoje.innerHTML = '<p class="text-gray-400">Nenhum aniversariante hoje.</p>';
+            } else {
+                boxHoje.innerHTML = hoje.map(function (a) {
+                    return '<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg px-3 py-2 bg-pink-50/80">' +
+                        '<div><span class="font-bold text-primary">' + String(a.nome || '').replace(/</g, '&lt;') + '</span>' +
+                        (a.idade ? ' <span class="text-gray-500 text-sm">(' + a.idade + ' anos)</span>' : '') + '</div>' +
+                        '<button type="button" class="btn-sel-aniv text-xs font-bold text-pink-600 underline" data-id="' + (a.id || '') + '">Homenagear</button></div>';
+                }).join('');
+            }
         }
-        // próximos (exceto só hoje já listado — mostrar todos os dias com label)
-        var dias = prox.filter(function(d){ return d.diasAte > 0; });
-        if (!dias.length) {
-            boxProx.innerHTML = '<p class="text-gray-400">Nenhum aniversariante nos próximos 8 dias.</p>';
-        } else {
-            boxProx.innerHTML = dias.map(function(d){
-                return '<div class="border rounded-lg px-3 py-2">' +
-                    '<p class="text-xs font-bold text-secondary mb-1">' + d.dataBR + (d.diasAte === 1 ? ' (amanhã)' : ' (em ' + d.diasAte + ' dias)') + '</p>' +
-                    d.aniversariantes.map(function(a){
-                        return '<div class="flex flex-wrap items-center justify-between gap-2 py-1">' +
-                            '<span class="font-semibold text-primary">' + (a.nome||'').replace(/</g,'&lt;') + '</span>' +
-                            '<button type="button" data-id="'+a.id+'" data-nome="'+String(a.nome||'').replace(/"/g,'&quot;')+'" class="btnHomenagear text-xs font-bold border border-pink-500 text-pink-700 px-2 py-1 rounded hover:bg-pink-50">Homenagear</button>' +
-                            '</div>';
-                    }).join('') +
-                    '</div>';
-            }).join('');
+        if (boxProx) {
+            if (!prox.length) {
+                boxProx.innerHTML = '<p class="text-gray-400">Nenhum aniversariante nos próximos 8 dias.</p>';
+            } else {
+                boxProx.innerHTML = prox.map(function (d) {
+                    return '<div class="mb-2"><p class="text-xs font-bold text-primary mb-1">' + d.dataBR +
+                        (d.diasAte === 0 ? ' (hoje)' : d.diasAte === 1 ? ' (amanhã)' : '') + '</p>' +
+                        d.aniversariantes.map(function (a) {
+                            return '<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg px-3 py-1.5 mb-1">' +
+                                '<span>' + String(a.nome || '').replace(/</g, '&lt;') +
+                                (a.idade ? ' <span class="text-gray-400">(' + a.idade + ')</span>' : '') + '</span>' +
+                                '<button type="button" class="btn-sel-aniv text-xs font-bold text-pink-600 underline" data-id="' + (a.id || '') + '">Homenagear</button></div>';
+                        }).join('') + '</div>';
+                }).join('');
+            }
         }
-        document.querySelectorAll('.btnHomenagear').forEach(function(btn){
-            btn.addEventListener('click', function(){
+        document.querySelectorAll('.btn-sel-aniv').forEach(function (btn) {
+            btn.addEventListener('click', function () {
                 var id = btn.getAttribute('data-id');
-                var all = listarProximosAniversariantes(8);
                 var found = null;
-                all.forEach(function(d){
-                    d.aniversariantes.forEach(function(a){ if (String(a.id) === String(id)) found = a; });
-                });
+                hoje.forEach(function (a) { if (String(a.id) === String(id)) found = a; });
+                if (!found) {
+                    prox.forEach(function (d) {
+                        d.aniversariantes.forEach(function (a) { if (String(a.id) === String(id)) found = a; });
+                    });
+                }
                 if (found) selecionarDest(found);
             });
         });
-        // mensagem modelo sempre visível
-        var boxEnv = document.getElementById('boxEnviarAniv');
-        if (boxEnv) {
-            boxEnv.classList.remove('hidden');
-            if (!destAtual) {
-                var u0 = soMembros();
-                document.getElementById('textoMsgAniv').value = mensagemAniversarioPadrao('irmão(ã)', u0 && u0.nome);
-                var nd = document.getElementById('nomeDestAniv');
-                if (nd) nd.textContent = '(escolha alguém na lista quando houver)';
+        // banner topo
+        try {
+            var banner = document.getElementById('bannerAniversario');
+            var txt = document.getElementById('textoBannerAniv');
+            if (banner && txt) {
+                if (typeof ehAniversarioHojeMembro === 'function' && ehAniversarioHojeMembro(u)) {
+                    banner.classList.remove('hidden');
+                    txt.textContent = '🎂 Feliz aniversário, ' + (u.nome || '').split(' ')[0] + '!';
+                } else if (hoje.length) {
+                    banner.classList.remove('hidden');
+                    if (hoje.length === 1) txt.textContent = '🎂 Hoje é aniversário de ' + hoje[0].nome.split(' ')[0] + '!';
+                    else txt.textContent = '🎂 Hoje temos ' + hoje.length + ' aniversariantes na família IBN!';
+                } else {
+                    var prox2 = listarProximosAniversariantes(8).filter(function (d) { return d.diasAte > 0; });
+                    if (prox2.length) {
+                        banner.classList.remove('hidden');
+                        banner.classList.remove('from-pink-500', 'to-rose-500');
+                        banner.classList.add('from-primary', 'to-primary');
+                        var n = 0; prox2.forEach(function (d) { n += d.aniversariantes.length; });
+                        txt.textContent = '📅 ' + n + ' aniversariante(s) nos próximos 8 dias';
+                    }
+                }
             }
+        } catch (eB) {}
+    }
+    function renderAnivMes() {
+        var sel = document.getElementById('selMesAniv');
+        var box = document.getElementById('listaAnivMes');
+        if (!sel || !box) return;
+        if (typeof listarAniversariantesDoMes !== 'function') {
+            box.innerHTML = '<p class="text-amber-600 text-xs">Atualize o arquivo conta.js no site para listar por mês.</p>';
+            return;
         }
+        var mes = parseInt(sel.value, 10) || ((new Date()).getMonth() + 1);
+        var lista = listarAniversariantesDoMes(mes);
+        var nomesMes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        if (!lista.length) {
+            box.innerHTML = '<p class="text-gray-400 text-xs">Nenhum aniversariante em ' + (nomesMes[mes] || mes) + ' (com data cadastrada).</p>';
+            return;
+        }
+        box.innerHTML = '<p class="text-xs text-gray-500 mb-1">' + lista.length + ' em ' + (nomesMes[mes] || mes) + '</p>' +
+            lista.map(function (a) {
+                var dia = String(a.dia || '').padStart(2, '0');
+                return '<div class="flex flex-wrap items-center justify-between gap-1 border rounded-lg px-2 py-1.5">' +
+                    '<span><strong>' + dia + '</strong> — ' + String(a.nome || '').replace(/</g, '&lt;') +
+                    (a.idade ? ' <span class="text-gray-400">(' + a.idade + ' anos)</span>' : '') + '</span>' +
+                    '<button type="button" class="btn-homenagear-mes text-xs font-bold text-pink-600 underline" data-id="' + (a.id || '') + '">Homenagear</button></div>';
+            }).join('');
+        box.querySelectorAll('.btn-homenagear-mes').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-id');
+                var a = lista.find(function (x) { return String(x.id) === String(id); });
+                if (a) selecionarDest(a);
+            });
+        });
+    }
+    function abrirPeloMenu(e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        var u = soMembros();
+        if (!u) {
+            alert('Faça login como membro para ver os aniversariantes.');
+            window.location.href = 'login.html?destino=index.html#aniversariantes';
+            return false;
+        }
+        abrirModalAniv();
+        return false;
     }
     function initAniv() {
-        var u = soMembros();
-        if (!u || typeof listarAniversariantesHoje !== 'function') return;
-        var hoje = listarAniversariantesHoje();
         var banner = document.getElementById('bannerAniversario');
-        var txt = document.getElementById('textoBannerAniv');
-        if (ehAniversarioHojeMembro(u)) {
-            banner.classList.remove('hidden');
-            txt.textContent = '🎉 Feliz aniversário, ' + (u.nome||'').split(' ')[0] + '! A IBN celebra com você.';
-            // auto-abre uma vez ao dia
-            try {
-                var k = 'ibn_aniv_visto_' + new Date().toISOString().slice(0,10) + '_' + u.id;
-                if (!localStorage.getItem(k)) {
-                    localStorage.setItem(k, '1');
-                    setTimeout(abrirModalAniv, 800);
-                }
-            } catch(e) {}
-        } else if (hoje.length) {
-            banner.classList.remove('hidden');
-            if (hoje.length === 1) txt.textContent = '🎂 Hoje é aniversário de ' + hoje[0].nome.split(' ')[0] + '!';
-            else txt.textContent = '🎂 Hoje temos ' + hoje.length + ' aniversariantes na família IBN!';
-        } else {
-            var prox = listarProximosAniversariantes(8).filter(function(d){ return d.diasAte > 0; });
-            if (prox.length) {
-                banner.classList.remove('hidden');
-                banner.classList.remove('from-pink-500', 'to-rose-500');
-                banner.classList.add('from-primary', 'to-primary');
-                var n = 0; prox.forEach(function(d){ n += d.aniversariantes.length; });
-                txt.textContent = '📅 ' + n + ' aniversariante(s) nos próximos 8 dias';
-            }
-        }
-        document.getElementById('btnAbrirAniv') && document.getElementById('btnAbrirAniv').addEventListener('click', function(e){ e.stopPropagation(); abrirModalAniv(); });
-        banner && banner.addEventListener('click', abrirModalAniv);
-        document.getElementById('btnFecharAniv') && document.getElementById('btnFecharAniv').addEventListener('click', fecharModalAniv);
+        var btnAbrirAniv = document.getElementById('btnAbrirAniv');
+        if (btnAbrirAniv) btnAbrirAniv.addEventListener('click', function (e) { e.stopPropagation(); abrirModalAniv(); });
+        if (banner) banner.addEventListener('click', abrirModalAniv);
+        ['linkMenuAniv', 'linkMenuAnivMobile'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('click', abrirPeloMenu);
+        });
+        document.querySelectorAll('a[href="#aniversariantes"]').forEach(function (el) {
+            el.addEventListener('click', abrirPeloMenu);
+        });
+        var btnMes = document.getElementById('btnVerMesAniv');
+        if (btnMes) btnMes.addEventListener('click', function (e) { e.preventDefault(); renderAnivMes(); });
+        var btnFechar = document.getElementById('btnFecharAniv');
+        if (btnFechar) btnFechar.addEventListener('click', fecharModalAniv);
         var modal = document.getElementById('modalAniversariantes');
-        if (modal) modal.addEventListener('click', function(ev){ if (ev.target === modal) fecharModalAniv(); });
-
-        document.getElementById('btnWaAniv') && document.getElementById('btnWaAniv').addEventListener('click', function(){
-            if (!destAtual) return;
+        if (modal) modal.addEventListener('click', function (ev) { if (ev.target === modal) fecharModalAniv(); });
+        var btnWa = document.getElementById('btnWaAniv');
+        if (btnWa) btnWa.addEventListener('click', function () {
+            if (!destAtual) return alert('Escolha um aniversariante na lista (Homenagear).');
             var u = soMembros();
-            var texto = document.getElementById('textoMsgAniv').value.trim();
+            var texto = (document.getElementById('textoMsgAniv') || {}).value || '';
+            texto = texto.trim();
             if (!texto) return alert('Escreva uma mensagem.');
-            registrarMensagemAniversarioLocal(u && u.id, u && u.nome, destAtual.id, destAtual.nome, texto);
-            var link = linkWhatsAppAniversario(destAtual.telefone, texto);
+            if (typeof registrarMensagemAniversarioLocal === 'function') {
+                registrarMensagemAniversarioLocal(u && u.id, u && u.nome, destAtual.id, destAtual.nome, texto);
+            }
+            var link = typeof linkWhatsAppAniversario === 'function' ? linkWhatsAppAniversario(destAtual.telefone, texto) : null;
             var st = document.getElementById('msgAnivStatus');
             if (!link) {
-                st.textContent = 'Este membro não tem telefone cadastrado. Use "Copiar mensagem".';
-                st.className = 'text-xs text-center text-amber-700';
-                st.classList.remove('hidden');
+                if (st) { st.textContent = 'Sem telefone cadastrado. Use "Copiar mensagem".'; st.className = 'text-xs text-center text-amber-700'; st.classList.remove('hidden'); }
                 return;
             }
-            st.textContent = 'Abrindo WhatsApp...';
-            st.className = 'text-xs text-center text-green-600';
-            st.classList.remove('hidden');
+            if (st) { st.textContent = 'Abrindo WhatsApp...'; st.className = 'text-xs text-center text-green-600'; st.classList.remove('hidden'); }
             window.open(link, '_blank');
         });
-        document.getElementById('btnCopiarAniv') && document.getElementById('btnCopiarAniv').addEventListener('click', function(){
-            var texto = document.getElementById('textoMsgAniv').value.trim();
+        var btnCop = document.getElementById('btnCopiarAniv');
+        if (btnCop) btnCop.addEventListener('click', function () {
+            var texto = ((document.getElementById('textoMsgAniv') || {}).value || '').trim();
             var u = soMembros();
-            if (destAtual && u) registrarMensagemAniversarioLocal(u.id, u.nome, destAtual.id, destAtual.nome, texto);
+            if (destAtual && u && typeof registrarMensagemAniversarioLocal === 'function') {
+                registrarMensagemAniversarioLocal(u.id, u.nome, destAtual.id, destAtual.nome, texto);
+            }
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(texto).then(function(){
+                navigator.clipboard.writeText(texto).then(function () {
                     var st = document.getElementById('msgAnivStatus');
-                    st.textContent = 'Mensagem copiada!';
-                    st.className = 'text-xs text-center text-green-600';
-                    st.classList.remove('hidden');
+                    if (st) { st.textContent = 'Mensagem copiada!'; st.className = 'text-xs text-center text-green-600'; st.classList.remove('hidden'); }
                 });
             } else {
                 alert('Copie a mensagem manualmente.');
             }
         });
+        // se já logado, atualiza banner
+        if (soMembros()) {
+            try { renderAniv(); } catch (e) {}
+        }
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){
-        initAniv();
-        if (location.hash && location.hash.indexOf('aniversariantes') !== -1) setTimeout(abrirModalAniv, 600);
-    }, 400); });
-    else setTimeout(initAniv, 400);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                initAniv();
+                if (location.hash && location.hash.indexOf('aniversariantes') !== -1) setTimeout(abrirModalAniv, 500);
+            }, 300);
+        });
+    } else {
+        setTimeout(function () {
+            initAniv();
+            if (location.hash && location.hash.indexOf('aniversariantes') !== -1) setTimeout(abrirModalAniv, 500);
+        }, 300);
+    }
 })();
 </script>
+
 
 
 <script>
@@ -2960,6 +3084,207 @@
         selL.addEventListener('click', iniciar);
     })();
     </script>
+
+
+    <script>
+    (function () {
+        function aplicarBannerSalvo() {
+            try {
+                var raw = localStorage.getItem('ibn_banners_config');
+                if (!raw) return;
+                var cfg = JSON.parse(raw);
+                if (!cfg || !cfg.itens || !cfg.itens.length) return;
+                var item = null;
+                for (var i = 0; i < cfg.itens.length; i++) {
+                    if (cfg.itens[i].id === cfg.ativoId) { item = cfg.itens[i]; break; }
+                }
+                if (!item) item = cfg.itens[0];
+                if (!item || !item.dataUrl) return;
+                var el = document.getElementById('heroBanner') || document.querySelector('.hero-banner');
+                if (!el) return;
+                el.style.backgroundImage = "linear-gradient(rgba(10,26,63,0.72), rgba(10,26,63,0.72)), url('" + item.dataUrl.replace(/'/g, "%27") + "')";
+                el.style.backgroundSize = 'cover';
+                el.style.backgroundPosition = 'center';
+            } catch (e) {}
+        }
+        function puxarMidiaNuvem() {
+            try {
+                if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) return;
+                firebase.firestore().collection('config').doc('site_midia').get().then(function (snap) {
+                    if (!snap.exists) return;
+                    var d = snap.data() || {};
+                    if (Array.isArray(d.playlist) && d.playlist.length) {
+                        localStorage.setItem('playlistLouvores', JSON.stringify(d.playlist));
+                    }
+                    if (d.banners && Array.isArray(d.banners)) {
+                        localStorage.setItem('ibn_banners_config', JSON.stringify({
+                            itens: d.banners,
+                            ativoId: d.bannerAtivoId || (d.banners[0] && d.banners[0].id) || null
+                        }));
+                        aplicarBannerSalvo();
+                    }
+                }).catch(function () {});
+            } catch (e2) {}
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                aplicarBannerSalvo();
+                setTimeout(puxarMidiaNuvem, 800);
+            });
+        } else {
+            aplicarBannerSalvo();
+            setTimeout(puxarMidiaNuvem, 800);
+        }
+    })();
+    </script>
+
+
+<script>
+(function(){
+    document.addEventListener('click', function(e) {
+        var t = e.target.closest && e.target.closest('#linkMenuAniv, #linkMenuAnivMobile, a[href="#aniversariantes"]');
+        if (!t) return;
+        e.preventDefault();
+        if (typeof window.abrirModalAniv === 'function') {
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (!u) {
+                alert('Faça login como membro para ver os aniversariantes.');
+                window.location.href = 'login.html?destino=index.html#aniversariantes';
+                return;
+            }
+            window.abrirModalAniv();
+        } else {
+            alert('Recurso de aniversariantes ainda carregando. Atualize a página (F5).');
+        }
+    }, true);
+    window.addEventListener('hashchange', function() {
+        if (location.hash && location.hash.indexOf('aniversariantes') !== -1 && typeof window.abrirModalAniv === 'function') {
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (u) window.abrirModalAniv();
+        }
+    });
+})();
+</script>
+
+
+<script>
+<script>
+(function(){
+    function isoHoje() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function proximaSegundaIso() {
+        if (typeof proximasSegundas === 'function') return proximasSegundas(1)[0];
+        var d = new Date(); d.setHours(12,0,0,0);
+        while (d.getDay() !== 1) d.setDate(d.getDate()+1);
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function atualizarTextoProg() {
+        var span = document.getElementById('spanLocalFutebolProg');
+        if (!span) return;
+        var hoje = new Date();
+        var alvo = (hoje.getDay() === 1) ? isoHoje() : proximaSegundaIso();
+        var reg = (typeof localFutebolNaData === 'function') ? localFutebolNaData(alvo) : null;
+        var txt;
+        if (reg && (reg.local || reg.maps || (reg.lat && reg.lng))) {
+            txt = reg.local || 'Local marcado no mapa';
+            if (reg.obs) txt += ' (' + reg.obs + ')';
+        } else {
+            txt = (typeof textoLocalFutebolParaData === 'function') ? textoLocalFutebolParaData(alvo) : 'Local ainda não definido — procure o líder do ministério de Homens.';
+        }
+        var prefix = (hoje.getDay() === 1) ? 'Hoje: ' : ('Próxima segunda (' + alvo.slice(8,10)+'/'+alvo.slice(5,7) + '): ');
+        span.textContent = prefix + txt;
+    }
+    function renderListaFut() {
+        var el = document.getElementById('listaAgendaFut');
+        if (!el || typeof lerAgendaFutebol !== 'function') return;
+        var lista = lerAgendaFutebol().slice().reverse();
+        if (!lista.length) {
+            el.innerHTML = '<p class="text-gray-500">Nenhum local na lista ainda.</p>';
+            return;
+        }
+        el.innerHTML = lista.map(function(r){
+            var br = (r.data||'').slice(8,10)+'/'+(r.data||'').slice(5,7)+'/'+(r.data||'').slice(0,4);
+            var t = r.local || 'Local';
+            if (r.obs) t += ' — ' + r.obs;
+            var link = '';
+            if (r.maps) link = ' <a href="'+r.maps+'" target="_blank" rel="noopener" class="text-secondary underline">Ver no mapa</a>';
+            else if (r.lat && r.lng) link = ' <a href="https://www.google.com/maps?q='+r.lat+','+r.lng+'" target="_blank" rel="noopener" class="text-secondary underline">Ver no mapa</a>';
+            return '<div class="border-b border-blue-100 py-1.5"><strong>'+br+'</strong> · '+t+link+'</div>';
+        }).join('');
+    }
+    function capturarGps() {
+        var st = document.getElementById('futGpsStatus');
+        if (!navigator.geolocation) {
+            if (st) st.textContent = 'GPS não disponível neste aparelho.';
+            return;
+        }
+        if (st) st.textContent = 'Obtendo GPS…';
+        navigator.geolocation.getCurrentPosition(function(pos){
+            var lat = pos.coords.latitude;
+            var lng = pos.coords.longitude;
+            var latEl = document.getElementById('futLat');
+            var lngEl = document.getElementById('futLng');
+            var mapsEl = document.getElementById('futMaps');
+            if (latEl) latEl.value = String(lat);
+            if (lngEl) lngEl.value = String(lng);
+            if (mapsEl) mapsEl.value = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+            if (st) st.textContent = 'GPS ok (' + lat.toFixed(5) + ', ' + lng.toFixed(5) + ')';
+        }, function(err){
+            if (st) st.textContent = 'Não foi possível obter o GPS. Permita a localização ou tente de novo.';
+        }, { enableHighAccuracy: true, timeout: 15000 });
+    }
+    function initFut() {
+        atualizarTextoProg();
+        var painel = document.getElementById('painelAgendaFutebol');
+        if (painel && typeof podeGerenciarAgendaFutebol === 'function' && podeGerenciarAgendaFutebol()) {
+            painel.classList.remove('hidden');
+            var inp = document.getElementById('futData');
+            if (inp && !inp.value) inp.value = proximaSegundaIso();
+            renderListaFut();
+        }
+        var btnGps = document.getElementById('btnGpsFut');
+        if (btnGps) btnGps.addEventListener('click', function(e){ e.preventDefault(); capturarGps(); });
+        var btn = document.getElementById('btnSalvarFut');
+        if (btn) btn.addEventListener('click', function(){
+            var lat = (document.getElementById('futLat')||{}).value;
+            var lng = (document.getElementById('futLng')||{}).value;
+            var maps = (document.getElementById('futMaps')||{}).value;
+            var local = ((document.getElementById('futLocal')||{}).value || '').trim();
+            var obs = ((document.getElementById('futObs')||{}).value || '').trim();
+            if (!local) {
+                var msg0 = document.getElementById('msgFut');
+                if (msg0) { msg0.classList.remove('hidden'); msg0.className = 'text-xs mt-1 text-red-600'; msg0.textContent = 'Informe o nome do local (ex.: Campo do setor).'; }
+                return;
+            }
+            var r = typeof salvarLocalFutebol === 'function' ? salvarLocalFutebol({
+                data: (document.getElementById('futData')||{}).value,
+                local: local,
+                endereco: obs,
+                obs: obs,
+                maps: maps,
+                lat: lat ? parseFloat(lat) : null,
+                lng: lng ? parseFloat(lng) : null
+            }) : { sucesso: false, mensagem: 'conta.js desatualizado' };
+            var msg = document.getElementById('msgFut');
+            if (msg) {
+                msg.classList.remove('hidden');
+                msg.className = 'text-xs mt-1 ' + (r.sucesso ? 'text-green-600' : 'text-red-600');
+                msg.textContent = r.mensagem || (r.sucesso ? 'Salvo' : 'Erro');
+            }
+            if (r.sucesso) {
+                renderListaFut();
+                atualizarTextoProg();
+                if (typeof mostrarAlertaDoDia === 'function') try { mostrarAlertaDoDia(); } catch(e){}
+            }
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(initFut, 500); });
+    else setTimeout(initFut, 500);
+})();
+</script>
+
 
 </body>
 </html>

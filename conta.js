@@ -2666,12 +2666,14 @@ function equipeDaCelula(celulaId) {
             return (m.funcaoEspecifica || '').toLowerCase().indexOf('anfitri') !== -1
                 && membros.some(function (x) { return x.id === m.id; });
         }) || null;
-    var liderTreino = membros.find(function (m) { return temPapel(m, 'lider_treino'); })
-        || membros.find(function (m) {
-            return m.cargo === 'Líder em treinamento'
-                || (m.funcaoEspecifica || '').toLowerCase().indexOf('treinament') !== -1;
-        }) || null;
-    return { lider: lider, anfitriao: anfitriao, liderTreino: liderTreino, membros: membros };
+    var lideresTreino = membros.filter(function (m) {
+        return temPapel(m, 'lider_treino')
+            || m.cargo === 'Líder em treinamento'
+            || (m.funcaoEspecifica || '').toLowerCase().indexOf('treinament') !== -1;
+    });
+    // compat: liderTreino = primeiro (ou null)
+    var liderTreino = lideresTreino[0] || null;
+    return { lider: lider, anfitriao: anfitriao, liderTreino: liderTreino, lideresTreino: lideresTreino, membros: membros };
 }
 
 
@@ -3081,6 +3083,27 @@ function podeGerenciarPessoasCelula(celulaId) {
 /** Relatório com ofertas: só líder da célula (secretaria/gestor também veem/exportam) */
 
 /** Remove vínculo do membro com a célula (continua membro da igreja) */
+
+/** Ajuste de localização do encontro: líder da célula, líder em treinamento ou anfitrião (sem precisar da gestão). Membros só visualizam. */
+function podeAjustarLocalCelula(celulaId) {
+    var u = getUsuarioLogado();
+    if (!u || !celulaId) return false;
+    if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+    if (typeof isGestor === 'function' && isGestor(u)) return true;
+    if (typeof isLiderCelula === 'function' && isLiderCelula(u, celulaId)) return true;
+    if (typeof isAnfitriaoCelula === 'function' && isAnfitriaoCelula(u, celulaId)) return true;
+    // líder em treinamento nesta célula
+    try {
+        var eq = typeof equipeDaCelula === 'function' ? equipeDaCelula(celulaId) : null;
+        if (eq && Array.isArray(eq.lideresTreino)) {
+            if (eq.lideresTreino.some(function (m) { return m && String(m.id) === String(u.id); })) return true;
+        }
+        if (eq && eq.liderTreino && String(eq.liderTreino.id) === String(u.id)) return true;
+    } catch (e) {}
+    return false;
+}
+
+
 function removerMembroDaCelula(membroId, celulaId) {
     if (!podeGerenciarPessoasCelula(celulaId)) {
         return { sucesso: false, mensagem: 'Somente o líder ou o anfitrião podem remover desta célula.' };
@@ -3206,12 +3229,16 @@ function salvarRelatorioCelula(dados) {
     const ofertaEspecie = parseFloat(dados.ofertaEspecie) || 0;
     const presentes = Array.isArray(dados.presentes) ? dados.presentes : [];
 
+    const qtdVisitantes = Math.max(0, parseInt(dados.qtdVisitantes, 10) || 0);
+    const qtdMembrosPresentes = presentes.length || parseInt(dados.qtdPresentes, 10) || 0;
     const rel = {
         id: dados.id || ('rel-' + Date.now()),
         celulaId: dados.celulaId,
         data: dados.data || new Date().toISOString().slice(0, 10),
         presentes: presentes,
-        qtdPresentes: presentes.length || parseInt(dados.qtdPresentes, 10) || 0,
+        qtdPresentes: qtdMembrosPresentes,
+        qtdVisitantes: qtdVisitantes,
+        qtdTotal: qtdMembrosPresentes + qtdVisitantes,
         ofertaPix: ofertaPix,
         ofertaEspecie: ofertaEspecie,
         totalOfertas: ofertaPix + ofertaEspecie,
@@ -3447,6 +3474,39 @@ function listarProximosAniversariantes(dias) {
     }
     return out;
 }
+
+/** Aniversariantes do mês (1-12). Ano só para calcular idade aproximada. */
+function listarAniversariantesDoMes(mes, ano) {
+    mes = parseInt(mes, 10);
+    ano = parseInt(ano, 10) || (new Date()).getFullYear();
+    if (!mes || mes < 1 || mes > 12) return [];
+    var membros = lerMembros();
+    var lista = [];
+    membros.forEach(function (m) {
+        if (!m || ehContaMasterSistema(m)) return;
+        if (m.tipo === 'visitante' || m.status === 'visitante') return;
+        if (m.status === 'bloqueado' || m.bloqueado) return;
+        var md = _mdNascimento(m);
+        if (!md || md.mes !== mes) return;
+        var ref = new Date(ano, mes - 1, md.dia || 1, 12, 0, 0);
+        lista.push({
+            id: m.id,
+            nome: m.nome || '',
+            telefone: m.telefone || '',
+            email: m.email || '',
+            nascimento: md.iso || '',
+            dia: md.dia,
+            mes: md.mes,
+            idade: _idadeAniversario(md.iso, ref)
+        });
+    });
+    lista.sort(function (a, b) {
+        if (a.dia !== b.dia) return a.dia - b.dia;
+        return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+    });
+    return lista;
+}
+
 function ehAniversarioHojeMembro(m) {
     if (!m) return false;
     var md = _mdNascimento(m);
@@ -3482,6 +3542,165 @@ function registrarMensagemAniversarioLocal(deId, deNome, paraId, paraNome, texto
 }
 
 
+
+
+/** Status amigável: em_analise (âmbar) em vez de "rejeitado" / exclusão */
+function statusPapelCelula(m, celulaId) {
+    if (!m) return 'ok';
+    if (m.status === 'pendente' || m.status === 'aguardando' || m.statusAprovacao === 'pendente') return 'em_analise';
+    var st = (m.celulaPapeisStatus && m.celulaPapeisStatus[celulaId]) || m.papelCelulaStatus || '';
+    if (st === 'em_analise' || st === 'pendente' || st === 'aguardando') return 'em_analise';
+    if (st === 'aprovado' || st === 'ok') return 'ok';
+    // líder em treinamento sem aprovação explícita
+    var pp = (typeof papeisNaCelula === 'function') ? papeisNaCelula(m, celulaId) : [];
+    if (pp.indexOf('lider_treino') >= 0 && st !== 'aprovado') {
+        if (!st || st === 'indicado') return 'em_analise';
+    }
+    return 'ok';
+}
+
+function corStatusAnalise(st) {
+    if (st === 'em_analise') return { cor: 'amber', label: 'Em análise', classe: 'bg-amber-100 text-amber-800 border-amber-300' };
+    if (st === 'aprovado' || st === 'ok') return { cor: 'green', label: 'Ok', classe: 'bg-green-50 text-green-800 border-green-200' };
+    return { cor: 'gray', label: '', classe: '' };
+}
+
+/** Líder indica membro como líder em treinamento (fica em análise até gestão aprovar) */
+function indicarLiderEmTreinamento(membroId, celulaId) {
+    var u = getUsuarioLogado();
+    if (!u) return { sucesso: false, mensagem: 'Faça login.' };
+    if (!podeGerenciarCelula(celulaId) && !(typeof isAdmin === 'function' && isAdmin(u))) {
+        return { sucesso: false, mensagem: 'Sem permissão.' };
+    }
+    var lista = lerMembros();
+    var idx = lista.findIndex(function (m) { return String(m.id) === String(membroId); });
+    if (idx < 0) return { sucesso: false, mensagem: 'Membro não encontrado.' };
+    var m = lista[idx];
+    if (!m.celulaPapeis) m.celulaPapeis = {};
+    if (!m.celulaPapeisStatus) m.celulaPapeisStatus = {};
+    var arr = Array.isArray(m.celulaPapeis[celulaId]) ? m.celulaPapeis[celulaId].slice() : [];
+    if (arr.indexOf('lider_treino') < 0) arr.push('lider_treino');
+    m.celulaPapeis[celulaId] = arr;
+    m.celulaPapeisStatus[celulaId] = 'em_analise';
+    if (!m.cargo || m.cargo === 'Membro') m.cargo = 'Líder em treinamento';
+    lista[idx] = m;
+    salvarMembros(lista);
+    return { sucesso: true, mensagem: 'Indicação registrada — status: Em análise (gestão aprova).', membro: m };
+}
+
+/** Gestão aprova ou mantém em análise o líder em treinamento */
+function decidirLiderEmTreinamento(membroId, celulaId, aprovar) {
+    var u = getUsuarioLogado();
+    if (!u || !(isAdmin(u) || isGestor(u))) return { sucesso: false, mensagem: 'Só admin/gestor.' };
+    var lista = lerMembros();
+    var idx = lista.findIndex(function (m) { return String(m.id) === String(membroId); });
+    if (idx < 0) return { sucesso: false, mensagem: 'Membro não encontrado.' };
+    var m = lista[idx];
+    if (!m.celulaPapeisStatus) m.celulaPapeisStatus = {};
+    if (aprovar) {
+        m.celulaPapeisStatus[celulaId] = 'aprovado';
+        m.cargo = 'Líder em treinamento';
+    } else {
+        // não é exclusão — volta para em análise / remove só se gestão quiser "não neste momento"
+        m.celulaPapeisStatus[celulaId] = 'em_analise';
+    }
+    lista[idx] = m;
+    salvarMembros(lista);
+    return { sucesso: true, mensagem: aprovar ? 'Aprovado como líder em treinamento.' : 'Mantido em análise.', membro: m };
+}
+
+/** Participação em ministério: em_analise até líder do ministério ou gestão aprovar */
+function statusMinisterioMembro(m, nomeMin) {
+    if (!m || !nomeMin) return 'ok';
+    var key = String(nomeMin).trim().toLowerCase();
+    var stMap = m.ministeriosStatus || {};
+    var st = stMap[nomeMin] || stMap[key] || '';
+    if (st === 'em_analise' || st === 'pendente') return 'em_analise';
+    if (st === 'aprovado' || st === 'ok') return 'ok';
+    // se está na lista de ministérios mas sem status → em análise (solicitação)
+    var mins = Array.isArray(m.ministerios) ? m.ministerios : [];
+    var naLista = mins.some(function (x) { return String(x).trim().toLowerCase() === key; });
+    if (naLista && !st) return 'em_analise';
+    return 'ok';
+}
+
+function marcarParticipacaoMinisterio(membroId, nomeMin, status) {
+    var u = getUsuarioLogado();
+    if (!u) return { sucesso: false, mensagem: 'Faça login.' };
+    var pode = isAdmin(u) || isGestor(u);
+    if (!pode && typeof eLiderDoMinisterio === 'function') pode = eLiderDoMinisterio(u, nomeMin);
+    if (!pode && typeof ministeriosQueLidera === 'function') {
+        pode = ministeriosQueLidera(u).some(function (x) { return String(x).toLowerCase() === String(nomeMin).toLowerCase(); });
+    }
+    if (!pode) return { sucesso: false, mensagem: 'Sem permissão (líder do ministério, admin ou gestor).' };
+    var lista = lerMembros();
+    var idx = lista.findIndex(function (m) { return String(m.id) === String(membroId); });
+    if (idx < 0) return { sucesso: false, mensagem: 'Membro não encontrado.' };
+    var m = lista[idx];
+    if (!m.ministeriosStatus) m.ministeriosStatus = {};
+    m.ministeriosStatus[nomeMin] = status; // 'em_analise' | 'aprovado'
+    // garante que está na lista de ministérios se aprovado ou em análise
+    if (!Array.isArray(m.ministerios)) m.ministerios = [];
+    if (m.ministerios.indexOf(nomeMin) < 0) m.ministerios.push(nomeMin);
+    lista[idx] = m;
+    salvarMembros(lista);
+    try {
+        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.sincronizarMembro) IBNNuvem.sincronizarMembro(m);
+    } catch (e) {}
+    return { sucesso: true, mensagem: status === 'aprovado' ? 'Participação aprovada.' : 'Marcado em análise.', membro: m };
+}
+
+/**
+ * Resumo de frequência para pastor/gestão.
+ * mes: 'YYYY-MM' ou null = todos
+ */
+function resumoFrequenciaCelulas(mes) {
+    var rels = (typeof lerRelatoriosCelula === 'function') ? lerRelatoriosCelula() : [];
+    var porCelula = {};
+    rels.forEach(function (r) {
+        if (!r || !r.celulaId) return;
+        var d = String(r.data || '').slice(0, 7);
+        if (mes && d !== mes) return;
+        if (!porCelula[r.celulaId]) {
+            porCelula[r.celulaId] = {
+                celulaId: r.celulaId,
+                encontros: 0,
+                somaMembros: 0,
+                somaVisitantes: 0,
+                somaTotal: 0,
+                dias: []
+            };
+        }
+        var qM = parseInt(r.qtdPresentes, 10) || (Array.isArray(r.presentes) ? r.presentes.length : 0) || 0;
+        var qV = parseInt(r.qtdVisitantes, 10) || 0;
+        var qT = parseInt(r.qtdTotal, 10) || (qM + qV);
+        porCelula[r.celulaId].encontros += 1;
+        porCelula[r.celulaId].somaMembros += qM;
+        porCelula[r.celulaId].somaVisitantes += qV;
+        porCelula[r.celulaId].somaTotal += qT;
+        porCelula[r.celulaId].dias.push({
+            data: r.data,
+            membros: qM,
+            visitantes: qV,
+            total: qT,
+            ofertas: r.totalOfertas || 0
+        });
+    });
+    var celulas = (typeof LISTA_CELULAS !== 'undefined') ? LISTA_CELULAS : [];
+    return Object.keys(porCelula).map(function (id) {
+        var x = porCelula[id];
+        var nome = id;
+        var c = celulas.find(function (z) { return z.id === id; });
+        if (c && c.nome) nome = c.nome;
+        x.nome = nome;
+        x.mediaMembros = x.encontros ? (x.somaMembros / x.encontros) : 0;
+        x.mediaVisitantes = x.encontros ? (x.somaVisitantes / x.encontros) : 0;
+        x.mediaTotal = x.encontros ? (x.somaTotal / x.encontros) : 0;
+        x.dias.sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });
+        return x;
+    }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome)); });
+}
+
 function exportarRelatoriosCSV(celulaIdFiltro) {
     const u = getUsuarioLogado();
     if (!u) return { sucesso: false, mensagem: 'Faça login.' };
@@ -3496,14 +3715,19 @@ function exportarRelatoriosCSV(celulaIdFiltro) {
     if (celulaIdFiltro) lista = lista.filter(r => r.celulaId === celulaIdFiltro);
     if (!lista.length) return { sucesso: false, mensagem: 'Nenhum relatório para exportar.' };
 
-    const cols = ['Data', 'Célula', 'Qtd presentes', 'Oferta PIX', 'Oferta espécie', 'Total ofertas', 'Observações', 'Registrado por'];
+    const cols = ['Data', 'Célula', 'Qtd membros presentes', 'Qtd visitantes', 'Qtd total', 'Oferta PIX', 'Oferta espécie', 'Total ofertas', 'Observações', 'Registrado por'];
     const linhas = lista.map(r => {
         const cel = (typeof LISTA_CELULAS !== 'undefined') ? LISTA_CELULAS.find(c => c.id === r.celulaId) : null;
         const nomeCel = cel ? cel.nome : r.celulaId;
+        const qM = r.qtdPresentes || (Array.isArray(r.presentes) ? r.presentes.length : 0) || 0;
+        const qV = r.qtdVisitantes || 0;
+        const qT = (r.qtdTotal != null) ? r.qtdTotal : (Number(qM) + Number(qV));
         return [
             formatarDataCSV(r.data || ''),
             nomeCel || '',
-            r.qtdPresentes || 0,
+            qM,
+            qV,
+            qT,
             (Number(r.ofertaPix || 0)).toFixed(2).replace('.', ','),
             (Number(r.ofertaEspecie || 0)).toFixed(2).replace('.', ','),
             (Number(r.totalOfertas || 0)).toFixed(2).replace('.', ','),
@@ -3533,6 +3757,145 @@ function baixarCSV(conteudo, nomeArquivo) {
     URL.revokeObjectURL(url);
 }
 
+
+
+
+// ========== AGENDA LOCAL — FUTEBOL DOS HOMENS (segundas) ==========
+const CHAVE_AGENDA_FUTEBOL = 'ibn_agenda_futebol_homens';
+
+function lerAgendaFutebol() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_AGENDA_FUTEBOL) || '[]'); }
+    catch (e) { return []; }
+}
+function salvarAgendaFutebol(lista) {
+    localStorage.setItem(CHAVE_AGENDA_FUTEBOL, JSON.stringify(lista || []));
+    try {
+        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.db) {
+            // opcional: config/site_midia style
+        }
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+            firebase.firestore().collection('config').doc('agenda_futebol_homens').set({
+                itens: lista || [],
+                atualizadoEm: new Date().toISOString()
+            }, { merge: true }).catch(function () {});
+        }
+    } catch (e2) {}
+}
+function podeGerenciarAgendaFutebol(u) {
+    u = u || (typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null);
+    if (!u) return false;
+    // Gestão pode, mas NÃO é obrigatória: qualquer líder do ministério Homens publica sozinho
+    if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+    if (typeof isGestor === 'function' && isGestor(u)) return true;
+    if (typeof eLiderDoMinisterio === 'function' && eLiderDoMinisterio(u, 'Homens')) return true;
+    if (typeof ministeriosQueLidera === 'function') {
+        var mins = ministeriosQueLidera(u) || [];
+        if (mins.some(function (m) { return /homens/i.test(String(m)); })) return true;
+    }
+    // co-líderes: lista lideraMinisterios / cargo
+    if (Array.isArray(u.lideraMinisterios) && u.lideraMinisterios.some(function (m) { return /homens/i.test(String(m)); })) return true;
+    if (u.lideraMinisterio && /homens/i.test(String(u.lideraMinisterio))) return true;
+    var mins2 = Array.isArray(u.ministerios) ? u.ministerios : [];
+    var cargo = ((u.cargo || '') + ' ' + (u.funcaoEspecifica || '') + ' ' + (u.nivel || '')).toLowerCase();
+    if ((/l[ií]der/.test(cargo) || u.nivel === 'lider_ministerio') && mins2.some(function (m) { return /homens/i.test(String(m)); })) return true;
+    return false;
+}
+/** Retorna registro { data, local, endereco, maps, obs, autorNome } ou null */
+function localFutebolNaData(dataIso) {
+    dataIso = String(dataIso || '').slice(0, 10);
+    if (!dataIso) return null;
+    var lista = lerAgendaFutebol();
+    var hit = lista.find(function (x) { return x && String(x.data).slice(0, 10) === dataIso; });
+    return hit || null;
+}
+function textoLocalFutebolParaData(dataIso) {
+    var r = localFutebolNaData(dataIso);
+    if (!r) return 'Local ainda não definido — procure o líder do ministério de Homens.';
+    var partes = [];
+    if (r.local) partes.push(r.local);
+    if (r.obs && r.obs !== r.local) partes.push(r.obs);
+    else if (r.endereco && r.endereco !== r.local) partes.push(r.endereco);
+    if (!partes.length && (r.maps || (r.lat != null && r.lng != null))) partes.push('local no mapa');
+    return partes.length ? partes.join(' — ') : 'Local ainda não definido — procure o líder do ministério de Homens.';
+}
+function salvarLocalFutebol(dados) {
+    var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+    if (!podeGerenciarAgendaFutebol(u)) return { sucesso: false, mensagem: 'Sem permissão. Líder do ministério de Homens, admin ou gestor.' };
+    var data = String((dados && dados.data) || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { sucesso: false, mensagem: 'Informe a data do jogo.' };
+    var local = String((dados && dados.local) || '').trim();
+    var endereco = String((dados && dados.endereco) || '').trim();
+    var maps = String((dados && dados.maps) || '').trim();
+    var lat = (dados && dados.lat != null && dados.lat !== '') ? Number(dados.lat) : null;
+    var lng = (dados && dados.lng != null && dados.lng !== '') ? Number(dados.lng) : null;
+    if (lat != null && lng != null && !maps) maps = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+    if (!local && !maps && (lat == null || lng == null)) {
+        return { sucesso: false, mensagem: 'Informe o nome do local e, se possível, use o GPS no campo.' };
+    }
+    if (!local) local = 'Local do jogo';
+    var lista = lerAgendaFutebol();
+    var idx = lista.findIndex(function (x) { return x && String(x.data).slice(0, 10) === data; });
+    var reg = {
+        data: data,
+        local: local,
+        endereco: endereco,
+        maps: maps,
+        lat: lat,
+        lng: lng,
+        obs: String((dados && dados.obs) || endereco || '').trim(),
+        autorId: u && u.id,
+        autorNome: (u && u.nome) || '',
+        atualizadoEm: new Date().toISOString()
+    };
+    if (idx >= 0) lista[idx] = reg;
+    else lista.push(reg);
+    lista.sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });
+    salvarAgendaFutebol(lista);
+    return { sucesso: true, mensagem: 'Local salvo na lista.', registro: reg };
+}
+function removerLocalFutebol(dataIso) {
+    var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+    if (!podeGerenciarAgendaFutebol(u)) return { sucesso: false, mensagem: 'Sem permissão.' };
+    dataIso = String(dataIso || '').slice(0, 10);
+    var lista = lerAgendaFutebol().filter(function (x) { return String(x.data).slice(0, 10) !== dataIso; });
+    salvarAgendaFutebol(lista);
+    return { sucesso: true, mensagem: 'Removido.' };
+}
+/** Próximas segundas a partir de hoje (inclui hoje se segunda) */
+function proximasSegundas(qtd) {
+    qtd = qtd || 8;
+    var out = [];
+    var d = new Date();
+    d.setHours(12, 0, 0, 0);
+    // avança até segunda (1)
+    var guard = 0;
+    while (d.getDay() !== 1 && guard < 8) { d.setDate(d.getDate() + 1); guard++; }
+    for (var i = 0; i < qtd; i++) {
+        var x = new Date(d.getTime());
+        x.setDate(d.getDate() + (i * 7));
+        var iso = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+        out.push(iso);
+    }
+    return out;
+}
+function textoLocalSabadoCelulasHoje() {
+    try {
+        var raw = localStorage.getItem('ibn_locais_celulas_sabado');
+        var todos = raw ? JSON.parse(raw) : {};
+        var partes = [];
+        ['adolescentes', 'jovens'].forEach(function (id) {
+            var L = todos[id];
+            if (!L) return;
+            var nome = id === 'adolescentes' ? 'Adolescentes' : 'Jovens';
+            var t = (L.anfitriao || L.local || '') + (L.endereco ? ' — ' + L.endereco : '');
+            if (t.trim()) partes.push(nome + ': ' + t.trim());
+        });
+        if (!partes.length) return 'Local das células de sábado ainda não definido pelo líder — procure o líder da célula.';
+        return partes.join(' · ');
+    } catch (e) {
+        return 'Local das células de sábado ainda não definido pelo líder — procure o líder da célula.';
+    }
+}
 
 // ---------- PEDIDOS DE ORAÇÃO (Intercessão + gestor + secretaria) ----------
 function lerPedidosOracao() {
