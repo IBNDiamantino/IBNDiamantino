@@ -3873,7 +3873,8 @@ function removerDiaEscalaCelula(celulaId, dataIso) {
 // ========== BÍBLIA (busca de versículo por versão — NVI padrão) ==========
 const BIBLIA_VERSOES = [
     { id: 'nvi', nome: 'NVI — Nova Versão Internacional' },
-    { id: 'acf', nome: 'Almeida Corrigida Fiel (ACF)' }
+    { id: 'naa', nome: 'NAA — Nova Almeida Atualizada' },
+    { id: 'acf', nome: 'ACF — Almeida Corrigida Fiel' }
 ];
 
 const BIBLIA_LIVROS = {
@@ -4211,7 +4212,8 @@ var _bibliaCacheCompleta = { nvi: null, acf: null };
 var _bibliaLoadingPromise = { nvi: null, acf: null };
 
 function carregarBibliaCompleta(versao) {
-    versao = (versao === 'acf') ? 'acf' : 'nvi';
+    versao = String(versao || 'nvi').toLowerCase();
+    if (versao !== 'nvi' && versao !== 'acf' && versao !== 'naa') versao = 'nvi';
     if (_bibliaCacheCompleta[versao]) {
         return Promise.resolve(_bibliaCacheCompleta[versao]);
     }
@@ -4272,7 +4274,10 @@ function carregarBibliaCompleta(versao) {
         versao + '.json',
         './' + versao + '.json',
         'https://cdn.jsdelivr.net/gh/thiagobodruk/biblia@master/json/' + versao + '.json',
-        'https://raw.githubusercontent.com/thiagobodruk/biblia/master/json/' + versao + '.json'
+        'https://raw.githubusercontent.com/thiagobodruk/biblia/master/json/' + versao + '.json',
+        // NAA e demais no repositório bible (pt_naa)
+        'https://cdn.jsdelivr.net/gh/thiagobodruk/bible@master/json/pt_' + versao + '.json',
+        'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/pt_' + versao + '.json'
     ];
 
     _bibliaLoadingPromise[versao] = (function tentarEm(i) {

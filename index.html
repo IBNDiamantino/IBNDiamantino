@@ -363,7 +363,7 @@
                             <div class="text-4xl md:text-8xl leading-none shrink-0" aria-hidden="true">📖</div>
                             <div class="md:mt-3">
                                 <h2 class="text-lg md:text-3xl font-bold text-secondary tracking-wide leading-tight">Bíblia Sagrada</h2>
-                                <p class="text-xs md:text-sm text-white/80 mt-0.5 md:mt-2 max-w-xs">NVI ou ACF · leitura no site</p>
+                                <p class="text-xs md:text-sm text-white/80 mt-0.5 md:mt-2 max-w-xs">NVI · NAA · ACF · leitura no site</p>
                             </div>
                         </div>
                         <div class="md:w-3/5 p-3 md:p-8 flex flex-col">
@@ -374,6 +374,7 @@
                                     <label class="block text-[10px] md:text-xs font-bold text-primary mb-0.5">Versão</label>
                                     <select id="bibHomeVersao" class="w-full border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2.5 text-xs md:text-sm bg-white">
                                         <option value="nvi" selected>NVI</option>
+                                        <option value="naa">NAA</option>
                                         <option value="acf">ACF</option>
                                     </select>
                                 </div>
@@ -416,46 +417,6 @@
             </div>
         </section>
 
-        <!-- ✅ CÉLULAS — MAPA INTERATIVO (restaurado do index 1) -->
-        <section id="celulas" class="py-16 bg-gray-50">
-            <div class="container mx-auto px-4">
-                <h2 class="text-3xl font-bold text-center mb-4 text-primary">Encontre a Célula Mais Próxima</h2>
-                <p class="text-center text-gray-600 mb-2">Terça-feira às 20h — nas casas</p>
-                <p class="text-center text-gray-500 text-sm mb-8">Sábado: Adolescentes (18h) e Jovens (20h) — local definido pelo líder da célula (veja na página da célula ou com o líder; o local do dia pode ser anunciado minutos antes)</p>
-
-                <div class="max-w-3xl mx-auto mb-6">
-                    <div class="flex flex-col sm:flex-row gap-3 justify-center mb-4">
-                        <button id="btnLocalizar" class="bg-primary text-white px-6 py-3 rounded-md font-bold hover:bg-accent">
-                            <i class="fa fa-location-arrow mr-2"></i> Usar Minha Localização
-                        </button>
-                        <a href="https://www.google.com/maps/search/?api=1&query=Igreja+Batista+Nacional+Diamantino" target="_blank" 
-                           class="bg-white text-gray-700 px-6 py-3 rounded-md font-bold hover:bg-gray-100 border">
-                            <i class="fa fa-map-o mr-2"></i> Abrir no Google Maps
-                        </a>
-                    </div>
-                    <div id="resultadoProxima" class="hidden bg-white p-4 rounded-xl border-2 border-secondary shadow-sm">
-                    </div>
-                </div>
-                <div class="max-w-4xl mx-auto">
-                    <div id="mapaCelulas" class="w-full"></div>
-                    <p class="text-center text-sm text-gray-500 mt-3">
-                        Clique no marcador para ver detalhes e a distância até você
-                    </p>
-                </div>
-                <div class="max-w-4xl mx-auto mt-8">
-                    <h3 class="text-lg font-bold text-center mb-4 text-primary">Lista Rápida</h3>
-                    <div id="listaCompacta" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-                    </div>
-                    <div class="text-center mt-6">
-                        <a href="celulas.html" class="inline-block bg-primary text-white px-6 py-3 rounded-md font-bold hover:bg-accent">
-                            <i class="fa fa-users mr-2"></i> Organização das Células — equipe, membros e relatórios
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ✅ PROGRAMAÇÃO -->
         <section id="eventos" class="py-16 bg-white">
             <div class="container mx-auto px-4">
                 <h2 class="text-3xl font-bold text-center mb-10 text-primary">Programação Semanal</h2>
@@ -546,6 +507,46 @@
         </div>
 
         <!-- ✅ TRANSMISSÕES — lógica dinâmica restaurada do index 1 -->
+
+<!-- ✅ CÉLULAS — MAPA INTERATIVO (restaurado do index 1) -->
+        <section id="celulas" class="py-16 bg-gray-50">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-4 text-primary">Encontre a Célula Mais Próxima</h2>
+                <p class="text-center text-gray-600 mb-2">Terça-feira às 20h — nas casas</p>
+                <p class="text-center text-gray-500 text-sm mb-8">Sábado: Adolescentes (18h) e Jovens (20h) — local definido pelo líder da célula (veja na página da célula ou com o líder; o local do dia pode ser anunciado minutos antes)</p>
+
+                <div class="max-w-3xl mx-auto mb-6">
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+                        <button id="btnLocalizar" class="bg-primary text-white px-6 py-3 rounded-md font-bold hover:bg-accent">
+                            <i class="fa fa-location-arrow mr-2"></i> Usar Minha Localização
+                        </button>
+                        <a href="https://www.google.com/maps/search/?api=1&query=Igreja+Batista+Nacional+Diamantino" target="_blank" 
+                           class="bg-white text-gray-700 px-6 py-3 rounded-md font-bold hover:bg-gray-100 border">
+                            <i class="fa fa-map-o mr-2"></i> Abrir no Google Maps
+                        </a>
+                    </div>
+                    <div id="resultadoProxima" class="hidden bg-white p-4 rounded-xl border-2 border-secondary shadow-sm">
+                    </div>
+                </div>
+                <div class="max-w-4xl mx-auto">
+                    <div id="mapaCelulas" class="w-full"></div>
+                    <p class="text-center text-sm text-gray-500 mt-3">
+                        Clique no marcador para ver detalhes e a distância até você
+                    </p>
+                </div>
+                <div class="max-w-4xl mx-auto mt-8">
+                    <h3 class="text-lg font-bold text-center mb-4 text-primary">Lista Rápida</h3>
+                    <div id="listaCompacta" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                    </div>
+                    <div class="text-center mt-6">
+                        <a href="celulas.html" class="inline-block bg-primary text-white px-6 py-3 rounded-md font-bold hover:bg-accent">
+                            <i class="fa fa-users mr-2"></i> Organização das Células — equipe, membros e relatórios
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section id="transmissoes" class="py-16 bg-gray-50">
             <div class="container mx-auto px-4">
                 <h2 class="text-3xl font-bold text-center mb-4 text-primary">Transmissões dos Cultos</h2>
