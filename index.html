@@ -1431,6 +1431,25 @@
             }
         }
 
+        function podeAtualizarLocCelulaCard(idCelula) {
+            try {
+                if (typeof podeAjustarLocalCelula === 'function' && podeAjustarLocalCelula(idCelula)) return true;
+            } catch (e0) {}
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (!u) {
+                    try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e1) { u = null; }
+                }
+                if (!u) return false;
+                if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+                if (typeof isGestor === 'function' && isGestor(u)) return true;
+                var n = String(u.nivel || '').toLowerCase();
+                if (n === 'admin' || n === 'gestor') return true;
+                if (typeof isLiderCelula === 'function' && isLiderCelula(u, idCelula)) return true;
+                if (typeof isAnfitriaoCelula === 'function' && isAnfitriaoCelula(u, idCelula)) return true;
+            } catch (e2) {}
+            return false;
+        }
         function renderizarListaCompacta(distancias = null) {
             const container = document.getElementById('listaCompacta');
             if (!container) return;
@@ -1441,6 +1460,12 @@
                 const badge = c.real
                     ? '<span class="text-xs text-green-700 font-semibold">● Localização confirmada</span>'
                     : '<span class="text-xs text-amber-700">● Aproximada (bairro)</span>';
+                const btnLoc = podeAtualizarLocCelulaCard(c.id)
+                    ? `<button type="button" data-celula-id="${c.id}" data-celula-nome="${c.nome}"
+                                class="btn-atualizar-loc text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded font-semibold hover:bg-gray-50">
+                                📍 Atualizar localização
+                            </button>`
+                    : '';
                 return `
                     <div class="p-4 bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                         <p class="font-bold text-primary text-sm mb-1">${c.nome}</p>
@@ -1450,15 +1475,12 @@
                         <div class="flex flex-wrap gap-2 mt-2">
                             <a href="${link}" target="_blank" class="text-xs bg-primary text-white px-3 py-1.5 rounded font-semibold hover:bg-accent">Ver no Mapa</a>
                             <a href="${dirLink}" target="_blank" class="text-xs bg-secondary text-primary px-3 py-1.5 rounded font-semibold hover:bg-yellow-400">Como Chegar</a>
-                            <button type="button" data-celula-id="${c.id}" data-celula-nome="${c.nome}"
-                                class="btn-atualizar-loc text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded font-semibold hover:bg-gray-50">
-                                📍 Atualizar localização
-                            </button>
+                            ${btnLoc}
                         </div>
                     </div>
                 `;
             }).join('');
-            // Liga botões de atualizar localização
+            // Liga botões de atualizar localização (só líderes/gestão)
             container.querySelectorAll('.btn-atualizar-loc').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     pedirLocalizacaoReal(btn.getAttribute('data-celula-id'), btn.getAttribute('data-celula-nome'));
