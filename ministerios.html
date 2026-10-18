@@ -131,9 +131,28 @@
                     <div id="blocoLocalFutebolMin" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-left">
                         <p class="text-xs font-bold text-primary mb-1">⚽ Futebol dos Homens (segundas)</p>
                         <p id="txtLocalFutMin" class="text-sm text-gray-700 mb-2">Local a confirmar</p>
-                        <div class="flex flex-wrap gap-2">
+                        <div class="flex flex-wrap gap-2 mb-2">
                             <a id="linkChegarFutMin" href="#" target="_blank" class="hidden text-xs font-bold bg-secondary text-primary px-3 py-1.5 rounded-lg">Como Chegar</a>
-                            <button type="button" id="btnAtualizarLocFutMin" class="text-xs border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg font-semibold">📍 Atualizar localização</button>
+                        </div>
+                        <div id="formFutMinLider" class="hidden space-y-2 border-t border-blue-100 pt-2">
+                            <p class="text-[11px] font-bold text-primary">Agendar jogo (líder / gestão)</p>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-600">Data do jogo</label>
+                                <input type="date" id="futDataMin" class="w-full border rounded-lg px-2 py-2 text-sm bg-white">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-600">Local salvo</label>
+                                <select id="futCatMin" class="w-full border rounded-lg px-2 py-2 text-sm bg-white">
+                                    <option value="">— Escolher campo —</option>
+                                </select>
+                            </div>
+                            <button type="button" id="btnAgendarFutMin" class="w-full bg-primary text-white text-sm font-bold py-2 rounded-lg">Salvar local nesta data</button>
+                            <p class="text-[10px] text-gray-500">Novo campo:</p>
+                            <input type="text" id="futNomeMin" class="w-full border rounded-lg px-2 py-1.5 text-sm" placeholder="Nome (ex.: Campo do Juca)">
+                            <input type="text" id="futLinkMin" class="w-full border rounded-lg px-2 py-1.5 text-sm" placeholder="Link do Google Maps">
+                            <button type="button" id="btnGpsFutMin" class="border border-primary text-primary text-xs font-bold px-3 py-1.5 rounded-lg">📍 GPS</button>
+                            <button type="button" id="btnNomearFutMin" class="border border-secondary text-xs font-bold px-3 py-1.5 rounded-lg bg-yellow-50">💾 Salvar e nomear</button>
+                            <p id="msgFutMin" class="text-xs hidden"></p>
                         </div>
                     </div>
 <!-- 5. Intercessão -->
@@ -1547,10 +1566,9 @@
 <script src="conta.js"></script>
 <script>
 (function(){
-    function dataAlvo() {
-        var d = new Date();
-        if (d.getDay() === 1) return d.toISOString().slice(0,10);
+    function proxSeg() {
         if (typeof proximasSegundas === 'function') return proximasSegundas(1)[0];
+        var d = new Date(); d.setHours(12,0,0,0);
         while (d.getDay() !== 1) d.setDate(d.getDate()+1);
         return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     }
@@ -1564,13 +1582,20 @@
             return n==='admin'||n==='gestor'||String(u.usuario||'').toLowerCase()==='gestor';
         } catch(e2){ return false; }
     }
+    function msg(t, ok) {
+        var el = document.getElementById('msgFutMin');
+        if (!el) return;
+        el.classList.remove('hidden');
+        el.className = 'text-xs ' + (ok ? 'text-green-600' : 'text-red-600');
+        el.textContent = t || '';
+    }
     function ui() {
         var el = document.getElementById('txtLocalFutMin');
         var link = document.getElementById('linkChegarFutMin');
-        var alvo = dataAlvo();
+        var alvo = proxSeg();
         var reg = (typeof localFutebolNaData==='function') ? localFutebolNaData(alvo) : null;
         if (reg && (reg.local || reg.lat!=null)) {
-            if (el) el.textContent = (reg.local||'Local no mapa') + (reg.obs?(' — '+reg.obs):'');
+            if (el) el.textContent = reg.local || 'Local no mapa';
             if (link && reg.lat!=null && reg.lng!=null) {
                 link.href = 'https://www.google.com/maps/dir/?api=1&destination='+reg.lat+','+reg.lng+'&travelmode=driving';
                 link.classList.remove('hidden');
@@ -1578,42 +1603,66 @@
         } else if (el) {
             el.textContent = (typeof textoLocalFutebolParaData==='function') ? textoLocalFutebolParaData(alvo) : 'Local a confirmar';
         }
-    }
-    function salvar(lat,lng,nome) {
-        if (typeof salvarLocalFutebol === 'function') {
-            return salvarLocalFutebol({ data: dataAlvo(), local: nome||'Campo / local do jogo', lat: lat, lng: lng, maps: 'https://www.google.com/maps?q='+lat+','+lng });
+        var form = document.getElementById('formFutMinLider');
+        if (form) {
+            if (pode()) {
+                form.classList.remove('hidden');
+                var di = document.getElementById('futDataMin');
+                if (di && !di.value) di.value = proxSeg();
+                var sel = document.getElementById('futCatMin');
+                if (sel && typeof listarLocaisFutebolParaReuso === 'function') {
+                    var lista = listarLocaisFutebolParaReuso();
+                    sel.innerHTML = '<option value="">— Escolher campo —</option>';
+                    lista.forEach(function(x){
+                        var o = document.createElement('option');
+                        o.value = x.id || x.nome;
+                        o.textContent = x.nome;
+                        sel.appendChild(o);
+                    });
+                }
+            } else {
+                form.classList.add('hidden');
+            }
         }
-        return { sucesso:false, mensagem:'conta.js desatualizado' };
     }
-    function pedir() {
-        if (!pode()) { alert('Somente líder Homens, admin ou gestor.'); return; }
-        var ok = confirm('OK = GPS deste aparelho\nCancelar = colar link/coordenadas do Maps');
-        if (ok) {
-            if (!navigator.geolocation) { alert('GPS indisponível'); return; }
-            navigator.geolocation.getCurrentPosition(function(pos){
-                var nome = prompt('Nome do campo / local (salvo junto com o GPS):','Campo / local do jogo');
-                if (nome===null) return;
-                var r = salvar(pos.coords.latitude, pos.coords.longitude, nome);
-                alert(r.sucesso ? '✅ Local salvo!' : (r.mensagem||'Erro'));
-                ui();
-            }, function(){ alert('Não foi possível obter GPS'); }, { enableHighAccuracy:true, timeout:15000 });
-        } else {
-            var texto = prompt('Cole link do Google Maps ou coordenadas:');
-            if (!texto) return;
-            var lat=null,lng=null;
-            var m = texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || texto.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || texto.match(/(-?\d+\.\d+)\s*[,;\s]\s*(-?\d+\.\d+)/);
-            if (m) { lat=parseFloat(m[1]); lng=parseFloat(m[2]); }
-            if (lat==null) { alert('Coordenadas inválidas'); return; }
-            var nome2 = prompt('Nome do campo / local (salvo junto com o ponto):','Campo / local do jogo');
-            if (nome2===null) return;
-            var r2 = salvar(lat,lng,nome2);
-            alert(r2.sucesso ? '✅ Local salvo!' : (r2.mensagem||'Erro'));
-            ui();
-        }
+    function parseLink(texto) {
+        if (!texto) return null;
+        var m = texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || texto.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || texto.match(/(-?\d+\.\d+)\s*[,;\s]\s*(-?\d+\.\d+)/);
+        if (!m) return null;
+        return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
     }
     document.addEventListener('click', function(ev){
-        if (ev.target.closest && ev.target.closest('#btnAtualizarLocFutMin')) { ev.preventDefault(); pedir(); }
-    }, true);
+        if (ev.target.closest && ev.target.closest('#btnAgendarFutMin')) {
+            if (!pode()) { msg('Sem permissão', false); return; }
+            var data = (document.getElementById('futDataMin')||{}).value;
+            var val = (document.getElementById('futCatMin')||{}).value;
+            if (!data) { msg('Escolha a data', false); return; }
+            if (!val) { msg('Escolha o local', false); return; }
+            var r = (typeof aplicarLocalCatalogoNaData==='function') ? aplicarLocalCatalogoNaData(data, val) : { sucesso:false, mensagem:'conta.js desatualizado' };
+            msg(r.sucesso ? ('Salvo para '+data.slice(8,10)+'/'+data.slice(5,7)) : (r.mensagem||'Erro'), !!r.sucesso);
+            if (r.sucesso) ui();
+        }
+        if (ev.target.closest && ev.target.closest('#btnGpsFutMin')) {
+            if (!navigator.geolocation) { msg('GPS indisponível', false); return; }
+            navigator.geolocation.getCurrentPosition(function(pos){
+                window.__futLatMin = pos.coords.latitude;
+                window.__futLngMin = pos.coords.longitude;
+                msg('GPS capturado', true);
+            }, function(){ msg('Falha no GPS — use o link', false); }, { enableHighAccuracy:true, timeout:15000 });
+        }
+        if (ev.target.closest && ev.target.closest('#btnNomearFutMin')) {
+            if (!pode()) { msg('Sem permissão', false); return; }
+            var nome = ((document.getElementById('futNomeMin')||{}).value||'').trim();
+            var link = ((document.getElementById('futLinkMin')||{}).value||'').trim();
+            var lat = window.__futLatMin, lng = window.__futLngMin;
+            if ((!lat||!lng) && link) { var p = parseLink(link); if (p) { lat=p.lat; lng=p.lng; } }
+            if (!nome) { msg('Informe o nome', false); return; }
+            if (typeof registrarLocalNoCatalogoFutebol !== 'function') { msg('Atualize conta.js', false); return; }
+            var r2 = registrarLocalNoCatalogoFutebol({ local:nome, lat:lat, lng:lng, maps: link|| (lat?('https://www.google.com/maps?q='+lat+','+lng):'') });
+            msg(r2.sucesso ? ('Local "'+nome+'" nomeado no catálogo') : (r2.mensagem||'Erro'), !!r2.sucesso);
+            if (r2.sucesso) ui();
+        }
+    });
     setTimeout(ui, 400);
     setTimeout(ui, 1500);
 })();

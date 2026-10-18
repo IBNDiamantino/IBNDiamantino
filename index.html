@@ -457,39 +457,45 @@
                                 <i class="fa fa-map-marker text-secondary"></i>
                                 <span id="spanLocalFutebolProg">Local a confirmar</span>
                             </p>
-                            <div class="flex flex-wrap gap-2">
+                            <div class="flex flex-wrap gap-2 items-center">
                                 <a id="linkComoChegarFut" href="#" target="_blank" rel="noopener"
                                    class="hidden text-xs font-bold bg-secondary text-primary px-3 py-1.5 rounded-lg hover:bg-yellow-400">Como Chegar</a>
-                                <button type="button" id="btnAtualizarLocFut"
-                                    class="text-xs border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg font-semibold hover:bg-gray-50">
-                                    📍 Atualizar localização
+                                <button type="button" id="btnAjustarLocalFut" class="hidden text-xs border border-primary text-primary px-3 py-1.5 rounded-lg font-semibold">
+                                    Ajustar local do jogo
                                 </button>
                             </div>
+                            <!-- Formulário gestores/líderes (abre pelo botão) -->
                             <div id="formFutProg" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2 text-left">
-                                <p class="text-xs font-bold text-primary">Definir local do jogo (gestão / líder Homens)</p>
+                                <p class="text-xs font-bold text-primary">Ajustar local do jogo</p>
                                 <div>
-                                    <label class="text-[10px] font-bold text-gray-600">Usar local já salvo</label>
+                                    <label class="text-[10px] font-bold text-gray-600">Data do jogo</label>
+                                    <input type="date" id="futDataProg" class="w-full border rounded-lg px-2 py-2 text-sm bg-white">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-gray-600">Local salvo</label>
                                     <select id="futCatalogoProg" class="w-full border rounded-lg px-2 py-2 text-sm bg-white">
-                                        <option value="">— Escolher campo já cadastrado —</option>
+                                        <option value="">— Escolher campo —</option>
                                     </select>
-                                    <button type="button" id="btnUsarCatalogoProg" class="mt-1 text-xs font-bold text-primary underline">Usar este local na próxima segunda</button>
                                 </div>
-                                <p class="text-[10px] text-gray-500">Ou cadastre / atualize um local novo:</p>
-                                <input type="text" id="futNomeProg" class="w-full border rounded-lg px-2 py-2 text-sm" placeholder="Nome do campo (ex.: Campo do Juca)">
-                                <input type="text" id="futLinkProg" class="w-full border rounded-lg px-2 py-2 text-sm" placeholder="Cole o link do Google Maps (opcional se usar GPS)">
-                                <p id="futGpsProgStatus" class="text-[11px] text-gray-500">GPS: ainda não capturado</p>
-                                <input type="hidden" id="futLatProg" value="">
-                                <input type="hidden" id="futLngProg" value="">
-                                <div class="flex flex-wrap gap-2">
-                                    <button type="button" id="btnGpsProg" class="border border-primary text-primary text-xs font-bold px-3 py-2 rounded-lg">📍 Usar GPS</button>
-                                    <button type="button" id="btnSalvarCatalogoProg" class="border border-secondary text-primary text-xs font-bold px-3 py-2 rounded-lg bg-yellow-50">💾 Salvar e nomear local</button>
-                                    <button type="button" id="btnSalvarProg" class="bg-primary text-white text-xs font-bold px-3 py-2 rounded-lg">Salvar para o jogo</button>
-                                    <button type="button" id="btnCancelarProg" class="text-xs text-gray-500 px-2 py-2">Fechar</button>
-                                </div>
-                                <p class="text-[10px] text-gray-500">“Salvar e nomear” guarda o campo no catálogo. “Salvar para o jogo” define a próxima segunda e também guarda no catálogo.</p>
+                                <button type="button" id="btnUsarCatalogoProg" class="w-full bg-primary text-white text-sm font-bold px-3 py-2 rounded-lg">Salvar para esta data</button>
+                                <p class="text-[10px] text-gray-500">Cadastro de campos novos: Ministérios → Homens</p>
                                 <p id="msgFut" class="text-xs hidden"></p>
+                                <p id="msgFutLider" class="text-xs hidden"></p>
+                                <button type="button" id="btnCancelarProg" class="text-xs text-gray-500">Fechar</button>
                             </div>
-                            <div id="listaAgendaFut" class="text-xs text-gray-600 space-y-1 max-h-28 overflow-y-auto"></div>
+                            <div id="listaAgendaFut" class="hidden"></div>
+                            <div id="listaCatalogoFut" class="hidden"></div>
+                            <div id="painelLiderFut" class="hidden"></div>
+                            <input type="hidden" id="futNomeProg" value="">
+                            <input type="hidden" id="futLinkProg" value="">
+                            <input type="hidden" id="futLatProg" value="">
+                            <input type="hidden" id="futLngProg" value="">
+                            <span id="futGpsProgStatus" class="hidden"></span>
+                            <button type="button" id="btnAtualizarLocFut" class="hidden"></button>
+                            <button type="button" id="btnGpsProg" class="hidden"></button>
+                            <button type="button" id="btnSalvarProg" class="hidden"></button>
+                            <button type="button" id="btnSalvarCatalogoProg" class="hidden"></button>
+                            <button type="button" id="btnToggleFormFut" class="hidden"></button>
                         </div>
 <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
                         <h3 class="font-bold text-xl text-primary">Terça-feira</h3>
@@ -2324,6 +2330,8 @@
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
     function dataAlvoFut() {
+        var inp = document.getElementById('futDataProg');
+        if (inp && inp.value && /^\d{4}-\d{2}-\d{2}$/.test(inp.value)) return inp.value;
         var hoje = new Date();
         return (hoje.getDay() === 1) ? isoHoje() : proximaSegundaIso();
     }
@@ -2349,17 +2357,23 @@
         return false;
     }
     function msgFut(texto, ok) {
-        var el = document.getElementById('msgFut');
-        if (!el) return;
-        el.classList.remove('hidden');
-        el.className = 'text-xs ' + (ok === true ? 'text-green-600' : ok === false ? 'text-red-600' : 'text-gray-600');
-        el.textContent = texto || '';
+        ['msgFut', 'msgFutLider'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('hidden');
+            el.className = 'text-xs ' + (ok === true ? 'text-green-600' : ok === false ? 'text-red-600' : 'text-gray-600');
+            el.textContent = texto || '';
+        });
+    }
+    function dataPublicaFut() {
+        var hoje = new Date();
+        return (hoje.getDay() === 1) ? isoHoje() : proximaSegundaIso();
     }
     function atualizarUiFut() {
         var span = document.getElementById('spanLocalFutebolProg');
         var link = document.getElementById('linkComoChegarFut');
         var listaEl = document.getElementById('listaAgendaFut');
-        var alvo = dataAlvoFut();
+        var alvo = dataPublicaFut();
         var reg = null;
         try {
             if (typeof localFutebolNaData === 'function') reg = localFutebolNaData(alvo);
@@ -2445,38 +2459,66 @@
         return { sucesso: true, mensagem: 'Local salvo.' };
     }
     function preencherSelectCatalogo() {
-        var sel = document.getElementById('futCatalogoProg');
-        if (!sel) return;
         var lista = [];
         try {
             if (typeof listarLocaisFutebolParaReuso === 'function') lista = listarLocaisFutebolParaReuso();
             else if (typeof lerCatalogoLocaisFutebol === 'function') lista = lerCatalogoLocaisFutebol();
         } catch (e) { lista = []; }
-        var atual = sel.value;
-        sel.innerHTML = '<option value="">— Escolher campo já cadastrado —</option>';
-        lista.forEach(function (x) {
-            var opt = document.createElement('option');
-            opt.value = x.id || x.nome;
-            opt.textContent = x.nome + (x.lat != null ? ' (com GPS)' : '');
-            sel.appendChild(opt);
-        });
-        if (atual) sel.value = atual;
+        var sel = document.getElementById('futCatalogoProg');
+        if (sel) {
+            var atual = sel.value;
+            sel.innerHTML = '<option value="">— Escolher campo já cadastrado —</option>';
+            lista.forEach(function (x) {
+                var opt = document.createElement('option');
+                opt.value = x.id || x.nome;
+                opt.textContent = x.nome + (x.lat != null ? ' (com GPS)' : '');
+                sel.appendChild(opt);
+            });
+            if (atual) sel.value = atual;
+        }
+        var box = document.getElementById('listaCatalogoFut');
+        if (box) {
+            if (!lista.length) {
+                box.innerHTML = '<p class="text-gray-400">Nenhum local nomeado ainda. Use “Salvar e nomear local”.</p>';
+            } else {
+                box.innerHTML = lista.map(function (x) {
+                    var a = '';
+                    if (x.lat != null && x.lng != null) {
+                        a = ' <a class="text-secondary underline" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=' + x.lat + ',' + x.lng + '&travelmode=driving">mapa</a>';
+                    } else if (x.maps) {
+                        a = ' <a class="text-secondary underline" target="_blank" href="' + x.maps + '">mapa</a>';
+                    }
+                    return '<div class="flex flex-wrap items-center gap-1 border-b border-gray-100 py-1"><strong>' + String(x.nome || '').replace(/</g,'&lt;') + '</strong>' + a +
+                        ' <button type="button" class="text-primary underline btn-usar-cat-item" data-id="' + String(x.id || x.nome).replace(/"/g,'') + '">usar na próxima segunda</button></div>';
+                }).join('');
+                box.querySelectorAll('.btn-usar-cat-item').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        if (!podeSalvarFut()) {
+                            msgFut('Sem permissão.', false);
+                            return;
+                        }
+                        var id = btn.getAttribute('data-id');
+                        if (typeof aplicarLocalCatalogoNaData !== 'function') {
+                            msgFut('Atualize o conta.js.', false);
+                            return;
+                        }
+                        var r = aplicarLocalCatalogoNaData(dataAlvoFut(), id);
+                        msgFut(r.sucesso ? (r.mensagem || 'Aplicado!') : (r.mensagem || 'Erro'), r.sucesso);
+                        if (r.sucesso) atualizarUiFut();
+                    });
+                });
+            }
+        }
     }
     function abrirFormFut() {
         var form = document.getElementById('formFutProg');
-        if (!form) {
-            alert('Formulário não encontrado. Atualize o index.html no site.');
-            return;
-        }
+        if (!form) return;
         form.classList.remove('hidden');
+        var inp = document.getElementById('futDataProg');
+        if (inp && !inp.value) inp.value = proximaSegundaIso();
         preencherSelectCatalogo();
-        try {
-            var reg = (typeof localFutebolNaData === 'function') ? localFutebolNaData(dataAlvoFut()) : null;
-            var nomeEl = document.getElementById('futNomeProg');
-            if (nomeEl && reg && reg.local) nomeEl.value = reg.local;
-        } catch (e) {}
         form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        msgFut('Escolha um campo já salvo ou cadastre um novo (nome + GPS/link).', null);
+        msgFut('Escolha a data e um local salvo, depois Salvar.', null);
     }
     window.pedirLocalizacaoFutbol = abrirFormFut;
     function capturarGpsProg() {
@@ -2521,23 +2563,41 @@
         if (r.sucesso) {
             msgFut(r.inalterado ? 'Localização igual à anterior.' : (r.mensagem || 'Salvo!'), true);
             atualizarUiFut();
+            preencherSelectCatalogo();
             if (typeof mostrarAlertaDoDia === 'function') try { mostrarAlertaDoDia(); } catch (e) {}
         } else {
             msgFut(r.mensagem || 'Erro ao salvar.', false);
         }
     }
+    function atualizarPainelLider() {
+        var btn = document.getElementById('btnAjustarLocalFut');
+        var pode = podeSalvarFut();
+        if (btn) {
+            if (pode) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+        }
+        if (pode) preencherSelectCatalogo();
+    }
     function initFut() {
         atualizarUiFut();
-        setTimeout(atualizarUiFut, 800);
-        setTimeout(atualizarUiFut, 2000);
-        var btn = document.getElementById('btnAtualizarLocFut');
-        if (btn) {
-            btn.onclick = function (e) {
+        atualizarPainelLider();
+        setTimeout(function () { atualizarUiFut(); atualizarPainelLider(); }, 600);
+        setTimeout(function () { atualizarUiFut(); atualizarPainelLider(); }, 1800);
+        setTimeout(function () { atualizarUiFut(); atualizarPainelLider(); }, 3500);
+        var btnAj = document.getElementById('btnAjustarLocalFut');
+        if (btnAj) {
+            btnAj.onclick = function (e) {
                 if (e) e.preventDefault();
                 abrirFormFut();
                 return false;
             };
         }
+        document.addEventListener('click', function (ev) {
+            if (ev.target.closest && ev.target.closest('#btnAjustarLocalFut')) {
+                ev.preventDefault();
+                abrirFormFut();
+            }
+        }, true);
         var btnGps = document.getElementById('btnGpsProg');
         if (btnGps) btnGps.onclick = function (e) { e.preventDefault(); capturarGpsProg(); };
         var btnSalvarCat = document.getElementById('btnSalvarCatalogoProg');
@@ -2599,24 +2659,36 @@
             }
             var sel = document.getElementById('futCatalogoProg');
             var val = sel && sel.value;
+            var dataInp = document.getElementById('futDataProg');
+            var data = (dataInp && dataInp.value) ? dataInp.value : dataAlvoFut();
             if (!val) {
                 msgFut('Escolha um local na lista.', false);
                 return;
             }
+            if (!data) {
+                msgFut('Escolha a data do jogo.', false);
+                return;
+            }
             var r;
             if (typeof aplicarLocalCatalogoNaData === 'function') {
-                r = aplicarLocalCatalogoNaData(dataAlvoFut(), val);
+                r = aplicarLocalCatalogoNaData(data, val);
             } else {
-                msgFut('Atualize o conta.js para reutilizar locais.', false);
+                msgFut('Atualize o conta.js.', false);
                 return;
             }
             if (r.sucesso) {
-                msgFut(r.mensagem || 'Local aplicado para a próxima segunda!', true);
+                msgFut('Local definido para ' + data.slice(8,10) + '/' + data.slice(5,7) + '!', true);
                 atualizarUiFut();
                 preencherSelectCatalogo();
             } else {
                 msgFut(r.mensagem || 'Erro ao aplicar local.', false);
             }
+        };
+        var btnCancel = document.getElementById('btnCancelarProg');
+        if (btnCancel) btnCancel.onclick = function (e) {
+            e.preventDefault();
+            var f = document.getElementById('formFutProg');
+            if (f) f.classList.add('hidden');
         };
     }
     document.addEventListener('click', function (ev) {
