@@ -3781,6 +3781,112 @@ function salvarAgendaFutebol(lista) {
         }
     } catch (e2) {}
 }
+
+// Catálogo de campos/locais reutilizáveis (nome + GPS)
+const CHAVE_CATALOGO_FUTEBOL = 'ibn_catalogo_locais_futebol';
+
+function lerCatalogoLocaisFutebol() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_CATALOGO_FUTEBOL) || '[]'); }
+    catch (e) { return []; }
+}
+function salvarCatalogoLocaisFutebol(lista) {
+    localStorage.setItem(CHAVE_CATALOGO_FUTEBOL, JSON.stringify(lista || []));
+    try {
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+            firebase.firestore().collection('config').doc('catalogo_futebol_homens').set({
+                itens: lista || [],
+                atualizadoEm: new Date().toISOString()
+            }, { merge: true }).catch(function () {});
+        }
+    } catch (e2) {}
+}
+/** Inclui ou atualiza um local nomeado no catálogo */
+function registrarLocalNoCatalogoFutebol(dados) {
+    var nome = String((dados && dados.local) || (dados && dados.nome) || '').trim();
+    if (!nome) return { sucesso: false, mensagem: 'Nome do local obrigatório.' };
+    var lat = (dados && dados.lat != null && dados.lat !== '') ? Number(dados.lat) : null;
+    var lng = (dados && dados.lng != null && dados.lng !== '') ? Number(dados.lng) : null;
+    var maps = String((dados && dados.maps) || '').trim();
+    if (lat != null && lng != null && !maps) maps = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+    var lista = lerCatalogoLocaisFutebol();
+    var key = nome.toLowerCase();
+    var idx = lista.findIndex(function (x) { return x && String(x.nome || '').toLowerCase() === key; });
+    var reg = {
+        id: (idx >= 0 && lista[idx].id) ? lista[idx].id : ('loc_' + Date.now()),
+        nome: nome,
+        lat: lat,
+        lng: lng,
+        maps: maps,
+        atualizadoEm: new Date().toISOString()
+    };
+    if (idx >= 0) lista[idx] = reg;
+    else lista.push(reg);
+    lista.sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'); });
+    salvarCatalogoLocaisFutebol(lista);
+    return { sucesso: true, registro: reg };
+}
+/** Usa um local do catálogo (ou da agenda antiga) para uma data de jogo */
+function aplicarLocalCatalogoNaData(dataIso, localIdOuNome) {
+    var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+    if (!podeGerenciarAgendaFutebol(u)) return { sucesso: false, mensagem: 'Sem permissão.' };
+    dataIso = String(dataIso || '').slice(0, 10);
+    var cat = lerCatalogoLocaisFutebol();
+    var item = cat.find(function (x) {
+        return x && (String(x.id) === String(localIdOuNome) || String(x.nome || '').toLowerCase() === String(localIdOuNome || '').toLowerCase());
+    });
+    // fallback: procura em jogos antigos da agenda
+    if (!item && typeof lerAgendaFutebol === 'function') {
+        var ag = lerAgendaFutebol();
+        var hit = ag.filter(function (x) { return x && String(x.local || '').toLowerCase() === String(localIdOuNome || '').toLowerCase(); }).pop();
+        if (hit) {
+            item = { nome: hit.local, lat: hit.lat, lng: hit.lng, maps: hit.maps };
+            registrarLocalNoCatalogoFutebol(item);
+        }
+    }
+    if (!item) return { sucesso: false, mensagem: 'Local não encontrado no catálogo.' };
+    return salvarLocalFutebol({
+        data: dataIso,
+        local: item.nome,
+        lat: item.lat,
+        lng: item.lng,
+        maps: item.maps
+    });
+}
+/** Lista unificada: catálogo + nomes únicos já usados em jogos */
+function listarLocaisFutebolParaReuso() {
+    var map = {};
+    lerCatalogoLocaisFutebol().forEach(function (x) {
+        if (!x || !x.nome) return;
+        map[String(x.nome).toLowerCase()] = {
+            id: x.id,
+            nome: x.nome,
+            lat: x.lat,
+            lng: x.lng,
+            maps: x.maps,
+            fonte: 'catalogo'
+        };
+    });
+    try {
+        lerAgendaFutebol().forEach(function (x) {
+            if (!x || !x.local) return;
+            var k = String(x.local).toLowerCase();
+            if (!map[k]) {
+                map[k] = {
+                    id: 'ag_' + k,
+                    nome: x.local,
+                    lat: x.lat,
+                    lng: x.lng,
+                    maps: x.maps,
+                    fonte: 'agenda'
+                };
+            }
+        });
+    } catch (e) {}
+    return Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) {
+        return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+    });
+}
+
 function podeGerenciarAgendaFutebol(u) {
     u = u || (typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null);
     if (!u) {
@@ -3895,12 +4001,18 @@ function salvarLocalFutebol(dados) {
     else lista.push(reg);
     lista.sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });
     salvarAgendaFutebol(lista);
+    // Também guarda no catálogo para reutilizar em outras datas
+    try {
+        if (typeof registrarLocalNoCatalogoFutebol === 'function') {
+            registrarLocalNoCatalogoFutebol({ local: local, lat: lat, lng: lng, maps: maps });
+        }
+    } catch (eCat) {}
     return {
         sucesso: true,
         inalterado: false,
         mensagem: anterior
             ? 'Localização atualizada (era diferente da anterior).'
-            : 'Local salvo na lista.',
+            : 'Local salvo na lista (e no catálogo para reutilizar).',
         registro: reg
     };
 }

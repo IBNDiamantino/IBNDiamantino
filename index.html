@@ -452,7 +452,7 @@
                         <h3 class="font-bold text-xl text-primary">Segunda-feira</h3>
                         <p class="font-semibold">Futebol dos Homens</p>
                         <p class="text-sm text-gray-500 mt-1">Encontro e comunhão entre os homens da igreja</p>
-                                                <div id="blocoLocalFutebol" class="mt-3 space-y-2">
+                                                                        <div id="blocoLocalFutebol" class="mt-3 space-y-2">
                             <p id="textoLocalFutebolProg" class="text-sm text-primary">
                                 <i class="fa fa-map-marker text-secondary"></i>
                                 <span id="spanLocalFutebolProg">Local a confirmar</span>
@@ -465,7 +465,30 @@
                                     📍 Atualizar localização
                                 </button>
                             </div>
-                            <p id="msgFut" class="text-xs text-gray-500 hidden"></p>
+                            <div id="formFutProg" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2 text-left">
+                                <p class="text-xs font-bold text-primary">Definir local do jogo (gestão / líder Homens)</p>
+                                <div>
+                                    <label class="text-[10px] font-bold text-gray-600">Usar local já salvo</label>
+                                    <select id="futCatalogoProg" class="w-full border rounded-lg px-2 py-2 text-sm bg-white">
+                                        <option value="">— Escolher campo já cadastrado —</option>
+                                    </select>
+                                    <button type="button" id="btnUsarCatalogoProg" class="mt-1 text-xs font-bold text-primary underline">Usar este local na próxima segunda</button>
+                                </div>
+                                <p class="text-[10px] text-gray-500">Ou cadastre / atualize um local novo:</p>
+                                <input type="text" id="futNomeProg" class="w-full border rounded-lg px-2 py-2 text-sm" placeholder="Nome do campo (ex.: Campo do Juca)">
+                                <input type="text" id="futLinkProg" class="w-full border rounded-lg px-2 py-2 text-sm" placeholder="Cole o link do Google Maps (opcional se usar GPS)">
+                                <p id="futGpsProgStatus" class="text-[11px] text-gray-500">GPS: ainda não capturado</p>
+                                <input type="hidden" id="futLatProg" value="">
+                                <input type="hidden" id="futLngProg" value="">
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" id="btnGpsProg" class="border border-primary text-primary text-xs font-bold px-3 py-2 rounded-lg">📍 Usar GPS</button>
+                                    <button type="button" id="btnSalvarCatalogoProg" class="border border-secondary text-primary text-xs font-bold px-3 py-2 rounded-lg bg-yellow-50">💾 Salvar e nomear local</button>
+                                    <button type="button" id="btnSalvarProg" class="bg-primary text-white text-xs font-bold px-3 py-2 rounded-lg">Salvar para o jogo</button>
+                                    <button type="button" id="btnCancelarProg" class="text-xs text-gray-500 px-2 py-2">Fechar</button>
+                                </div>
+                                <p class="text-[10px] text-gray-500">“Salvar e nomear” guarda o campo no catálogo. “Salvar para o jogo” define a próxima segunda e também guarda no catálogo.</p>
+                                <p id="msgFut" class="text-xs hidden"></p>
+                            </div>
                             <div id="listaAgendaFut" class="text-xs text-gray-600 space-y-1 max-h-28 overflow-y-auto"></div>
                         </div>
 <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
@@ -2288,873 +2311,6 @@
     </script>
 
 <script>
-(function(){
-    function fmtBR(iso) {
-        if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(String(iso))) return iso || '';
-        var p = String(iso).slice(0,10).split('-');
-        return p[2] + '/' + p[1] + '/' + p[0];
-    }
-    function isoHoje() {
-        var d = new Date();
-        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
-    function abrirAgenda() {
-        var modal = document.getElementById('modalAgenda');
-        if (!modal) return;
-        // avisos
-        var boxA = document.getElementById('agendaAvisosLista');
-        try {
-            var lista = JSON.parse(localStorage.getItem('ibn_avisos_dia') || '[]');
-            var hoje = isoHoje();
-            var fut = lista.filter(function(a){ return a && String(a.data).slice(0,10) >= hoje; })
-                .sort(function(a,b){ return String(a.data).localeCompare(String(b.data)); });
-            if (!fut.length) boxA.innerHTML = '<p class="text-gray-400">Nenhum aviso extra nos próximos dias.</p>';
-            else boxA.innerHTML = fut.map(function(a){
-                return '<div class="border rounded-lg px-3 py-2 bg-amber-50/60"><strong>' + fmtBR(a.data) + '</strong> — ' +
-                    String(a.texto||'').replace(/</g,'&lt;') + '</div>';
-            }).join('');
-        } catch(e) {
-            boxA.innerHTML = '<p class="text-gray-400">Não foi possível carregar avisos.</p>';
-        }
-        // eventos
-        var boxE = document.getElementById('agendaEventosLista');
-        try {
-            var evs = JSON.parse(localStorage.getItem('eventos') || '[]');
-            if (!evs.length) {
-                boxE.innerHTML = '<p class="text-gray-400">Nenhum evento com inscrição no momento. <a href="eventos.html" class="text-secondary font-bold underline">Ver página de eventos</a></p>';
-            } else {
-                boxE.innerHTML = evs.map(function(e){
-                    var nome = e.nome || e.titulo || 'Evento';
-                    var data = e.data || '';
-                    var local = e.local || '';
-                    return '<a href="eventos.html" class="block border rounded-lg px-3 py-2 hover:bg-gray-50">' +
-                        '<strong>' + String(nome).replace(/</g,'&lt;') + '</strong>' +
-                        (data ? ' · ' + data : '') +
-                        (local ? ' · ' + String(local).replace(/</g,'&lt;') : '') +
-                        ' <span class="text-secondary text-xs font-bold">Inscrever-se →</span></a>';
-                }).join('');
-            }
-        } catch(e) {
-            boxE.innerHTML = '<p class="text-gray-400"><a href="eventos.html" class="text-secondary font-bold underline">Ver eventos</a></p>';
-        }
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
-    function fecharAgenda() {
-        var modal = document.getElementById('modalAgenda');
-        if (!modal) return;
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-    document.addEventListener('DOMContentLoaded', function(){
-        var b = document.getElementById('btnVerAgenda');
-        if (b) b.addEventListener('click', abrirAgenda);
-        var f = document.getElementById('btnFecharAgenda');
-        if (f) f.addEventListener('click', fecharAgenda);
-        var modal = document.getElementById('modalAgenda');
-        if (modal) modal.addEventListener('click', function(ev){
-            if (ev.target === modal) fecharAgenda();
-        });
-    });
-})();
-</script>
-
-
-<script>
-(function(){
-    var destAtual = null;
-    function soMembros() {
-        if (typeof getUsuarioLogado !== 'function') return null;
-        return getUsuarioLogado();
-    }
-    window.abrirModalAniv = function abrirModalAniv() {
-        var m = document.getElementById('modalAniversariantes');
-        if (!m) return;
-        m.classList.remove('hidden');
-        m.classList.add('flex');
-        try { renderAniv(); } catch (e1) { console.warn(e1); }
-        try {
-            var _s = document.getElementById('selMesAniv');
-            if (_s) _s.value = String((new Date()).getMonth() + 1);
-            renderAnivMes();
-        } catch (eAn) { console.warn(eAn); }
-    };
-    function fecharModalAniv() {
-        var m = document.getElementById('modalAniversariantes');
-        if (!m) return;
-        m.classList.add('hidden');
-        m.classList.remove('flex');
-    }
-    function selecionarDest(a) {
-        destAtual = a;
-        var box = document.getElementById('boxEnviarAniv');
-        var u = soMembros();
-        if (!box || !u || !a) return;
-        box.classList.remove('hidden');
-        var nd = document.getElementById('nomeDestAniv');
-        if (nd) nd.textContent = a.nome + (a.idade ? ' (' + a.idade + ' anos)' : '');
-        var ta = document.getElementById('textoMsgAniv');
-        if (ta && typeof mensagemAniversarioPadrao === 'function') {
-            ta.value = mensagemAniversarioPadrao(a.nome, u.nome);
-        }
-        try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
-    }
-    function renderAniv() {
-        var u = soMembros();
-        if (!u || typeof listarAniversariantesHoje !== 'function') return;
-        var hoje = listarAniversariantesHoje();
-        var prox = listarProximosAniversariantes(8);
-        var boxHoje = document.getElementById('listaAnivHoje');
-        var boxProx = document.getElementById('listaAnivProx');
-        var boxProp = document.getElementById('boxAnivProprio');
-        if (boxProp) {
-            if (typeof ehAniversarioHojeMembro === 'function' && ehAniversarioHojeMembro(u)) {
-                boxProp.classList.remove('hidden');
-                var np = document.getElementById('nomeAnivProprio');
-                if (np) np.textContent = (u.nome || '').split(' ')[0];
-            } else {
-                boxProp.classList.add('hidden');
-            }
-        }
-        if (boxHoje) {
-            if (!hoje.length) {
-                boxHoje.innerHTML = '<p class="text-gray-400">Nenhum aniversariante hoje.</p>';
-            } else {
-                boxHoje.innerHTML = hoje.map(function (a) {
-                    return '<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg px-3 py-2 bg-pink-50/80">' +
-                        '<div><span class="font-bold text-primary">' + String(a.nome || '').replace(/</g, '&lt;') + '</span>' +
-                        (a.idade ? ' <span class="text-gray-500 text-sm">(' + a.idade + ' anos)</span>' : '') + '</div>' +
-                        '<button type="button" class="btn-sel-aniv text-xs font-bold text-pink-600 underline" data-id="' + (a.id || '') + '">Homenagear</button></div>';
-                }).join('');
-            }
-        }
-        if (boxProx) {
-            if (!prox.length) {
-                boxProx.innerHTML = '<p class="text-gray-400">Nenhum aniversariante nos próximos 8 dias.</p>';
-            } else {
-                boxProx.innerHTML = prox.map(function (d) {
-                    return '<div class="mb-2"><p class="text-xs font-bold text-primary mb-1">' + d.dataBR +
-                        (d.diasAte === 0 ? ' (hoje)' : d.diasAte === 1 ? ' (amanhã)' : '') + '</p>' +
-                        d.aniversariantes.map(function (a) {
-                            return '<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg px-3 py-1.5 mb-1">' +
-                                '<span>' + String(a.nome || '').replace(/</g, '&lt;') +
-                                (a.idade ? ' <span class="text-gray-400">(' + a.idade + ')</span>' : '') + '</span>' +
-                                '<button type="button" class="btn-sel-aniv text-xs font-bold text-pink-600 underline" data-id="' + (a.id || '') + '">Homenagear</button></div>';
-                        }).join('') + '</div>';
-                }).join('');
-            }
-        }
-        document.querySelectorAll('.btn-sel-aniv').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var id = btn.getAttribute('data-id');
-                var found = null;
-                hoje.forEach(function (a) { if (String(a.id) === String(id)) found = a; });
-                if (!found) {
-                    prox.forEach(function (d) {
-                        d.aniversariantes.forEach(function (a) { if (String(a.id) === String(id)) found = a; });
-                    });
-                }
-                if (found) selecionarDest(found);
-            });
-        });
-        // banner topo
-        try {
-            var banner = document.getElementById('bannerAniversario');
-            var txt = document.getElementById('textoBannerAniv');
-            if (banner && txt) {
-                if (typeof ehAniversarioHojeMembro === 'function' && ehAniversarioHojeMembro(u)) {
-                    banner.classList.remove('hidden');
-                    txt.textContent = '🎂 Feliz aniversário, ' + (u.nome || '').split(' ')[0] + '!';
-                } else if (hoje.length) {
-                    banner.classList.remove('hidden');
-                    if (hoje.length === 1) txt.textContent = '🎂 Hoje é aniversário de ' + hoje[0].nome.split(' ')[0] + '!';
-                    else txt.textContent = '🎂 Hoje temos ' + hoje.length + ' aniversariantes na família IBN!';
-                } else {
-                    var prox2 = listarProximosAniversariantes(8).filter(function (d) { return d.diasAte > 0; });
-                    if (prox2.length) {
-                        banner.classList.remove('hidden');
-                        banner.classList.remove('from-pink-500', 'to-rose-500');
-                        banner.classList.add('from-primary', 'to-primary');
-                        var n = 0; prox2.forEach(function (d) { n += d.aniversariantes.length; });
-                        txt.textContent = '📅 ' + n + ' aniversariante(s) nos próximos 8 dias';
-                    }
-                }
-            }
-        } catch (eB) {}
-    }
-    function renderAnivMes() {
-        var sel = document.getElementById('selMesAniv');
-        var box = document.getElementById('listaAnivMes');
-        if (!sel || !box) return;
-        if (typeof listarAniversariantesDoMes !== 'function') {
-            box.innerHTML = '<p class="text-amber-600 text-xs">Atualize o arquivo conta.js no site para listar por mês.</p>';
-            return;
-        }
-        var mes = parseInt(sel.value, 10) || ((new Date()).getMonth() + 1);
-        var lista = listarAniversariantesDoMes(mes);
-        var nomesMes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-        if (!lista.length) {
-            box.innerHTML = '<p class="text-gray-400 text-xs">Nenhum aniversariante em ' + (nomesMes[mes] || mes) + ' (com data cadastrada).</p>';
-            return;
-        }
-        box.innerHTML = '<p class="text-xs text-gray-500 mb-1">' + lista.length + ' em ' + (nomesMes[mes] || mes) + '</p>' +
-            lista.map(function (a) {
-                var dia = String(a.dia || '').padStart(2, '0');
-                return '<div class="flex flex-wrap items-center justify-between gap-1 border rounded-lg px-2 py-1.5">' +
-                    '<span><strong>' + dia + '</strong> — ' + String(a.nome || '').replace(/</g, '&lt;') +
-                    (a.idade ? ' <span class="text-gray-400">(' + a.idade + ' anos)</span>' : '') + '</span>' +
-                    '<button type="button" class="btn-homenagear-mes text-xs font-bold text-pink-600 underline" data-id="' + (a.id || '') + '">Homenagear</button></div>';
-            }).join('');
-        box.querySelectorAll('.btn-homenagear-mes').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var id = btn.getAttribute('data-id');
-                var a = lista.find(function (x) { return String(x.id) === String(id); });
-                if (a) selecionarDest(a);
-            });
-        });
-    }
-    function abrirPeloMenu(e) {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
-        var u = soMembros();
-        if (!u) {
-            alert('Faça login como membro para ver os aniversariantes.');
-            window.location.href = 'login.html?destino=index.html#aniversariantes';
-            return false;
-        }
-        abrirModalAniv();
-        return false;
-    }
-    function initAniv() {
-        var banner = document.getElementById('bannerAniversario');
-        var btnAbrirAniv = document.getElementById('btnAbrirAniv');
-        if (btnAbrirAniv) btnAbrirAniv.addEventListener('click', function (e) { e.stopPropagation(); abrirModalAniv(); });
-        if (banner) banner.addEventListener('click', abrirModalAniv);
-        ['linkMenuAniv', 'linkMenuAnivMobile'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('click', abrirPeloMenu);
-        });
-        document.querySelectorAll('a[href="#aniversariantes"]').forEach(function (el) {
-            el.addEventListener('click', abrirPeloMenu);
-        });
-        var btnMes = document.getElementById('btnVerMesAniv');
-        if (btnMes) btnMes.addEventListener('click', function (e) { e.preventDefault(); renderAnivMes(); });
-        var btnFechar = document.getElementById('btnFecharAniv');
-        if (btnFechar) btnFechar.addEventListener('click', fecharModalAniv);
-        var modal = document.getElementById('modalAniversariantes');
-        if (modal) modal.addEventListener('click', function (ev) { if (ev.target === modal) fecharModalAniv(); });
-        var btnWa = document.getElementById('btnWaAniv');
-        if (btnWa) btnWa.addEventListener('click', function () {
-            if (!destAtual) return alert('Escolha um aniversariante na lista (Homenagear).');
-            var u = soMembros();
-            var texto = (document.getElementById('textoMsgAniv') || {}).value || '';
-            texto = texto.trim();
-            if (!texto) return alert('Escreva uma mensagem.');
-            if (typeof registrarMensagemAniversarioLocal === 'function') {
-                registrarMensagemAniversarioLocal(u && u.id, u && u.nome, destAtual.id, destAtual.nome, texto);
-            }
-            var link = typeof linkWhatsAppAniversario === 'function' ? linkWhatsAppAniversario(destAtual.telefone, texto) : null;
-            var st = document.getElementById('msgAnivStatus');
-            if (!link) {
-                if (st) { st.textContent = 'Sem telefone cadastrado. Use "Copiar mensagem".'; st.className = 'text-xs text-center text-amber-700'; st.classList.remove('hidden'); }
-                return;
-            }
-            if (st) { st.textContent = 'Abrindo WhatsApp...'; st.className = 'text-xs text-center text-green-600'; st.classList.remove('hidden'); }
-            window.open(link, '_blank');
-        });
-        var btnCop = document.getElementById('btnCopiarAniv');
-        if (btnCop) btnCop.addEventListener('click', function () {
-            var texto = ((document.getElementById('textoMsgAniv') || {}).value || '').trim();
-            var u = soMembros();
-            if (destAtual && u && typeof registrarMensagemAniversarioLocal === 'function') {
-                registrarMensagemAniversarioLocal(u.id, u.nome, destAtual.id, destAtual.nome, texto);
-            }
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(texto).then(function () {
-                    var st = document.getElementById('msgAnivStatus');
-                    if (st) { st.textContent = 'Mensagem copiada!'; st.className = 'text-xs text-center text-green-600'; st.classList.remove('hidden'); }
-                });
-            } else {
-                alert('Copie a mensagem manualmente.');
-            }
-        });
-        // se já logado, atualiza banner
-        if (soMembros()) {
-            try { renderAniv(); } catch (e) {}
-        }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-            setTimeout(function () {
-                initAniv();
-                if (location.hash && location.hash.indexOf('aniversariantes') !== -1) setTimeout(abrirModalAniv, 500);
-            }, 300);
-        });
-    } else {
-        setTimeout(function () {
-            initAniv();
-            if (location.hash && location.hash.indexOf('aniversariantes') !== -1) setTimeout(abrirModalAniv, 500);
-        }, 300);
-    }
-})();
-</script>
-
-
-
-<script>
-(function(){
-    // Ao abrir o site logado: envia dados/fotos do membro para a nuvem (automático)
-    function trySync() {
-        try {
-            if (typeof IBNNuvem === 'undefined') return;
-            // 1) Baixa membros da nuvem (cargos/lideranças atualizados no outro aparelho)
-            if (IBNNuvem.puxarMembrosParaLocal) {
-                IBNNuvem.puxarMembrosParaLocal().then(function () {
-                    try { if (typeof atualizarSessaoDoCadastro === 'function') atualizarSessaoDoCadastro(); } catch (e2) {}
-                }).catch(function () {});
-            }
-            // 2) Sobe dados/fotos da sessão atual
-            if (IBNNuvem.agendarSyncSessao) {
-                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
-                if (u && u.id) IBNNuvem.agendarSyncSessao(u, 1500);
-            }
-        } catch (e) {}
-    }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', trySync);
-    else trySync();
-})();
-</script>
-
-
-<script>
-(function(){
-    function mostrarEscala() {
-        var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
-        if (!u || typeof escalaAvisosUrgentes !== 'function') return;
-        var avisos = escalaAvisosUrgentes(u);
-        var banner = document.getElementById('bannerEscalaServico');
-        var txt = document.getElementById('textoBannerEscala');
-        if (!banner || !txt) return;
-        if (!avisos.length) {
-            banner.classList.add('hidden');
-            return;
-        }
-        var a = avisos[0];
-        var quando = a.diasAte === 0 ? 'HOJE' : 'AMANHÃ';
-        var funcoes = (a.funcoes || []).join(', ');
-        var urg = a.urgente4h ? ' ⏰ Em breve! ' : '';
-        txt.textContent = urg + '📋 Escala IBN ' + quando + ' (' + a.dataLabel + '): ' + funcoes +
-            (a.ministerio ? ' — ' + a.ministerio : '') +
-            '. Esteja 30 min antes na igreja.' +
-            (a.observacao ? ' · ' + a.observacao : '');
-        banner.classList.remove('hidden');
-        var btnC = document.getElementById('btnConfirmarEscalaBanner');
-        if (btnC) {
-            if (typeof membroConfirmouEscala === 'function' && membroConfirmouEscala(a.ministerio, a.dataIso, u.id)) {
-                btnC.textContent = '✓ Já confirmado';
-                btnC.disabled = true;
-                btnC.classList.add('opacity-70');
-            } else {
-                btnC.textContent = '✓ Confirmei que recebi';
-                btnC.disabled = false;
-                btnC.classList.remove('opacity-70');
-                btnC.onclick = function() {
-                    if (typeof confirmarRecebimentoEscala !== 'function') return;
-                    var r = confirmarRecebimentoEscala(a.ministerio, a.dataIso, u);
-                    alert(r.mensagem || 'Confirmado');
-                    if (r.sucesso) {
-                        btnC.textContent = '✓ Já confirmado';
-                        btnC.disabled = true;
-                    }
-                };
-            }
-        }
-        try {
-            var k = 'ibn_escala_visto_' + a.dataIso + '_' + (u.id || '');
-            if (!sessionStorage.getItem(k) && a.diasAte <= 1) {
-                sessionStorage.setItem(k, '1');
-            }
-        } catch(e) {}
-    }
-    document.getElementById('btnDetalheEscala') && document.getElementById('btnDetalheEscala').addEventListener('click', function(){
-        var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
-        if (!u || typeof escalaProximasDoMembro !== 'function') return;
-        var lista = escalaProximasDoMembro(u, 21);
-        if (!lista.length) return alert('Nenhuma escala próxima com o seu nome.');
-        var msg = 'Suas próximas escalas:\n\n';
-        lista.forEach(function(a){
-            msg += '• ' + a.dataLabel + ' (' + (a.diasAte===0?'hoje':a.diasAte===1?'amanhã':'em '+a.diasAte+' dias') + ')\n';
-            msg += '  Função: ' + (a.funcoes||[]).join(', ') + ' — ' + (a.ministerio||'') + '\n';
-            if (a.observacao) msg += '  Obs: ' + a.observacao + '\n';
-            msg += '\n';
-        });
-        alert(msg);
-    });
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(mostrarEscala, 500);
-        setTimeout(function(){
-            if (typeof processarNotificacoesEscalaAoAbrir === 'function') {
-                processarNotificacoesEscalaAoAbrir();
-            }
-        }, 1200); });
-    else setTimeout(mostrarEscala, 500);
-        setTimeout(function(){
-            if (typeof processarNotificacoesEscalaAoAbrir === 'function') {
-                processarNotificacoesEscalaAoAbrir();
-            }
-        }, 1200);
-})();
-</script>
-
-
-    <script>
-    (function () {
-        var selV = document.getElementById('bibHomeVersao');
-        var selL = document.getElementById('bibHomeLivro');
-        var selC = document.getElementById('bibHomeCap');
-        var selR = document.getElementById('bibHomeVer');
-        var elStatus = document.getElementById('bibHomeStatus');
-        var elRef = document.getElementById('bibHomeRef');
-        var elTexto = document.getElementById('bibHomeTexto');
-        var elMsg = document.getElementById('bibHomeMsg');
-        var elNav = document.getElementById('bibHomeNav');
-        var btnAnt = document.getElementById('bibHomeAnt');
-        var btnProx = document.getElementById('bibHomeProx');
-        var btnCont = document.getElementById('bibHomeCont');
-        var btnAuto = document.getElementById('bibHomeAuto');
-        var elResultado = document.getElementById('bibHomeResultado');
-        if (!selV || !selL) return;
-
-        var bibData = null;
-        var carregando = false;
-        var pos = { livroIdx: 0, cap: 1, ver: 1 };
-        var autoTimer = null;
-        var autoLigado = false;
-
-        function pararAuto() {
-            autoLigado = false;
-            if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
-            if (btnAuto) {
-                btnAuto.textContent = '▶ Auto';
-                btnAuto.classList.remove('bg-secondary');
-            }
-        }
-        var autoCooldownAte = 0;
-        function iniciarAuto() {
-            if (!elResultado) return;
-            autoLigado = true;
-            autoCooldownAte = 0;
-            if (btnAuto) {
-                btnAuto.textContent = '⏸ Pausar';
-                btnAuto.classList.add('bg-secondary');
-            }
-            if (autoTimer) clearInterval(autoTimer);
-            // Rolagem mais fluida: ~3px a cada 28ms (~100px/s), avança 1 versículo no fim
-            autoTimer = setInterval(function () {
-                if (!elResultado || !autoLigado) return;
-                var agora = Date.now();
-                if (agora < autoCooldownAte) return;
-                var max = elResultado.scrollHeight - elResultado.clientHeight;
-                if (max <= 4) {
-                    var n = avancarPos(pos);
-                    if (n) {
-                        pos = n;
-                        mostrarLeitura(pos, 5);
-                        sincronizarSelects(pos);
-                        try { elResultado.scrollTop = 0; } catch (e0) {}
-                        autoCooldownAte = Date.now() + 900;
-                    } else {
-                        pararAuto();
-                    }
-                    return;
-                }
-                if (elResultado.scrollTop < max - 8) {
-                    elResultado.scrollTop += 3;
-                    return;
-                }
-                var prox = avancarPos(pos);
-                if (!prox) {
-                    pararAuto();
-                    return;
-                }
-                pos = prox;
-                mostrarLeitura(pos, 6);
-                sincronizarSelects(pos);
-                try { elResultado.scrollTop = 0; } catch (e1) {}
-                autoCooldownAte = Date.now() + 750;
-            }, 28);
-        }
-
-        function setStatus(t, ok) {
-            if (elStatus) {
-                elStatus.classList.remove('hidden');
-                elStatus.textContent = t;
-                elStatus.className = 'text-sm ' + (ok === false ? 'text-red-600' : 'text-gray-500');
-            }
-            if (elRef) elRef.classList.add('hidden');
-            if (elTexto) {
-                elTexto.classList.add('hidden');
-                elTexto.innerHTML = '';
-            }
-            if (elNav) elNav.classList.add('hidden');
-        }
-
-        function nomeLivro(ab) {
-            var nomes = (typeof BIBLIA_NOME_LIVRO !== 'undefined') ? BIBLIA_NOME_LIVRO : {};
-            return nomes[ab] || (ab || '').toUpperCase();
-        }
-
-        function getTexto(livroIdx, cap, ver) {
-            if (!bibData || !bibData[livroIdx]) return null;
-            var caps = bibData[livroIdx].chapters || [];
-            var versos = caps[cap - 1];
-            if (!versos) return null;
-            var t = versos[ver - 1];
-            return t ? String(t).trim() : null;
-        }
-
-        function maxCap(livroIdx) {
-            return (bibData[livroIdx] && bibData[livroIdx].chapters) ? bibData[livroIdx].chapters.length : 0;
-        }
-        function maxVer(livroIdx, cap) {
-            var c = (bibData[livroIdx] && bibData[livroIdx].chapters) ? bibData[livroIdx].chapters[cap - 1] : null;
-            return c ? c.length : 0;
-        }
-
-        /** Avança 1 versículo; se acabar o capítulo, vai ao próximo; se acabar o livro, próximo livro */
-        function avancarPos(p) {
-            var n = { livroIdx: p.livroIdx, cap: p.cap, ver: p.ver + 1 };
-            if (n.ver <= maxVer(n.livroIdx, n.cap)) return n;
-            n.ver = 1;
-            n.cap += 1;
-            if (n.cap <= maxCap(n.livroIdx)) return n;
-            n.cap = 1;
-            n.livroIdx += 1;
-            if (n.livroIdx < bibData.length) return n;
-            return null; // fim da Bíblia
-        }
-
-        function voltarPos(p) {
-            var n = { livroIdx: p.livroIdx, cap: p.cap, ver: p.ver - 1 };
-            if (n.ver >= 1) return n;
-            n.cap -= 1;
-            if (n.cap >= 1) {
-                n.ver = maxVer(n.livroIdx, n.cap);
-                return n;
-            }
-            n.livroIdx -= 1;
-            if (n.livroIdx >= 0) {
-                n.cap = maxCap(n.livroIdx);
-                n.ver = maxVer(n.livroIdx, n.cap);
-                return n;
-            }
-            return null;
-        }
-
-        function sincronizarSelects(p) {
-            if (!p) return;
-            selL.value = String(p.livroIdx);
-            // repovoa capítulos se mudou livro
-            preencherCapitulos(true);
-            selC.value = String(p.cap);
-            preencherVersiculos(true);
-            selR.value = String(p.ver);
-        }
-
-        function mostrarLeitura(p, qtdExtra) {
-            qtdExtra = qtdExtra || 0;
-            if (!p) {
-                setStatus('Fim da Bíblia nesta versão.', false);
-                return;
-            }
-            pos = p;
-            var versao = (selV.value || 'nvi').toUpperCase();
-            var livro = bibData[p.livroIdx];
-            var ab = livro.abbrev || '';
-            var ref = nomeLivro(ab) + ' ' + p.cap + ':' + p.ver + ' (' + versao + ')';
-
-            var html = '';
-            var cur = { livroIdx: p.livroIdx, cap: p.cap, ver: p.ver };
-            var total = 1 + qtdExtra;
-            for (var i = 0; i < total; i++) {
-                if (!cur) break;
-                var tx = getTexto(cur.livroIdx, cur.cap, cur.ver);
-                if (!tx) break;
-                var ab2 = bibData[cur.livroIdx].abbrev || '';
-                var r2 = nomeLivro(ab2) + ' ' + cur.cap + ':' + cur.ver;
-                var destaque = (i === 0) ? 'font-semibold text-gray-900' : 'text-gray-700';
-                html += '<p class="' + destaque + '"><span class="text-primary font-bold text-sm mr-1">' + r2 + '</span> ' + tx + '</p>';
-                if (i < total - 1) cur = avancarPos(cur);
-            }
-
-            if (elStatus) elStatus.classList.add('hidden');
-            if (elRef) {
-                elRef.classList.remove('hidden');
-                elRef.textContent = ref + (qtdExtra > 0 ? ' · e seguintes' : '');
-            }
-            if (elTexto) {
-                elTexto.classList.remove('hidden');
-                elTexto.innerHTML = html;
-            }
-            if (elNav) elNav.classList.remove('hidden');
-            if (btnAnt) btnAnt.disabled = !voltarPos(pos);
-            if (btnProx) btnProx.disabled = !avancarPos(pos);
-            sincronizarSelects(pos);
-            // leva o texto à vista e começa do topo do quadro
-            try {
-                if (elResultado) {
-                    elResultado.scrollTop = 0;
-                    elResultado.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }
-            } catch (eScr) {}
-        }
-
-        function preencherLivros() {
-            if (!bibData || !Array.isArray(bibData)) return;
-            selL.innerHTML = '<option value="">Selecione o livro…</option>';
-            bibData.forEach(function (b, idx) {
-                selL.innerHTML += '<option value="' + idx + '">' + nomeLivro(b.abbrev || '') + '</option>';
-            });
-            selL.disabled = false;
-            selC.innerHTML = '<option value="">—</option>';
-            selR.innerHTML = '<option value="">—</option>';
-            selC.disabled = true;
-            selR.disabled = true;
-        }
-
-        function preencherCapitulos(silent) {
-            var idx = parseInt(selL.value, 10);
-            var keep = selC.value;
-            selC.innerHTML = '<option value="">Selecione o capítulo…</option>';
-            selR.innerHTML = '<option value="">—</option>';
-            if (!silent) selR.disabled = true;
-            if (isNaN(idx) || !bibData[idx]) {
-                selC.disabled = true;
-                return;
-            }
-            var caps = bibData[idx].chapters || [];
-            for (var i = 1; i <= caps.length; i++) {
-                selC.innerHTML += '<option value="' + i + '">' + i + '</option>';
-            }
-            selC.disabled = false;
-            if (silent && keep) selC.value = keep;
-            if (!silent) setStatus('Escolha o capítulo.');
-        }
-
-        function preencherVersiculos(silent) {
-            var idx = parseInt(selL.value, 10);
-            var cap = parseInt(selC.value, 10);
-            var keep = selR.value;
-            selR.innerHTML = '<option value="">Selecione o versículo…</option>';
-            if (isNaN(idx) || isNaN(cap) || !bibData[idx]) {
-                selR.disabled = true;
-                return;
-            }
-            var versos = (bibData[idx].chapters || [])[cap - 1] || [];
-            for (var i = 1; i <= versos.length; i++) {
-                selR.innerHTML += '<option value="' + i + '">' + i + '</option>';
-            }
-            selR.disabled = false;
-            if (silent && keep) selR.value = keep;
-            if (!silent) setStatus('Escolha o versículo.');
-        }
-
-        function mostrarSelecionado() {
-            var idx = parseInt(selL.value, 10);
-            var cap = parseInt(selC.value, 10);
-            var ver = parseInt(selR.value, 10);
-            if (isNaN(idx) || isNaN(cap) || isNaN(ver)) return;
-            mostrarLeitura({ livroIdx: idx, cap: cap, ver: ver }, 0);
-        }
-
-        function carregar(versao) {
-            if (typeof carregarBibliaCompleta !== 'function') {
-                setStatus('Recursos da Bíblia não carregaram. Atualize a página (Ctrl+F5).', false);
-                return;
-            }
-            if (carregando) return;
-            carregando = true;
-            selL.disabled = true;
-            selC.disabled = true;
-            selR.disabled = true;
-            setStatus('Carregando Bíblia ' + (versao || 'nvi').toUpperCase() + '…');
-            if (elMsg) elMsg.textContent = 'Baixando (só na primeira vez por versão)…';
-            carregarBibliaCompleta(versao || 'nvi').then(function (data) {
-                carregando = false;
-                bibData = data;
-                preencherLivros();
-                setStatus('Selecione o livro, depois o capítulo e o versículo.');
-                if (elMsg) elMsg.textContent = 'Bíblia pronta neste aparelho. Use Anterior / Próximo ou Continuar lendo.';
-            }).catch(function (err) {
-                carregando = false;
-                selL.disabled = false;
-                selL.innerHTML = '<option value="">Falhou — clique para tentar de novo</option>';
-                setStatus((err && err.message) || 'Não foi possível carregar a Bíblia.', false);
-                if (elMsg) elMsg.textContent = (err && err.message) || 'Erro de rede';
-                selL.onclick = function () {
-                    selL.onclick = null;
-                    carregando = false;
-                    bibData = null;
-                    carregar(selV.value || 'nvi');
-                };
-            });
-        }
-
-        selV.addEventListener('change', function () {
-            bibData = null;
-            carregar(selV.value);
-        });
-        selL.addEventListener('change', function () { preencherCapitulos(false); });
-        selC.addEventListener('change', function () { preencherVersiculos(false); });
-        selR.addEventListener('change', mostrarSelecionado);
-
-        if (btnProx) btnProx.addEventListener('click', function () {
-            var n = avancarPos(pos);
-            if (n) mostrarLeitura(n, 0);
-        });
-        if (btnAnt) btnAnt.addEventListener('click', function () {
-            var n = voltarPos(pos);
-            if (n) mostrarLeitura(n, 0);
-        });
-        if (btnCont) btnCont.addEventListener('click', function () {
-            var inicio = pos;
-            mostrarLeitura(inicio, 3);
-            var cur = inicio;
-            for (var i = 0; i < 3; i++) {
-                var n = avancarPos(cur);
-                if (!n) break;
-                cur = n;
-            }
-            pos = cur;
-            sincronizarSelects(pos);
-            if (btnAnt) btnAnt.disabled = !voltarPos(pos);
-            if (btnProx) btnProx.disabled = !avancarPos(pos);
-        });
-        if (btnAuto) btnAuto.addEventListener('click', function () {
-            if (autoLigado) pararAuto();
-            else iniciarAuto();
-        });
-        // pausa auto se o usuário rolar com o dedo
-        if (elResultado) {
-            elResultado.addEventListener('touchstart', function () { if (autoLigado) pararAuto(); }, { passive: true });
-            elResultado.addEventListener('wheel', function () { if (autoLigado) pararAuto(); }, { passive: true });
-        }
-
-        function iniciar() {
-            if (bibData || carregando) return;
-            if (typeof location !== 'undefined' && location.protocol === 'file:') {
-                setStatus('Abra o site pelo GitHub (https) ou por um servidor local. Arquivo aberto direto do PC não carrega a Bíblia.', false);
-                if (elMsg) elMsg.textContent = 'Dica: no GitHub Pages funciona. No PC use: npx serve na pasta do site.';
-                // ainda tenta caminhos relativos (se o navegador permitir)
-            }
-            carregar(selV.value || 'nvi');
-        }
-        if ('IntersectionObserver' in window) {
-            var obs = new IntersectionObserver(function (entries) {
-                entries.forEach(function (e) {
-                    if (e.isIntersecting) {
-                        iniciar();
-                        obs.disconnect();
-                    }
-                });
-            }, { rootMargin: '100px' });
-            var sec = document.getElementById('biblia');
-            if (sec) obs.observe(sec);
-            else setTimeout(iniciar, 500);
-        } else {
-            setTimeout(iniciar, 500);
-        }
-        setTimeout(iniciar, 1200);
-        selL.addEventListener('focus', iniciar);
-        selV.addEventListener('focus', iniciar);
-        selL.addEventListener('click', iniciar);
-    })();
-    </script>
-
-
-    <script>
-    (function () {
-        function aplicarBannerSalvo() {
-            try {
-                var raw = localStorage.getItem('ibn_banners_config');
-                if (!raw) return;
-                var cfg = JSON.parse(raw);
-                if (!cfg || !cfg.itens || !cfg.itens.length) return;
-                var item = null;
-                for (var i = 0; i < cfg.itens.length; i++) {
-                    if (cfg.itens[i].id === cfg.ativoId) { item = cfg.itens[i]; break; }
-                }
-                if (!item) item = cfg.itens[0];
-                if (!item || !item.dataUrl) return;
-                var el = document.getElementById('heroBanner') || document.querySelector('.hero-banner');
-                if (!el) return;
-                el.style.backgroundImage = "linear-gradient(rgba(10,26,63,0.72), rgba(10,26,63,0.72)), url('" + item.dataUrl.replace(/'/g, "%27") + "')";
-                el.style.backgroundSize = 'cover';
-                el.style.backgroundPosition = 'center';
-            } catch (e) {}
-        }
-        function puxarMidiaNuvem() {
-            try {
-                if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) return;
-                firebase.firestore().collection('config').doc('site_midia').get().then(function (snap) {
-                    if (!snap.exists) return;
-                    var d = snap.data() || {};
-                    if (Array.isArray(d.playlist) && d.playlist.length) {
-                        localStorage.setItem('playlistLouvores', JSON.stringify(d.playlist));
-                    }
-                    if (d.banners && Array.isArray(d.banners)) {
-                        localStorage.setItem('ibn_banners_config', JSON.stringify({
-                            itens: d.banners,
-                            ativoId: d.bannerAtivoId || (d.banners[0] && d.banners[0].id) || null
-                        }));
-                        aplicarBannerSalvo();
-                    }
-                }).catch(function () {});
-            } catch (e2) {}
-        }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function () {
-                aplicarBannerSalvo();
-                setTimeout(puxarMidiaNuvem, 800);
-            });
-        } else {
-            aplicarBannerSalvo();
-            setTimeout(puxarMidiaNuvem, 800);
-        }
-    })();
-    </script>
-
-
-<script>
-(function(){
-    document.addEventListener('click', function(e) {
-        var t = e.target.closest && e.target.closest('#linkMenuAniv, #linkMenuAnivMobile, a[href="#aniversariantes"]');
-        if (!t) return;
-        e.preventDefault();
-        if (typeof window.abrirModalAniv === 'function') {
-            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
-            if (!u) {
-                alert('Faça login como membro para ver os aniversariantes.');
-                window.location.href = 'login.html?destino=index.html#aniversariantes';
-                return;
-            }
-            window.abrirModalAniv();
-        } else {
-            alert('Recurso de aniversariantes ainda carregando. Atualize a página (F5).');
-        }
-    }, true);
-    window.addEventListener('hashchange', function() {
-        if (location.hash && location.hash.indexOf('aniversariantes') !== -1 && typeof window.abrirModalAniv === 'function') {
-            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
-            if (u) window.abrirModalAniv();
-        }
-    });
-})();
-</script>
-
-
-<script>
-<script>
-(function(){
-    <script>
 (function () {
     function isoHoje() {
         var d = new Date();
@@ -3177,15 +2333,27 @@
         } catch (e) {}
         try {
             var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
-            if (!u) u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+            if (!u) {
+                try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e1) { u = null; }
+            }
+            if (!u) {
+                try { u = JSON.parse(localStorage.getItem('ibn_sessao_atual') || 'null'); } catch (e2) { u = null; }
+            }
             if (!u) return false;
             var n = String(u.nivel || '').toLowerCase();
             if (n === 'admin' || n === 'gestor') return true;
             if (String(u.usuario || '').toLowerCase() === 'gestor') return true;
             if (typeof isAdmin === 'function' && isAdmin(u)) return true;
             if (typeof isGestor === 'function' && isGestor(u)) return true;
-        } catch (e2) {}
+        } catch (e3) {}
         return false;
+    }
+    function msgFut(texto, ok) {
+        var el = document.getElementById('msgFut');
+        if (!el) return;
+        el.classList.remove('hidden');
+        el.className = 'text-xs ' + (ok === true ? 'text-green-600' : ok === false ? 'text-red-600' : 'text-gray-600');
+        el.textContent = texto || '';
     }
     function atualizarUiFut() {
         var span = document.getElementById('spanLocalFutebolProg');
@@ -3219,151 +2387,143 @@
         }
         if (listaEl && typeof lerAgendaFutebol === 'function') {
             var lista = lerAgendaFutebol().slice().reverse();
-            if (!lista.length) {
-                listaEl.innerHTML = '';
-            } else {
+            if (!lista.length) listaEl.innerHTML = '';
+            else {
                 listaEl.innerHTML = '<p class="font-bold text-gray-500 mt-1">Locais já salvos:</p>' + lista.map(function (r) {
                     var br = (r.data || '').slice(8, 10) + '/' + (r.data || '').slice(5, 7);
                     var t = r.local ? r.local : 'Local';
                     var a = '';
                     if (r.lat != null && r.lng != null) {
                         a = ' <a class="text-secondary underline" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=' + r.lat + ',' + r.lng + '&travelmode=driving">Como chegar</a>';
-                    } else if (r.maps) {
-                        a = ' <a class="text-secondary underline" target="_blank" href="' + r.maps + '">mapa</a>';
                     }
                     return '<div>' + br + ' — ' + t + a + '</div>';
                 }).join('');
             }
         }
     }
-    function salvarGpsFut(lat, lng, nomeLocal) {
+    function parseMapsLink(texto) {
+        if (!texto) return null;
+        var mAt = texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        var mQ = texto.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        var m3d = texto.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+        var mPar = texto.match(/(-?\d+\.\d+)\s*[,;\s]\s*(-?\d+\.\d+)/);
+        var lat = null, lng = null;
+        if (mAt) { lat = parseFloat(mAt[1]); lng = parseFloat(mAt[2]); }
+        else if (mQ) { lat = parseFloat(mQ[1]); lng = parseFloat(mQ[2]); }
+        else if (m3d) { lat = parseFloat(m3d[1]); lng = parseFloat(m3d[2]); }
+        else if (mPar) { lat = parseFloat(mPar[1]); lng = parseFloat(mPar[2]); }
+        if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) return null;
+        return { lat: lat, lng: lng };
+    }
+    function salvarGpsFut(lat, lng, nomeLocal, mapsUrl) {
         var data = dataAlvoFut();
-        var nome = (nomeLocal || '').trim() || 'Campo / local do jogo';
-        if (typeof salvarLocalFutebol !== 'function') {
-            // fallback localStorage direto (mesmo espírito das células)
-            var key = 'ibn_agenda_futebol_homens';
-            var lista = [];
-            try { lista = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { lista = []; }
-            var reg = {
+        var nome = (nomeLocal || '').trim();
+        if (!nome) return { sucesso: false, mensagem: 'Informe o nome do campo.' };
+        if (typeof salvarLocalFutebol === 'function') {
+            return salvarLocalFutebol({
                 data: data,
                 local: nome,
                 lat: lat,
                 lng: lng,
-                maps: 'https://www.google.com/maps?q=' + lat + ',' + lng,
-                atualizadoEm: new Date().toISOString()
-            };
-            var idx = lista.findIndex(function (x) { return x && String(x.data).slice(0, 10) === data; });
-            if (idx >= 0) lista[idx] = reg; else lista.push(reg);
-            localStorage.setItem(key, JSON.stringify(lista));
-            return { sucesso: true, mensagem: 'Local salvo.' };
+                maps: mapsUrl || (lat != null ? ('https://www.google.com/maps?q=' + lat + ',' + lng) : '')
+            });
         }
-        return salvarLocalFutebol({
+        var key = 'ibn_agenda_futebol_homens';
+        var lista = [];
+        try { lista = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { lista = []; }
+        var reg = {
             data: data,
             local: nome,
             lat: lat,
             lng: lng,
-            maps: 'https://www.google.com/maps?q=' + lat + ',' + lng
-        });
+            maps: mapsUrl || (lat != null ? ('https://www.google.com/maps?q=' + lat + ',' + lng) : ''),
+            atualizadoEm: new Date().toISOString()
+        };
+        var idx = lista.findIndex(function (x) { return x && String(x.data).slice(0, 10) === data; });
+        if (idx >= 0) lista[idx] = reg; else lista.push(reg);
+        localStorage.setItem(key, JSON.stringify(lista));
+        return { sucesso: true, mensagem: 'Local salvo.' };
     }
-    /** Mesmo padrão das células: OK = GPS agora; Cancelar = colar link/coordenadas */
-    function pedirLocalizacaoFutbol() {
-        if (!podeSalvarFut()) {
-            alert('Somente líder do ministério Homens, administrador ou gestor podem atualizar o local do jogo.\nFaça login com essa conta.');
+    function preencherSelectCatalogo() {
+        var sel = document.getElementById('futCatalogoProg');
+        if (!sel) return;
+        var lista = [];
+        try {
+            if (typeof listarLocaisFutebolParaReuso === 'function') lista = listarLocaisFutebolParaReuso();
+            else if (typeof lerCatalogoLocaisFutebol === 'function') lista = lerCatalogoLocaisFutebol();
+        } catch (e) { lista = []; }
+        var atual = sel.value;
+        sel.innerHTML = '<option value="">— Escolher campo já cadastrado —</option>';
+        lista.forEach(function (x) {
+            var opt = document.createElement('option');
+            opt.value = x.id || x.nome;
+            opt.textContent = x.nome + (x.lat != null ? ' (com GPS)' : '');
+            sel.appendChild(opt);
+        });
+        if (atual) sel.value = atual;
+    }
+    function abrirFormFut() {
+        var form = document.getElementById('formFutProg');
+        if (!form) {
+            alert('Formulário não encontrado. Atualize o index.html no site.');
             return;
         }
-        var alvo = dataAlvoFut();
-        var br = alvo.slice(8, 10) + '/' + alvo.slice(5, 7) + '/' + alvo.slice(0, 4);
-        var opcao = confirm(
-            'Local do Futebol dos Homens — ' + br + '\n\n' +
-            'OK = usar a localização ATUAL deste aparelho (GPS)\n' +
-            'Cancelar = colar coordenadas ou link do Google Maps'
-        );
-        if (opcao) {
-            if (!navigator.geolocation) {
-                alert('Seu aparelho não suporta GPS neste navegador.');
-                return;
-            }
-            var msg = document.getElementById('msgFut');
-            if (msg) { msg.classList.remove('hidden'); msg.textContent = 'Obtendo GPS…'; }
-            navigator.geolocation.getCurrentPosition(
-                function (pos) {
-                    var nomeAnterior = '';
-                    try {
-                        var regA = (typeof localFutebolNaData === 'function') ? localFutebolNaData(dataAlvoFut()) : null;
-                        if (regA && regA.local) nomeAnterior = regA.local;
-                    } catch (eN) {}
-                    var nome = prompt(
-                        'Nome do campo / local (será salvo junto com o GPS):',
-                        nomeAnterior || 'Campo / local do jogo'
-                    );
-                    if (nome === null) return;
-                    nome = String(nome).trim();
-                    if (!nome) {
-                        alert('Informe o nome do campo para salvar junto com a localização.');
-                        return;
-                    }
-                    var r = salvarGpsFut(pos.coords.latitude, pos.coords.longitude, nome);
-                    if (msg) {
-                        msg.classList.remove('hidden');
-                        msg.className = 'text-xs ' + (r.sucesso ? 'text-green-600' : 'text-red-600');
-                        msg.textContent = r.mensagem || (r.sucesso ? 'Salvo!' : 'Erro');
-                    }
-                    if (r.sucesso) {
-                        if (r.inalterado) {
-                            alert('Esta localização já era a salva.\nNada foi alterado.');
-                        } else {
-                            alert('✅ ' + (r.mensagem || 'Localização salva!') + '\nO "Como Chegar" já usa este ponto.');
-                        }
-                        atualizarUiFut();
-                        if (typeof mostrarAlertaDoDia === 'function') try { mostrarAlertaDoDia(); } catch (e) {}
-                    } else {
-                        alert(r.mensagem || 'Não foi possível salvar.');
-                    }
-                },
-                function () {
-                    if (msg) { msg.classList.remove('hidden'); msg.className = 'text-xs text-red-600'; msg.textContent = 'Não foi possível obter o GPS.'; }
-                    alert('Não foi possível obter o GPS. Tente novamente ou cole o link do Maps.');
-                },
-                { enableHighAccuracy: true, timeout: 15000 }
-            );
+        form.classList.remove('hidden');
+        preencherSelectCatalogo();
+        try {
+            var reg = (typeof localFutebolNaData === 'function') ? localFutebolNaData(dataAlvoFut()) : null;
+            var nomeEl = document.getElementById('futNomeProg');
+            if (nomeEl && reg && reg.local) nomeEl.value = reg.local;
+        } catch (e) {}
+        form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        msgFut('Escolha um campo já salvo ou cadastre um novo (nome + GPS/link).', null);
+    }
+    window.pedirLocalizacaoFutbol = abrirFormFut;
+    function capturarGpsProg() {
+        var st = document.getElementById('futGpsProgStatus');
+        if (!navigator.geolocation) {
+            if (st) st.textContent = 'GPS não disponível — cole o link do Maps.';
+            return;
+        }
+        if (st) st.textContent = 'Obtendo GPS…';
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            document.getElementById('futLatProg').value = String(pos.coords.latitude);
+            document.getElementById('futLngProg').value = String(pos.coords.longitude);
+            if (st) st.textContent = 'GPS ok (' + pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5) + ')';
+        }, function () {
+            if (st) st.textContent = 'Não foi possível obter GPS — cole o link do Maps.';
+        }, { enableHighAccuracy: true, timeout: 15000 });
+    }
+    function salvarProg() {
+        if (!podeSalvarFut()) {
+            msgFut('Sem permissão. Entre como gestor, admin ou líder de Homens.', false);
+            return;
+        }
+        var nome = ((document.getElementById('futNomeProg') || {}).value || '').trim();
+        var link = ((document.getElementById('futLinkProg') || {}).value || '').trim();
+        var lat = (document.getElementById('futLatProg') || {}).value;
+        var lng = (document.getElementById('futLngProg') || {}).value;
+        lat = lat ? parseFloat(lat) : null;
+        lng = lng ? parseFloat(lng) : null;
+        if ((!lat || !lng) && link) {
+            var p = parseMapsLink(link);
+            if (p) { lat = p.lat; lng = p.lng; }
+        }
+        if (!nome) {
+            msgFut('Informe o nome do campo.', false);
+            return;
+        }
+        if ((lat == null || lng == null) && !link) {
+            msgFut('Use o GPS ou cole o link do Google Maps.', false);
+            return;
+        }
+        var r = salvarGpsFut(lat, lng, nome, link || null);
+        if (r.sucesso) {
+            msgFut(r.inalterado ? 'Localização igual à anterior.' : (r.mensagem || 'Salvo!'), true);
+            atualizarUiFut();
+            if (typeof mostrarAlertaDoDia === 'function') try { mostrarAlertaDoDia(); } catch (e) {}
         } else {
-            var texto = prompt(
-                'Cole o link do Google Maps ou as coordenadas (ex: -14.4123, -56.4481)\npara o futebol de ' + br + ':'
-            );
-            if (!texto) return;
-            var lat = null, lng = null;
-            var mAt = texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-            var mQ = texto.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-            var m3d = texto.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-            var mPar = texto.match(/(-?\d+\.\d+)\s*[,;\s]\s*(-?\d+\.\d+)/);
-            if (mAt) { lat = parseFloat(mAt[1]); lng = parseFloat(mAt[2]); }
-            else if (mQ) { lat = parseFloat(mQ[1]); lng = parseFloat(mQ[2]); }
-            else if (m3d) { lat = parseFloat(m3d[1]); lng = parseFloat(m3d[2]); }
-            else if (mPar) { lat = parseFloat(mPar[1]); lng = parseFloat(mPar[2]); }
-            if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) {
-                alert('Não entendi as coordenadas. Use o formato -14.41, -56.44 ou um link do Google Maps.');
-                return;
-            }
-            var nomeAnt2 = '';
-            try {
-                var regB = (typeof localFutebolNaData === 'function') ? localFutebolNaData(dataAlvoFut()) : null;
-                if (regB && regB.local) nomeAnt2 = regB.local;
-            } catch (eB) {}
-            var nome2 = prompt('Nome do campo / local (será salvo junto com o ponto):', nomeAnt2 || 'Campo / local do jogo');
-            if (nome2 === null) return;
-            nome2 = String(nome2).trim();
-            if (!nome2) {
-                alert('Informe o nome do campo para salvar junto com a localização.');
-                return;
-            }
-            var r2 = salvarGpsFut(lat, lng, nome2);
-            if (r2.sucesso) {
-                if (r2.inalterado) alert('Esta localização já era a salva.\nNada foi alterado.');
-                else alert('✅ ' + (r2.mensagem || 'Localização salva!') + '\nO "Como Chegar" já usa este ponto.');
-                atualizarUiFut();
-            } else {
-                alert(r2.mensagem || 'Erro ao salvar.');
-            }
+            msgFut(r.mensagem || 'Erro ao salvar.', false);
         }
     }
     function initFut() {
@@ -3372,26 +2532,108 @@
         setTimeout(atualizarUiFut, 2000);
         var btn = document.getElementById('btnAtualizarLocFut');
         if (btn) {
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                pedirLocalizacaoFutbol();
-            });
+            btn.onclick = function (e) {
+                if (e) e.preventDefault();
+                abrirFormFut();
+                return false;
+            };
         }
+        var btnGps = document.getElementById('btnGpsProg');
+        if (btnGps) btnGps.onclick = function (e) { e.preventDefault(); capturarGpsProg(); };
+        var btnSalvarCat = document.getElementById('btnSalvarCatalogoProg');
+        if (btnSalvarCat) btnSalvarCat.onclick = function (e) {
+            e.preventDefault();
+            if (!podeSalvarFut()) {
+                msgFut('Sem permissão. Entre como gestor, admin ou líder de Homens.', false);
+                return;
+            }
+            var nome = ((document.getElementById('futNomeProg') || {}).value || '').trim();
+            var link = ((document.getElementById('futLinkProg') || {}).value || '').trim();
+            var lat = (document.getElementById('futLatProg') || {}).value;
+            var lng = (document.getElementById('futLngProg') || {}).value;
+            lat = lat ? parseFloat(lat) : null;
+            lng = lng ? parseFloat(lng) : null;
+            if ((!lat || !lng) && link) {
+                var p = parseMapsLink(link);
+                if (p) { lat = p.lat; lng = p.lng; }
+            }
+            if (!nome) {
+                msgFut('Digite o nome do local (ex.: Campo do Juca).', false);
+                return;
+            }
+            if ((lat == null || lng == null) && !link) {
+                msgFut('Use o GPS ou cole o link do Maps antes de nomear.', false);
+                return;
+            }
+            if (typeof registrarLocalNoCatalogoFutebol !== 'function') {
+                msgFut('Atualize o conta.js para o catálogo de locais.', false);
+                return;
+            }
+            var r = registrarLocalNoCatalogoFutebol({
+                local: nome,
+                lat: lat,
+                lng: lng,
+                maps: link || (lat != null ? ('https://www.google.com/maps?q=' + lat + ',' + lng) : '')
+            });
+            if (r.sucesso) {
+                msgFut('Local "' + nome + '" salvo no catálogo para uso futuro.', true);
+                preencherSelectCatalogo();
+            } else {
+                msgFut(r.mensagem || 'Erro ao salvar no catálogo.', false);
+            }
+        };
+        var btnSalvar = document.getElementById('btnSalvarProg');
+        if (btnSalvar) btnSalvar.onclick = function (e) { e.preventDefault(); salvarProg(); };
+        var btnCancel = document.getElementById('btnCancelarProg');
+        if (btnCancel) btnCancel.onclick = function (e) {
+            e.preventDefault();
+            var f = document.getElementById('formFutProg');
+            if (f) f.classList.add('hidden');
+        };
+        var btnCat = document.getElementById('btnUsarCatalogoProg');
+        if (btnCat) btnCat.onclick = function (e) {
+            e.preventDefault();
+            if (!podeSalvarFut()) {
+                msgFut('Sem permissão. Entre como gestor, admin ou líder de Homens.', false);
+                return;
+            }
+            var sel = document.getElementById('futCatalogoProg');
+            var val = sel && sel.value;
+            if (!val) {
+                msgFut('Escolha um local na lista.', false);
+                return;
+            }
+            var r;
+            if (typeof aplicarLocalCatalogoNaData === 'function') {
+                r = aplicarLocalCatalogoNaData(dataAlvoFut(), val);
+            } else {
+                msgFut('Atualize o conta.js para reutilizar locais.', false);
+                return;
+            }
+            if (r.sucesso) {
+                msgFut(r.mensagem || 'Local aplicado para a próxima segunda!', true);
+                atualizarUiFut();
+                preencherSelectCatalogo();
+            } else {
+                msgFut(r.mensagem || 'Erro ao aplicar local.', false);
+            }
+        };
     }
-    // Clique garantido (mesmo padrão das células)
     document.addEventListener('click', function (ev) {
         var t = ev.target.closest && ev.target.closest('#btnAtualizarLocFut');
         if (!t) return;
         ev.preventDefault();
-        pedirLocalizacaoFutbol();
+        ev.stopPropagation();
+        abrirFormFut();
     }, true);
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { setTimeout(initFut, 400); });
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(initFut, 300); });
     } else {
-        setTimeout(initFut, 400);
+        setTimeout(initFut, 300);
     }
 })();
 </script>
+
 
 
 
