@@ -452,38 +452,23 @@
                         <h3 class="font-bold text-xl text-primary">Segunda-feira</h3>
                         <p class="font-semibold">Futebol dos Homens</p>
                         <p class="text-sm text-gray-500 mt-1">Encontro e comunhão entre os homens da igreja</p>
-                        <p id="textoLocalFutebolProg" class="text-sm text-primary mt-1"><i class="fa fa-map-marker text-secondary"></i> <span id="spanLocalFutebolProg">Carregando local…</span></p>
-                        <div id="painelAgendaFutebol" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-left">
-                            <p class="text-xs font-bold text-primary mb-1">Local do jogo — líder(es) Homens</p>
-                            <p class="text-[11px] text-gray-500 mb-2">No campo: informe o nome do lugar e use o GPS. Cada data fica na lista (não apaga). Semana que vem em outro lugar? Cadastre outra data.</p>
-                            <div class="space-y-2 mb-2">
-                                <div>
-                                    <label class="text-[10px] font-bold text-gray-600">Data do jogo</label>
-                                    <input type="date" id="futData" class="w-full border rounded-lg px-2 py-1.5 text-sm">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-bold text-gray-600">Nome do local (ex.: Campo do Setor X)</label>
-                                    <input type="text" id="futLocal" class="w-full border rounded-lg px-2 py-1.5 text-sm" placeholder="Nome do campo / quadra / lugar">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-bold text-gray-600">Observação (opcional)</label>
-                                    <input type="text" id="futObs" class="w-full border rounded-lg px-2 py-1.5 text-sm" placeholder="Ex.: entrada pelos fundos">
-                                </div>
-                                <p id="futGpsStatus" class="text-[11px] text-gray-500">GPS: ainda não capturado</p>
-                                <input type="hidden" id="futLat" value="">
-                                <input type="hidden" id="futLng" value="">
-                                <input type="hidden" id="futMaps" value="">
-                            </div>
+                                                <div id="blocoLocalFutebol" class="mt-3 space-y-2">
+                            <p id="textoLocalFutebolProg" class="text-sm text-primary">
+                                <i class="fa fa-map-marker text-secondary"></i>
+                                <span id="spanLocalFutebolProg">Local a confirmar</span>
+                            </p>
                             <div class="flex flex-wrap gap-2">
-                                <button type="button" id="btnGpsFut" class="border border-primary text-primary text-sm font-bold px-3 py-1.5 rounded-lg">📍 Usar minha localização</button>
-                                <button type="button" id="btnSalvarFut" class="bg-primary text-white text-sm font-bold px-3 py-1.5 rounded-lg">Salvar este local</button>
+                                <a id="linkComoChegarFut" href="#" target="_blank" rel="noopener"
+                                   class="hidden text-xs font-bold bg-secondary text-primary px-3 py-1.5 rounded-lg hover:bg-yellow-400">Como Chegar</a>
+                                <button type="button" id="btnAtualizarLocFut"
+                                    class="text-xs border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg font-semibold hover:bg-gray-50">
+                                    📍 Atualizar localização
+                                </button>
                             </div>
-                            <p id="msgFut" class="text-xs mt-1 hidden"></p>
-                            <p class="text-[10px] font-bold text-gray-600 mt-3 mb-1">Locais já cadastrados</p>
-                            <div id="listaAgendaFut" class="space-y-1 text-xs max-h-40 overflow-y-auto"></div>
+                            <p id="msgFut" class="text-xs text-gray-500 hidden"></p>
+                            <div id="listaAgendaFut" class="text-xs text-gray-600 space-y-1 max-h-28 overflow-y-auto"></div>
                         </div>
-                    </div>
-                    <div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
+<div class="border-l-4 border-secondary pl-6 py-4 bg-white rounded-r-lg shadow-sm">
                         <h3 class="font-bold text-xl text-primary">Terça-feira</h3>
                         <p class="font-semibold">Células nas casas — 20:00</p>
                         <a href="#celulas" class="text-secondary text-sm font-medium hover:underline">→ Encontrar a mais próxima no mapa</a>
@@ -2752,51 +2737,50 @@
                 btnAuto.classList.remove('bg-secondary');
             }
         }
+        var autoCooldownAte = 0;
         function iniciarAuto() {
             if (!elResultado) return;
             autoLigado = true;
+            autoCooldownAte = 0;
             if (btnAuto) {
                 btnAuto.textContent = '⏸ Pausar';
                 btnAuto.classList.add('bg-secondary');
             }
             if (autoTimer) clearInterval(autoTimer);
+            // Rolagem mais fluida: ~3px a cada 28ms (~100px/s), avança 1 versículo no fim
             autoTimer = setInterval(function () {
-                if (!elResultado) return;
+                if (!elResultado || !autoLigado) return;
+                var agora = Date.now();
+                if (agora < autoCooldownAte) return;
                 var max = elResultado.scrollHeight - elResultado.clientHeight;
-                if (max <= 0) {
-                    // sem overflow: avança leitura
+                if (max <= 4) {
                     var n = avancarPos(pos);
                     if (n) {
-                        mostrarLeitura(n, 2);
-                        elResultado.scrollTop = 0;
+                        pos = n;
+                        mostrarLeitura(pos, 5);
+                        sincronizarSelects(pos);
+                        try { elResultado.scrollTop = 0; } catch (e0) {}
+                        autoCooldownAte = Date.now() + 900;
                     } else {
                         pararAuto();
                     }
                     return;
                 }
-                if (elResultado.scrollTop >= max - 2) {
-                    // chegou ao fim do bloco → carrega +3 e continua
-                    var n2 = avancarPos(pos);
-                    if (n2) {
-                        // avança a partir do último visível
-                        var cur = pos;
-                        for (var i = 0; i < 3; i++) {
-                            var nx = avancarPos(cur);
-                            if (!nx) break;
-                            cur = nx;
-                        }
-                        mostrarLeitura(pos, 3);
-                        // reposiciona no meio para leitura contínua
-                        try { elResultado.scrollTop = Math.max(0, elResultado.scrollHeight * 0.25); } catch (e) {}
-                        pos = cur;
-                        sincronizarSelects(pos);
-                    } else {
-                        pararAuto();
-                    }
-                } else {
-                    elResultado.scrollTop += 1; // rolagem suave (~60px/s a 60fps interval 16ms -> use 30ms * 2)
+                if (elResultado.scrollTop < max - 8) {
+                    elResultado.scrollTop += 3;
+                    return;
                 }
-            }, 40);
+                var prox = avancarPos(pos);
+                if (!prox) {
+                    pararAuto();
+                    return;
+                }
+                pos = prox;
+                mostrarLeitura(pos, 6);
+                sincronizarSelects(pos);
+                try { elResultado.scrollTop = 0; } catch (e1) {}
+                autoCooldownAte = Date.now() + 750;
+            }, 28);
         }
 
         function setStatus(t, ok) {
@@ -3170,120 +3154,245 @@
 <script>
 <script>
 (function(){
+    <script>
+(function () {
     function isoHoje() {
         var d = new Date();
-        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
     function proximaSegundaIso() {
         if (typeof proximasSegundas === 'function') return proximasSegundas(1)[0];
-        var d = new Date(); d.setHours(12,0,0,0);
-        while (d.getDay() !== 1) d.setDate(d.getDate()+1);
-        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        var d = new Date();
+        d.setHours(12, 0, 0, 0);
+        while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
-    function atualizarTextoProg() {
-        var span = document.getElementById('spanLocalFutebolProg');
-        if (!span) return;
+    function dataAlvoFut() {
         var hoje = new Date();
-        var alvo = (hoje.getDay() === 1) ? isoHoje() : proximaSegundaIso();
-        var reg = (typeof localFutebolNaData === 'function') ? localFutebolNaData(alvo) : null;
-        var txt;
-        if (reg && (reg.local || reg.maps || (reg.lat && reg.lng))) {
-            txt = reg.local || 'Local marcado no mapa';
-            if (reg.obs) txt += ' (' + reg.obs + ')';
+        return (hoje.getDay() === 1) ? isoHoje() : proximaSegundaIso();
+    }
+    function podeSalvarFut() {
+        try {
+            if (typeof podeGerenciarAgendaFutebol === 'function' && podeGerenciarAgendaFutebol()) return true;
+        } catch (e) {}
+        try {
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (!u) u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+            if (!u) return false;
+            var n = String(u.nivel || '').toLowerCase();
+            if (n === 'admin' || n === 'gestor') return true;
+            if (String(u.usuario || '').toLowerCase() === 'gestor') return true;
+            if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+            if (typeof isGestor === 'function' && isGestor(u)) return true;
+        } catch (e2) {}
+        return false;
+    }
+    function atualizarUiFut() {
+        var span = document.getElementById('spanLocalFutebolProg');
+        var link = document.getElementById('linkComoChegarFut');
+        var listaEl = document.getElementById('listaAgendaFut');
+        var alvo = dataAlvoFut();
+        var reg = null;
+        try {
+            if (typeof localFutebolNaData === 'function') reg = localFutebolNaData(alvo);
+        } catch (e) {}
+        var prefix = (new Date().getDay() === 1) ? 'Hoje: ' : ('Próxima segunda (' + alvo.slice(8, 10) + '/' + alvo.slice(5, 7) + '): ');
+        if (reg && (reg.local || reg.lat != null)) {
+            var txt = reg.local ? reg.local : 'Local no mapa';
+            if (reg.obs && reg.obs !== reg.local) txt += ' — ' + reg.obs;
+            if (span) span.textContent = prefix + txt;
+            if (link) {
+                if (reg.lat != null && reg.lng != null) {
+                    link.href = 'https://www.google.com/maps/dir/?api=1&destination=' + reg.lat + ',' + reg.lng + '&travelmode=driving';
+                    link.classList.remove('hidden');
+                } else if (reg.maps) {
+                    link.href = reg.maps;
+                    link.classList.remove('hidden');
+                } else {
+                    link.classList.add('hidden');
+                }
+            }
         } else {
-            txt = (typeof textoLocalFutebolParaData === 'function') ? textoLocalFutebolParaData(alvo) : 'Local ainda não definido — procure o líder do ministério de Homens.';
+            var fallback = (typeof textoLocalFutebolParaData === 'function') ? textoLocalFutebolParaData(alvo) : 'Local ainda não definido — procure o líder do ministério de Homens.';
+            if (span) span.textContent = prefix + fallback;
+            if (link) link.classList.add('hidden');
         }
-        var prefix = (hoje.getDay() === 1) ? 'Hoje: ' : ('Próxima segunda (' + alvo.slice(8,10)+'/'+alvo.slice(5,7) + '): ');
-        span.textContent = prefix + txt;
-    }
-    function renderListaFut() {
-        var el = document.getElementById('listaAgendaFut');
-        if (!el || typeof lerAgendaFutebol !== 'function') return;
-        var lista = lerAgendaFutebol().slice().reverse();
-        if (!lista.length) {
-            el.innerHTML = '<p class="text-gray-500">Nenhum local na lista ainda.</p>';
-            return;
-        }
-        el.innerHTML = lista.map(function(r){
-            var br = (r.data||'').slice(8,10)+'/'+(r.data||'').slice(5,7)+'/'+(r.data||'').slice(0,4);
-            var t = r.local || 'Local';
-            if (r.obs) t += ' — ' + r.obs;
-            var link = '';
-            if (r.maps) link = ' <a href="'+r.maps+'" target="_blank" rel="noopener" class="text-secondary underline">Ver no mapa</a>';
-            else if (r.lat && r.lng) link = ' <a href="https://www.google.com/maps?q='+r.lat+','+r.lng+'" target="_blank" rel="noopener" class="text-secondary underline">Ver no mapa</a>';
-            return '<div class="border-b border-blue-100 py-1.5"><strong>'+br+'</strong> · '+t+link+'</div>';
-        }).join('');
-    }
-    function capturarGps() {
-        var st = document.getElementById('futGpsStatus');
-        if (!navigator.geolocation) {
-            if (st) st.textContent = 'GPS não disponível neste aparelho.';
-            return;
-        }
-        if (st) st.textContent = 'Obtendo GPS…';
-        navigator.geolocation.getCurrentPosition(function(pos){
-            var lat = pos.coords.latitude;
-            var lng = pos.coords.longitude;
-            var latEl = document.getElementById('futLat');
-            var lngEl = document.getElementById('futLng');
-            var mapsEl = document.getElementById('futMaps');
-            if (latEl) latEl.value = String(lat);
-            if (lngEl) lngEl.value = String(lng);
-            if (mapsEl) mapsEl.value = 'https://www.google.com/maps?q=' + lat + ',' + lng;
-            if (st) st.textContent = 'GPS ok (' + lat.toFixed(5) + ', ' + lng.toFixed(5) + ')';
-        }, function(err){
-            if (st) st.textContent = 'Não foi possível obter o GPS. Permita a localização ou tente de novo.';
-        }, { enableHighAccuracy: true, timeout: 15000 });
-    }
-    function initFut() {
-        atualizarTextoProg();
-        var painel = document.getElementById('painelAgendaFutebol');
-        if (painel && typeof podeGerenciarAgendaFutebol === 'function' && podeGerenciarAgendaFutebol()) {
-            painel.classList.remove('hidden');
-            var inp = document.getElementById('futData');
-            if (inp && !inp.value) inp.value = proximaSegundaIso();
-            renderListaFut();
-        }
-        var btnGps = document.getElementById('btnGpsFut');
-        if (btnGps) btnGps.addEventListener('click', function(e){ e.preventDefault(); capturarGps(); });
-        var btn = document.getElementById('btnSalvarFut');
-        if (btn) btn.addEventListener('click', function(){
-            var lat = (document.getElementById('futLat')||{}).value;
-            var lng = (document.getElementById('futLng')||{}).value;
-            var maps = (document.getElementById('futMaps')||{}).value;
-            var local = ((document.getElementById('futLocal')||{}).value || '').trim();
-            var obs = ((document.getElementById('futObs')||{}).value || '').trim();
-            if (!local) {
-                var msg0 = document.getElementById('msgFut');
-                if (msg0) { msg0.classList.remove('hidden'); msg0.className = 'text-xs mt-1 text-red-600'; msg0.textContent = 'Informe o nome do local (ex.: Campo do setor).'; }
-                return;
+        if (listaEl && typeof lerAgendaFutebol === 'function') {
+            var lista = lerAgendaFutebol().slice().reverse();
+            if (!lista.length) {
+                listaEl.innerHTML = '';
+            } else {
+                listaEl.innerHTML = '<p class="font-bold text-gray-500 mt-1">Locais já salvos:</p>' + lista.map(function (r) {
+                    var br = (r.data || '').slice(8, 10) + '/' + (r.data || '').slice(5, 7);
+                    var t = r.local ? r.local : 'Local';
+                    var a = '';
+                    if (r.lat != null && r.lng != null) {
+                        a = ' <a class="text-secondary underline" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=' + r.lat + ',' + r.lng + '&travelmode=driving">Como chegar</a>';
+                    } else if (r.maps) {
+                        a = ' <a class="text-secondary underline" target="_blank" href="' + r.maps + '">mapa</a>';
+                    }
+                    return '<div>' + br + ' — ' + t + a + '</div>';
+                }).join('');
             }
-            var r = typeof salvarLocalFutebol === 'function' ? salvarLocalFutebol({
-                data: (document.getElementById('futData')||{}).value,
-                local: local,
-                endereco: obs,
-                obs: obs,
-                maps: maps,
-                lat: lat ? parseFloat(lat) : null,
-                lng: lng ? parseFloat(lng) : null
-            }) : { sucesso: false, mensagem: 'conta.js desatualizado' };
-            var msg = document.getElementById('msgFut');
-            if (msg) {
-                msg.classList.remove('hidden');
-                msg.className = 'text-xs mt-1 ' + (r.sucesso ? 'text-green-600' : 'text-red-600');
-                msg.textContent = r.mensagem || (r.sucesso ? 'Salvo' : 'Erro');
-            }
-            if (r.sucesso) {
-                renderListaFut();
-                atualizarTextoProg();
-                if (typeof mostrarAlertaDoDia === 'function') try { mostrarAlertaDoDia(); } catch(e){}
-            }
+        }
+    }
+    function salvarGpsFut(lat, lng, nomeLocal) {
+        var data = dataAlvoFut();
+        var nome = (nomeLocal || '').trim() || 'Campo / local do jogo';
+        if (typeof salvarLocalFutebol !== 'function') {
+            // fallback localStorage direto (mesmo espírito das células)
+            var key = 'ibn_agenda_futebol_homens';
+            var lista = [];
+            try { lista = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { lista = []; }
+            var reg = {
+                data: data,
+                local: nome,
+                lat: lat,
+                lng: lng,
+                maps: 'https://www.google.com/maps?q=' + lat + ',' + lng,
+                atualizadoEm: new Date().toISOString()
+            };
+            var idx = lista.findIndex(function (x) { return x && String(x.data).slice(0, 10) === data; });
+            if (idx >= 0) lista[idx] = reg; else lista.push(reg);
+            localStorage.setItem(key, JSON.stringify(lista));
+            return { sucesso: true, mensagem: 'Local salvo.' };
+        }
+        return salvarLocalFutebol({
+            data: data,
+            local: nome,
+            lat: lat,
+            lng: lng,
+            maps: 'https://www.google.com/maps?q=' + lat + ',' + lng
         });
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(initFut, 500); });
-    else setTimeout(initFut, 500);
+    /** Mesmo padrão das células: OK = GPS agora; Cancelar = colar link/coordenadas */
+    function pedirLocalizacaoFutbol() {
+        if (!podeSalvarFut()) {
+            alert('Somente líder do ministério Homens, administrador ou gestor podem atualizar o local do jogo.\nFaça login com essa conta.');
+            return;
+        }
+        var alvo = dataAlvoFut();
+        var br = alvo.slice(8, 10) + '/' + alvo.slice(5, 7) + '/' + alvo.slice(0, 4);
+        var opcao = confirm(
+            'Local do Futebol dos Homens — ' + br + '\n\n' +
+            'OK = usar a localização ATUAL deste aparelho (GPS)\n' +
+            'Cancelar = colar coordenadas ou link do Google Maps'
+        );
+        if (opcao) {
+            if (!navigator.geolocation) {
+                alert('Seu aparelho não suporta GPS neste navegador.');
+                return;
+            }
+            var msg = document.getElementById('msgFut');
+            if (msg) { msg.classList.remove('hidden'); msg.textContent = 'Obtendo GPS…'; }
+            navigator.geolocation.getCurrentPosition(
+                function (pos) {
+                    var nomeAnterior = '';
+                    try {
+                        var regA = (typeof localFutebolNaData === 'function') ? localFutebolNaData(dataAlvoFut()) : null;
+                        if (regA && regA.local) nomeAnterior = regA.local;
+                    } catch (eN) {}
+                    var nome = prompt(
+                        'Nome do campo / local (será salvo junto com o GPS):',
+                        nomeAnterior || 'Campo / local do jogo'
+                    );
+                    if (nome === null) return;
+                    nome = String(nome).trim();
+                    if (!nome) {
+                        alert('Informe o nome do campo para salvar junto com a localização.');
+                        return;
+                    }
+                    var r = salvarGpsFut(pos.coords.latitude, pos.coords.longitude, nome);
+                    if (msg) {
+                        msg.classList.remove('hidden');
+                        msg.className = 'text-xs ' + (r.sucesso ? 'text-green-600' : 'text-red-600');
+                        msg.textContent = r.mensagem || (r.sucesso ? 'Salvo!' : 'Erro');
+                    }
+                    if (r.sucesso) {
+                        if (r.inalterado) {
+                            alert('Esta localização já era a salva.\nNada foi alterado.');
+                        } else {
+                            alert('✅ ' + (r.mensagem || 'Localização salva!') + '\nO "Como Chegar" já usa este ponto.');
+                        }
+                        atualizarUiFut();
+                        if (typeof mostrarAlertaDoDia === 'function') try { mostrarAlertaDoDia(); } catch (e) {}
+                    } else {
+                        alert(r.mensagem || 'Não foi possível salvar.');
+                    }
+                },
+                function () {
+                    if (msg) { msg.classList.remove('hidden'); msg.className = 'text-xs text-red-600'; msg.textContent = 'Não foi possível obter o GPS.'; }
+                    alert('Não foi possível obter o GPS. Tente novamente ou cole o link do Maps.');
+                },
+                { enableHighAccuracy: true, timeout: 15000 }
+            );
+        } else {
+            var texto = prompt(
+                'Cole o link do Google Maps ou as coordenadas (ex: -14.4123, -56.4481)\npara o futebol de ' + br + ':'
+            );
+            if (!texto) return;
+            var lat = null, lng = null;
+            var mAt = texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+            var mQ = texto.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+            var m3d = texto.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+            var mPar = texto.match(/(-?\d+\.\d+)\s*[,;\s]\s*(-?\d+\.\d+)/);
+            if (mAt) { lat = parseFloat(mAt[1]); lng = parseFloat(mAt[2]); }
+            else if (mQ) { lat = parseFloat(mQ[1]); lng = parseFloat(mQ[2]); }
+            else if (m3d) { lat = parseFloat(m3d[1]); lng = parseFloat(m3d[2]); }
+            else if (mPar) { lat = parseFloat(mPar[1]); lng = parseFloat(mPar[2]); }
+            if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) {
+                alert('Não entendi as coordenadas. Use o formato -14.41, -56.44 ou um link do Google Maps.');
+                return;
+            }
+            var nomeAnt2 = '';
+            try {
+                var regB = (typeof localFutebolNaData === 'function') ? localFutebolNaData(dataAlvoFut()) : null;
+                if (regB && regB.local) nomeAnt2 = regB.local;
+            } catch (eB) {}
+            var nome2 = prompt('Nome do campo / local (será salvo junto com o ponto):', nomeAnt2 || 'Campo / local do jogo');
+            if (nome2 === null) return;
+            nome2 = String(nome2).trim();
+            if (!nome2) {
+                alert('Informe o nome do campo para salvar junto com a localização.');
+                return;
+            }
+            var r2 = salvarGpsFut(lat, lng, nome2);
+            if (r2.sucesso) {
+                if (r2.inalterado) alert('Esta localização já era a salva.\nNada foi alterado.');
+                else alert('✅ ' + (r2.mensagem || 'Localização salva!') + '\nO "Como Chegar" já usa este ponto.');
+                atualizarUiFut();
+            } else {
+                alert(r2.mensagem || 'Erro ao salvar.');
+            }
+        }
+    }
+    function initFut() {
+        atualizarUiFut();
+        setTimeout(atualizarUiFut, 800);
+        setTimeout(atualizarUiFut, 2000);
+        var btn = document.getElementById('btnAtualizarLocFut');
+        if (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                pedirLocalizacaoFutbol();
+            });
+        }
+    }
+    // Clique garantido (mesmo padrão das células)
+    document.addEventListener('click', function (ev) {
+        var t = ev.target.closest && ev.target.closest('#btnAtualizarLocFut');
+        if (!t) return;
+        ev.preventDefault();
+        pedirLocalizacaoFutbol();
+    }, true);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(initFut, 400); });
+    } else {
+        setTimeout(initFut, 400);
+    }
 })();
 </script>
+
 
 
 </body>

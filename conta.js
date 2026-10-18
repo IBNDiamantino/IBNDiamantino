@@ -3783,10 +3783,16 @@ function salvarAgendaFutebol(lista) {
 }
 function podeGerenciarAgendaFutebol(u) {
     u = u || (typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null);
+    if (!u) {
+        try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { u = null; }
+    }
     if (!u) return false;
-    // Gestão pode, mas NÃO é obrigatória: qualquer líder do ministério Homens publica sozinho
+    // Gestão / adm — formulário de local aparece para setar/ajustar
+    if (u.nivel === 'admin' || u.nivel === 'gestor') return true;
     if (typeof isAdmin === 'function' && isAdmin(u)) return true;
     if (typeof isGestor === 'function' && isGestor(u)) return true;
+    var usr = String(u.usuario || '').toLowerCase();
+    if (usr === 'gestor' || usr === 'admin' || usr === 'adm') return true;
     if (typeof eLiderDoMinisterio === 'function' && eLiderDoMinisterio(u, 'Homens')) return true;
     if (typeof ministeriosQueLidera === 'function') {
         var mins = ministeriosQueLidera(u) || [];
@@ -3811,15 +3817,26 @@ function localFutebolNaData(dataIso) {
 function textoLocalFutebolParaData(dataIso) {
     var r = localFutebolNaData(dataIso);
     if (!r) return 'Local ainda não definido — procure o líder do ministério de Homens.';
-    var partes = [];
-    if (r.local) partes.push(r.local);
-    if (r.obs && r.obs !== r.local) partes.push(r.obs);
-    else if (r.endereco && r.endereco !== r.local) partes.push(r.endereco);
-    if (!partes.length && (r.maps || (r.lat != null && r.lng != null))) partes.push('local no mapa');
-    return partes.length ? partes.join(' — ') : 'Local ainda não definido — procure o líder do ministério de Homens.';
+    // Nome do campo é o principal; GPS fica no "Como Chegar"
+    if (r.local && String(r.local).trim()) {
+        var extra = '';
+        if (r.obs && r.obs !== r.local) extra = ' — ' + r.obs;
+        return String(r.local).trim() + extra;
+    }
+    if (r.endereco && String(r.endereco).trim()) return String(r.endereco).trim();
+    if (r.maps || (r.lat != null && r.lng != null)) return 'Local no mapa (sem nome do campo)';
+    return 'Local ainda não definido — procure o líder do ministério de Homens.';
+}
+function _coordsQuaseIguais(aLat, aLng, bLat, bLng) {
+    if (aLat == null || aLng == null || bLat == null || bLng == null) return false;
+    // ~15 metros
+    return Math.abs(Number(aLat) - Number(bLat)) < 0.00015 && Math.abs(Number(aLng) - Number(bLng)) < 0.00015;
 }
 function salvarLocalFutebol(dados) {
     var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+    if (!u) {
+        try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { u = null; }
+    }
     if (!podeGerenciarAgendaFutebol(u)) return { sucesso: false, mensagem: 'Sem permissão. Líder do ministério de Homens, admin ou gestor.' };
     var data = String((dados && dados.data) || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { sucesso: false, mensagem: 'Informe a data do jogo.' };
@@ -3832,9 +3849,35 @@ function salvarLocalFutebol(dados) {
     if (!local && !maps && (lat == null || lng == null)) {
         return { sucesso: false, mensagem: 'Informe o nome do local e, se possível, use o GPS no campo.' };
     }
-    if (!local) local = 'Local do jogo';
+    if (!local) return { sucesso: false, mensagem: 'Informe o nome do campo / local para salvar junto com a localização.' };
     var lista = lerAgendaFutebol();
     var idx = lista.findIndex(function (x) { return x && String(x.data).slice(0, 10) === data; });
+    var anterior = idx >= 0 ? lista[idx] : null;
+    // Se já existe e GPS/nome são iguais → não grava de novo
+    if (anterior) {
+        var mesmoNome = String(anterior.local || '').trim().toLowerCase() === local.toLowerCase();
+        var mesmoGps = _coordsQuaseIguais(anterior.lat, anterior.lng, lat, lng);
+        if (mesmoNome && (mesmoGps || (lat == null && anterior.lat == null))) {
+            return {
+                sucesso: true,
+                inalterado: true,
+                mensagem: 'Localização igual à anterior — nada a alterar.',
+                registro: anterior
+            };
+        }
+    }
+    var historico = (anterior && Array.isArray(anterior.historico)) ? anterior.historico.slice() : [];
+    if (anterior && (anterior.lat != null || anterior.local)) {
+        historico.push({
+            local: anterior.local,
+            lat: anterior.lat,
+            lng: anterior.lng,
+            maps: anterior.maps,
+            em: anterior.atualizadoEm || null
+        });
+        // limita histórico
+        if (historico.length > 12) historico = historico.slice(-12);
+    }
     var reg = {
         data: data,
         local: local,
@@ -3843,15 +3886,23 @@ function salvarLocalFutebol(dados) {
         lat: lat,
         lng: lng,
         obs: String((dados && dados.obs) || endereco || '').trim(),
+        historico: historico,
         autorId: u && u.id,
-        autorNome: (u && u.nome) || '',
+        autorNome: (u && (u.nome || u.usuario)) || '',
         atualizadoEm: new Date().toISOString()
     };
     if (idx >= 0) lista[idx] = reg;
     else lista.push(reg);
     lista.sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });
     salvarAgendaFutebol(lista);
-    return { sucesso: true, mensagem: 'Local salvo na lista.', registro: reg };
+    return {
+        sucesso: true,
+        inalterado: false,
+        mensagem: anterior
+            ? 'Localização atualizada (era diferente da anterior).'
+            : 'Local salvo na lista.',
+        registro: reg
+    };
 }
 function removerLocalFutebol(dataIso) {
     var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;

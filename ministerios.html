@@ -128,10 +128,15 @@
                     <h3 class="font-bold text-lg text-primary">Homens</h3>
                     <p class="text-gray-600 text-sm mt-2 leading-relaxed desc-ministerio" data-desc-slug="homens">Forma homens de caráter, fé e responsabilidade para a família, a igreja e a sociedade.
                     </p><div class="mt-4 flex flex-col gap-2" data-ministerio-slug="homens"><a href="fotos.html?ministerio=homens" class="block w-full text-center bg-secondary text-primary py-2 rounded-lg font-bold hover:bg-yellow-400 transition text-sm"><i class="fa fa-camera"></i> Ver o que acontece</a><button type="button" class="btn-faca-parte w-full text-center border-2 border-primary text-primary py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition text-sm" data-slug="homens"><i class="fa fa-hand-o-right"></i> Faça parte</button></div>
-                </div>
-            </div>
-
-            <!-- 5. Intercessão -->
+                    <div id="blocoLocalFutebolMin" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-left">
+                        <p class="text-xs font-bold text-primary mb-1">⚽ Futebol dos Homens (segundas)</p>
+                        <p id="txtLocalFutMin" class="text-sm text-gray-700 mb-2">Local a confirmar</p>
+                        <div class="flex flex-wrap gap-2">
+                            <a id="linkChegarFutMin" href="#" target="_blank" class="hidden text-xs font-bold bg-secondary text-primary px-3 py-1.5 rounded-lg">Como Chegar</a>
+                            <button type="button" id="btnAtualizarLocFutMin" class="text-xs border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg font-semibold">📍 Atualizar localização</button>
+                        </div>
+                    </div>
+<!-- 5. Intercessão -->
             <div class="card-ministro bg-white rounded-xl shadow-md overflow-hidden">
                 <div class="h-32 bg-indigo-700 flex items-center justify-center text-white text-4xl">
                     <i class="fa fa-hands"></i>
@@ -1537,6 +1542,82 @@
     </div>
   </div>
 </div>
+
+
+<script src="conta.js"></script>
+<script>
+(function(){
+    function dataAlvo() {
+        var d = new Date();
+        if (d.getDay() === 1) return d.toISOString().slice(0,10);
+        if (typeof proximasSegundas === 'function') return proximasSegundas(1)[0];
+        while (d.getDay() !== 1) d.setDate(d.getDate()+1);
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    }
+    function pode() {
+        try { if (typeof podeGerenciarAgendaFutebol === 'function' && podeGerenciarAgendaFutebol()) return true; } catch(e){}
+        try {
+            var u = (typeof getUsuarioLogado==='function')?getUsuarioLogado():null;
+            if (!u) u = JSON.parse(localStorage.getItem('usuarioLogado')||'null');
+            if (!u) return false;
+            var n = String(u.nivel||'').toLowerCase();
+            return n==='admin'||n==='gestor'||String(u.usuario||'').toLowerCase()==='gestor';
+        } catch(e2){ return false; }
+    }
+    function ui() {
+        var el = document.getElementById('txtLocalFutMin');
+        var link = document.getElementById('linkChegarFutMin');
+        var alvo = dataAlvo();
+        var reg = (typeof localFutebolNaData==='function') ? localFutebolNaData(alvo) : null;
+        if (reg && (reg.local || reg.lat!=null)) {
+            if (el) el.textContent = (reg.local||'Local no mapa') + (reg.obs?(' — '+reg.obs):'');
+            if (link && reg.lat!=null && reg.lng!=null) {
+                link.href = 'https://www.google.com/maps/dir/?api=1&destination='+reg.lat+','+reg.lng+'&travelmode=driving';
+                link.classList.remove('hidden');
+            }
+        } else if (el) {
+            el.textContent = (typeof textoLocalFutebolParaData==='function') ? textoLocalFutebolParaData(alvo) : 'Local a confirmar';
+        }
+    }
+    function salvar(lat,lng,nome) {
+        if (typeof salvarLocalFutebol === 'function') {
+            return salvarLocalFutebol({ data: dataAlvo(), local: nome||'Campo / local do jogo', lat: lat, lng: lng, maps: 'https://www.google.com/maps?q='+lat+','+lng });
+        }
+        return { sucesso:false, mensagem:'conta.js desatualizado' };
+    }
+    function pedir() {
+        if (!pode()) { alert('Somente líder Homens, admin ou gestor.'); return; }
+        var ok = confirm('OK = GPS deste aparelho\nCancelar = colar link/coordenadas do Maps');
+        if (ok) {
+            if (!navigator.geolocation) { alert('GPS indisponível'); return; }
+            navigator.geolocation.getCurrentPosition(function(pos){
+                var nome = prompt('Nome do campo / local (salvo junto com o GPS):','Campo / local do jogo');
+                if (nome===null) return;
+                var r = salvar(pos.coords.latitude, pos.coords.longitude, nome);
+                alert(r.sucesso ? '✅ Local salvo!' : (r.mensagem||'Erro'));
+                ui();
+            }, function(){ alert('Não foi possível obter GPS'); }, { enableHighAccuracy:true, timeout:15000 });
+        } else {
+            var texto = prompt('Cole link do Google Maps ou coordenadas:');
+            if (!texto) return;
+            var lat=null,lng=null;
+            var m = texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || texto.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || texto.match(/(-?\d+\.\d+)\s*[,;\s]\s*(-?\d+\.\d+)/);
+            if (m) { lat=parseFloat(m[1]); lng=parseFloat(m[2]); }
+            if (lat==null) { alert('Coordenadas inválidas'); return; }
+            var nome2 = prompt('Nome do campo / local (salvo junto com o ponto):','Campo / local do jogo');
+            if (nome2===null) return;
+            var r2 = salvar(lat,lng,nome2);
+            alert(r2.sucesso ? '✅ Local salvo!' : (r2.mensagem||'Erro'));
+            ui();
+        }
+    }
+    document.addEventListener('click', function(ev){
+        if (ev.target.closest && ev.target.closest('#btnAtualizarLocFutMin')) { ev.preventDefault(); pedir(); }
+    }, true);
+    setTimeout(ui, 400);
+    setTimeout(ui, 1500);
+})();
+</script>
 
 </body>
 </html>
