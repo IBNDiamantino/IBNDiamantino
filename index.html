@@ -400,8 +400,8 @@
                                 <div>
                                     <label class="block text-[10px] md:text-xs font-bold text-primary mb-0.5">Versão</label>
                                     <select id="bibHomeVersao" class="w-full border border-gray-300 rounded-lg px-2 py-2 md:px-3 md:py-2.5 text-xs md:text-sm bg-white">
-                                        <option value="nvi" selected>NVI</option>
-                                        <option value="naa">NAA</option>
+                                        <option value="naa" selected>NAA</option>
+                                        <option value="nvi">NVI</option>
                                         <option value="acf">ACF</option>
                                     </select>
                                 </div>
@@ -2880,7 +2880,7 @@
         bibData.forEach(function (b, idx) {
             var o = document.createElement('option');
             o.value = String(idx);
-            o.textContent = nomeLivro(b.abbrev || '') || ('Livro ' + (idx + 1));
+            o.textContent = (b.name || nomeLivro(b.abbrev || '') || ('Livro ' + (idx + 1)));
             selL.appendChild(o);
         });
         selL.disabled = false;
@@ -2927,32 +2927,46 @@
     function carregar(versao) {
         if (carregando) return;
         carregando = true;
-        setStatus('Carregando Bíblia…', true);
+        bibData = null;
+        if (selL) {
+            selL.innerHTML = '<option value="">Carregando livros…</option>';
+            selL.disabled = true;
+        }
+        setStatus('Carregando Bíblia (' + String(versao || '').toUpperCase() + ')… aguarde alguns segundos.', true);
         var arq = arquivoVersao(versao);
-        fetch(arq).then(function (r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        }).then(function (data) {
+        fetch(arq, { cache: 'force-cache' }).then(function (r) {
+            if (!r.ok) throw new Error('Arquivo não encontrado: ' + arq + ' (HTTP ' + r.status + ')');
+            return r.text();
+        }).then(function (txt) {
+            // remove BOM se existir
+            if (txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);
+            var data = JSON.parse(txt);
             bibData = Array.isArray(data) ? data : (data.books || data.livros || null);
-            if (!bibData) throw new Error('Formato inválido');
+            if (!bibData || !bibData.length) throw new Error('Formato inválido em ' + arq);
             preencherLivros();
             setStatus('Selecione livro, capítulo e versículo.', true);
             if (elMsg) elMsg.textContent = 'Role com o dedo ou com a rodinha do mouse. Sem rolagem automática.';
             carregando = false;
         }).catch(function (err) {
             carregando = false;
-            setStatus('Não foi possível carregar a Bíblia (' + arq + ').', false);
+            bibData = null;
+            if (selL) {
+                selL.innerHTML = '<option value="">Falha ao carregar</option>';
+                selL.disabled = true;
+            }
+            setStatus('Não carregou ' + arq + '. Confira se o arquivo está no GitHub.', false);
             if (elMsg) elMsg.textContent = String(err && err.message || err);
         });
     }
     function iniciar() {
         if (bibData || carregando) return;
-        carregar(selV.value || 'nvi');
+        carregar(selV.value || 'naa');
     }
 
     selV.addEventListener('change', function () {
+        carregando = false;
         bibData = null;
-        carregar(selV.value || 'nvi');
+        carregar(selV.value || 'naa');
     });
     selL.addEventListener('change', function () {
         preencherCapitulos(false);
