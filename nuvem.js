@@ -199,6 +199,25 @@ const IBNNuvem = (function () {
                 }
                 if (!porId[id].senha && senhaLocal) porId[id].senha = senhaLocal;
                 if (!porId[id].respostaSeguranca && respLocal) porId[id].respostaSeguranca = respLocal;
+                // Nunca rebaixar admin/gestor por causa de cópia antiga no outro aparelho
+                (function preservarNivelGestao(a, b, dest) {
+                    var rank = function (n) {
+                        n = String(n || '').toLowerCase();
+                        if (n === 'gestor') return 3;
+                        if (n === 'admin') return 2;
+                        return 1;
+                    };
+                    var best = rank(a && a.nivel) >= rank(b && b.nivel) ? (a && a.nivel) : (b && b.nivel);
+                    if (rank(best) >= 2) {
+                        dest.nivel = best;
+                        if (best === 'admin' && (!dest.cargo || /membro/i.test(String(dest.cargo)))) {
+                            dest.cargo = dest.cargo && !/membro/i.test(String(dest.cargo)) ? dest.cargo : 'Secretaria / Admin';
+                        }
+                        if (best === 'gestor' && (!dest.cargo || /membro/i.test(String(dest.cargo)))) {
+                            dest.cargo = dest.cargo && !/membro/i.test(String(dest.cargo)) ? dest.cargo : 'Pastor / Gestor';
+                        }
+                    }
+                })(loc, m, porId[id]);
             });
             let mesclada = Object.keys(porId).map(function (k) { return porId[k]; });
             mesclada = mesclada.filter(function (m) { return !ehSistema(m) && !foiExcl(m); });

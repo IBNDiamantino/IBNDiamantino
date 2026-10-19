@@ -177,13 +177,8 @@ const CONTAS_MESTRAS = [
 ];
 
 function salvarMembros(lista) {
-    // Garante data de atualização para a nuvem prevalecer no outro aparelho
-    var agoraStamp = new Date().toISOString();
-    if (Array.isArray(lista)) {
-        lista.forEach(function (m) {
-            if (m && typeof m === 'object') m.atualizadoEm = agoraStamp;
-        });
-    }
+    // NÃO carimba todos: isso fazia aparelho antigo “ganhar” e rebaixar admin/gestor na nuvem.
+    // Quem altera um membro deve chamar marcarMembroAtualizado(m) antes.
     var limpa = (lista || []).filter(function (m) {
         if (!m) return false;
         try { if (isContaSistema(m)) return false; } catch (e) {}
@@ -914,7 +909,7 @@ function nomearComoAdmin(membroId) {
         return { sucesso: false, mensagem: 'Limite de ' + LIMITE_ADMINS + ' administradores atingido. Remova um antes de nomear outro.' };
     }
     lista[idx].nivel = 'admin';
-    lista[idx].cargo = lista[idx].cargo || 'Secretaria';
+    lista[idx].cargo = 'Secretaria';
     lista[idx].status = 'aprovado';
     if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(lista[idx]);
     salvarMembros(lista);
@@ -2518,7 +2513,16 @@ function deduplicarMembrosLocais() {
         }
         // Mantém o que tem mais dados / id mais antigo como principal e mescla e-mails
         const atual = porChave[k];
-        const prefer = (m.dataCadastro || '') > (atual.dataCadastro || '') ? m : atual;
+        const rankN = function (n) {
+            n = String((n && n.nivel) || '').toLowerCase();
+            if (n === 'gestor') return 3;
+            if (n === 'admin') return 2;
+            return 1;
+        };
+        var prefer = (m.dataCadastro || '') > (atual.dataCadastro || '') ? m : atual;
+        // Se um é admin/gestor, esse prevalece no nível
+        if (rankN(m) > rankN(prefer)) prefer = m;
+        if (rankN(atual) > rankN(prefer)) prefer = atual;
         const outro = prefer === m ? atual : m;
         prefer.telefone = prefer.telefone || outro.telefone;
         prefer.email = prefer.email || outro.email;
@@ -2526,6 +2530,12 @@ function deduplicarMembrosLocais() {
         prefer.municipio = prefer.municipio || outro.municipio;
         if ((!prefer.celulas || !prefer.celulas.length) && outro.celulas) prefer.celulas = outro.celulas;
         if ((!prefer.ministerios || !prefer.ministerios.length) && outro.ministerios) prefer.ministerios = outro.ministerios;
+        if (rankN(outro) > rankN(prefer)) {
+            prefer.nivel = outro.nivel;
+            prefer.cargo = outro.cargo || prefer.cargo;
+        } else if (rankN(outro) === rankN(prefer) && rankN(prefer) >= 2) {
+            prefer.cargo = prefer.cargo || outro.cargo;
+        }
         porChave[k] = prefer;
     });
     const nova = semChave.concat(Object.keys(porChave).map(function (k) { return porChave[k]; }));

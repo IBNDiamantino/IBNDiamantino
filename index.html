@@ -277,7 +277,7 @@
                 <a href="ministerios.html" class="hover:text-secondary transition-colors">Ministérios</a>
                 <a href="fotos.html" class="hover:text-secondary transition-colors">Fotos</a>
                 <a href="#biblia" class="hover:text-secondary transition-colors">Bíblia</a>
-                <a href="#aniversariantes" id="linkMenuAniv" class="hover:text-secondary transition">Aniversariantes</a>
+                <a href="#aniversariantes" id="linkMenuAniv" role="button" class="hover:text-secondary transition">Aniversariantes</a>
                 <a href="#devocional" class="hover:text-secondary transition-colors">Devocional</a>
                 <a href="#oracao" class="hover:text-secondary transition-colors flex items-center gap-1">
                     <i class="fa fa-heart text-xs"></i> Oração
@@ -316,7 +316,7 @@
                 <a href="eventos.html" class="menu-link py-3 border-b border-white/15 font-bold" style="color:#D4AF37;">Eventos</a>
                 <a href="ministerios.html" class="menu-link py-3 border-b border-white/15">Ministérios</a>
                 <a href="#biblia" class="menu-link py-3 border-b border-white/15">Bíblia</a>
-                    <a href="#aniversariantes" id="linkMenuAnivMobile" class="block py-2 hover:text-secondary">Aniversariantes</a>
+                    <a href="#aniversariantes" id="linkMenuAnivMobile" role="button" class="block py-2 hover:text-secondary">Aniversariantes</a>
                 <a href="#devocional" class="menu-link py-3 border-b border-white/15">Devocional</a>
                 <a href="#oracao" class="menu-link py-3 border-b border-white/15">Oração</a>
                 <a href="adminlogin.html" id="linkGestaoMobile" class="menu-link py-3 border-b border-white/15 hidden font-semibold">Gestão</a>
@@ -3013,5 +3013,209 @@
 })();
 </script>
 
+<script>
+if (typeof getUsuarioLogado !== 'function') return null;
+        return getUsuarioLogado();
+    }
+    window.abrirModalAniv = function abrirModalAniv() {
+        var m = document.getElementById('modalAniversariantes');
+        if (!m) return;
+        var u = soMembros();
+        if (!u) {
+            alert('Faça login como membro para ver os aniversariantes.');
+            return;
+        }
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+        renderAniv();
+    }
+    function fecharModalAniv() {
+        var m = document.getElementById('modalAniversariantes');
+        if (!m) return;
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+    }
+    function selecionarDest(a) {
+        destAtual = a;
+        var box = document.getElementById('boxEnviarAniv');
+        var u = soMembros();
+        if (!box || !u) return;
+        box.classList.remove('hidden');
+        document.getElementById('nomeDestAniv').textContent = a.nome + (a.idade ? ' (' + a.idade + ' anos)' : '');
+        document.getElementById('textoMsgAniv').value = mensagemAniversarioPadrao(a.nome, u.nome);
+        box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function renderAniv() {
+        var u = soMembros();
+        if (!u || typeof listarAniversariantesHoje !== 'function') return;
+        var hoje = listarAniversariantesHoje();
+        var prox = listarProximosAniversariantes(8);
+        var boxHoje = document.getElementById('listaAnivHoje');
+        var boxProx = document.getElementById('listaAnivProx');
+        var boxProp = document.getElementById('boxAnivProprio');
+        if (ehAniversarioHojeMembro(u)) {
+            boxProp.classList.remove('hidden');
+            document.getElementById('nomeAnivProprio').textContent = (u.nome || '').split(' ')[0];
+        } else {
+            boxProp.classList.add('hidden');
+        }
+        if (!hoje.length) {
+            boxHoje.innerHTML = '<p class="text-gray-400">Nenhum aniversariante hoje.</p>';
+        } else {
+            boxHoje.innerHTML = hoje.map(function(a){
+                var eu = String(a.id) === String(u.id);
+                return '<div class="flex flex-wrap items-center justify-between gap-2 border rounded-lg px-3 py-2 bg-pink-50/80">' +
+                    '<div><span class="font-bold text-primary">' + (a.nome||'').replace(/</g,'&lt;') + '</span>' +
+                    (a.idade ? ' <span class="text-xs text-gray-500">· ' + a.idade + ' anos</span>' : '') +
+                    (eu ? ' <span class="text-xs font-bold text-pink-600">· é você!</span>' : '') +
+                    '</div>' +
+                    (eu ? '' : '<button type="button" data-id="'+a.id+'" class="btnHomenagear text-xs font-bold bg-pink-600 text-white px-3 py-1.5 rounded-lg hover:bg-pink-700">Homenagear</button>') +
+                    '</div>';
+            }).join('');
+        }
+        // próximos (exceto só hoje já listado — mostrar todos os dias com label)
+        var dias = prox.filter(function(d){ return d.diasAte > 0; });
+        if (!dias.length) {
+            boxProx.innerHTML = '<p class="text-gray-400">Nenhum aniversariante nos próximos 8 dias.</p>';
+        } else {
+            boxProx.innerHTML = dias.map(function(d){
+                return '<div class="border rounded-lg px-3 py-2">' +
+                    '<p class="text-xs font-bold text-secondary mb-1">' + d.dataBR + (d.diasAte === 1 ? ' (amanhã)' : ' (em ' + d.diasAte + ' dias)') + '</p>' +
+                    d.aniversariantes.map(function(a){
+                        return '<div class="flex flex-wrap items-center justify-between gap-2 py-1">' +
+                            '<span class="font-semibold text-primary">' + (a.nome||'').replace(/</g,'&lt;') + '</span>' +
+                            '<button type="button" data-id="'+a.id+'" data-nome="'+String(a.nome||'').replace(/"/g,'&quot;')+'" class="btnHomenagear text-xs font-bold border border-pink-500 text-pink-700 px-2 py-1 rounded hover:bg-pink-50">Homenagear</button>' +
+                            '</div>';
+                    }).join('') +
+                    '</div>';
+            }).join('');
+        }
+        document.querySelectorAll('.btnHomenagear').forEach(function(btn){
+            btn.addEventListener('click', function(){
+                var id = btn.getAttribute('data-id');
+                var all = listarProximosAniversariantes(8);
+                var found = null;
+                all.forEach(function(d){
+                    d.aniversariantes.forEach(function(a){ if (String(a.id) === String(id)) found = a; });
+                });
+                if (found) selecionarDest(found);
+            });
+        });
+        // mensagem modelo sempre visível
+        var boxEnv = document.getElementById('boxEnviarAniv');
+        if (boxEnv) {
+            boxEnv.classList.remove('hidden');
+            if (!destAtual) {
+                var u0 = soMembros();
+                document.getElementById('textoMsgAniv').value = mensagemAniversarioPadrao('irmão(ã)', u0 && u0.nome);
+                var nd = document.getElementById('nomeDestAniv');
+                if (nd) nd.textContent = '(escolha alguém na lista quando houver)';
+            }
+        }
+    }
+    function initAniv() {
+        var u = soMembros();
+        if (!u || typeof listarAniversariantesHoje !== 'function') return;
+        var hoje = listarAniversariantesHoje();
+        var banner = document.getElementById('bannerAniversario');
+        var txt = document.getElementById('textoBannerAniv');
+        if (ehAniversarioHojeMembro(u)) {
+            banner.classList.remove('hidden');
+            txt.textContent = '🎉 Feliz aniversário, ' + (u.nome||'').split(' ')[0] + '! A IBN celebra com você.';
+            // auto-abre uma vez ao dia
+            try {
+                var k = 'ibn_aniv_visto_' + new Date().toISOString().slice(0,10) + '_' + u.id;
+                if (!localStorage.getItem(k)) {
+                    localStorage.setItem(k, '1');
+                    setTimeout(abrirModalAniv, 800);
+                }
+            } catch(e) {}
+        } else if (hoje.length) {
+            banner.classList.remove('hidden');
+            if (hoje.length === 1) txt.textContent = '🎂 Hoje é aniversário de ' + hoje[0].nome.split(' ')[0] + '!';
+            else txt.textContent = '🎂 Hoje temos ' + hoje.length + ' aniversariantes na família IBN!';
+        } else {
+            var prox = listarProximosAniversariantes(8).filter(function(d){ return d.diasAte > 0; });
+            if (prox.length) {
+                banner.classList.remove('hidden');
+                banner.classList.remove('from-pink-500', 'to-rose-500');
+                banner.classList.add('from-primary', 'to-primary');
+                var n = 0; prox.forEach(function(d){ n += d.aniversariantes.length; });
+                txt.textContent = '📅 ' + n + ' aniversariante(s) nos próximos 8 dias';
+            }
+        }
+        document.getElementById('btnAbrirAniv') && document.getElementById('btnAbrirAniv').addEventListener('click', function(e){ e.stopPropagation(); abrirModalAniv(); });
+        banner && banner.addEventListener('click', abrirModalAniv);
+        document.getElementById('btnFecharAniv') && document.getElementById('btnFecharAniv').addEventListener('click', fecharModalAniv);
+        document.querySelectorAll('a[href="#aniversariantes"], #linkMenuAniv, #linkMenuAnivMobile').forEach(function(a){
+            a.addEventListener('click', function(e){ e.preventDefault(); abrirModalAniv(); });
+        });
+        document.getElementById('btnVerMesAniv') && document.getElementById('btnVerMesAniv').addEventListener('click', function(){
+            var mes = parseInt((document.getElementById('selMesAniv') || {}).value, 10) || (new Date().getMonth() + 1);
+            var box = document.getElementById('listaAnivMes');
+            if (!box || typeof listarAniversariantesDoMes !== 'function') return;
+            var lista = listarAniversariantesDoMes(mes);
+            if (!lista.length) {
+                box.innerHTML = '<p class="text-gray-400">Nenhum aniversariante neste mês (com data de nascimento no cadastro).</p>';
+                return;
+            }
+            box.innerHTML = lista.map(function(a){
+                var dia = (a.nascimento || '').slice(8,10) || '';
+                return '<div class="flex justify-between items-center border-b border-gray-100 py-1"><span><strong>' + dia + '</strong> — ' + (a.nome || '') + (a.idade ? ' (' + a.idade + ')' : '') + '</span>' +
+                    (soMembros() ? '<button type="button" class="text-xs text-primary underline btn-homenagear-mes" data-id="' + a.id + '">Homenagear</button>' : '') + '</div>';
+            }).join('');
+            box.querySelectorAll('.btn-homenagear-mes').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    var id = btn.getAttribute('data-id');
+                    var a = lista.find(function(x){ return String(x.id) === String(id); });
+                    if (a) selecionarDest(a);
+                });
+            });
+        });
+        var modal = document.getElementById('modalAniversariantes');
+        if (modal) modal.addEventListener('click', function(ev){ if (ev.target === modal) fecharModalAniv(); });
+
+        document.getElementById('btnWaAniv') && document.getElementById('btnWaAniv').addEventListener('click', function(){
+            if (!destAtual) return;
+            var u = soMembros();
+            var texto = document.getElementById('textoMsgAniv').value.trim();
+            if (!texto) return alert('Escreva uma mensagem.');
+            registrarMensagemAniversarioLocal(u && u.id, u && u.nome, destAtual.id, destAtual.nome, texto);
+            var link = linkWhatsAppAniversario(destAtual.telefone, texto);
+            var st = document.getElementById('msgAnivStatus');
+            if (!link) {
+                st.textContent = 'Este membro não tem telefone cadastrado. Use "Copiar mensagem".';
+                st.className = 'text-xs text-center text-amber-700';
+                st.classList.remove('hidden');
+                return;
+            }
+            st.textContent = 'Abrindo WhatsApp...';
+            st.className = 'text-xs text-center text-green-600';
+            st.classList.remove('hidden');
+            window.open(link, '_blank');
+        });
+        document.getElementById('btnCopiarAniv') && document.getElementById('btnCopiarAniv').addEventListener('click', function(){
+            var texto = document.getElementById('textoMsgAniv').value.trim();
+            var u = soMembros();
+            if (destAtual && u) registrarMensagemAniversarioLocal(u.id, u.nome, destAtual.id, destAtual.nome, texto);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(texto).then(function(){
+                    var st = document.getElementById('msgAnivStatus');
+                    st.textContent = 'Mensagem copiada!';
+                    st.className = 'text-xs text-center text-green-600';
+                    st.classList.remove('hidden');
+                });
+            } else {
+                alert('Copie a mensagem manualmente.');
+            }
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){
+        initAniv();
+        if (location.hash && location.hash.indexOf('aniversariantes') !== -1) setTimeout(abrirModalAniv, 600);
+    }, 400); });
+    else setTimeout(initAniv, 400);
+})();
+</script>
 </body>
 </html>
