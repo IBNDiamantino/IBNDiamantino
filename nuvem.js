@@ -995,8 +995,64 @@ const IBNNuvem = (function () {
     }
 
 
+
+    var _syncTimer = null;
+    var _syncBusy = false;
+    async function sincronizarTudoDaNuvem(motivo) {
+        if (_syncBusy) return { sucesso: false, ocupado: true };
+        _syncBusy = true;
+        try {
+            try { await puxarMembrosParaLocal(); } catch (e1) {}
+            try { await puxarExcluidosParaLocal(); } catch (e2) {}
+            try { if (typeof puxarEscalasParaLocal === 'function') await puxarEscalasParaLocal(); } catch (e3) {}
+            try { if (typeof puxarEscalasCelulaParaLocal === 'function') await puxarEscalasCelulaParaLocal(); } catch (e4) {}
+            try { if (typeof puxarFotosParaLocal === 'function') await puxarFotosParaLocal(); } catch (e5) {}
+            try { if (typeof puxarFotosCelulasParaLocal === 'function') await puxarFotosCelulasParaLocal(); } catch (e6) {}
+            try {
+                if (db) {
+                    var snapA = await db.collection('config').doc('agenda_futebol_homens').get();
+                    if (snapA.exists) {
+                        var d = snapA.data() || {};
+                        var lista = d.itens || d.lista || [];
+                        if (Array.isArray(lista)) localStorage.setItem('ibn_agenda_futebol_homens', JSON.stringify(lista));
+                    }
+                    var snapC = await db.collection('config').doc('catalogo_futebol_homens').get();
+                    if (snapC.exists) {
+                        var dc = snapC.data() || {};
+                        var itens = dc.itens || [];
+                        if (Array.isArray(itens)) localStorage.setItem('ibn_catalogo_locais_futebol', JSON.stringify(itens));
+                    }
+                }
+            } catch (e7) {}
+            try { window.dispatchEvent(new CustomEvent('ibn-nuvem-sincronizado', { detail: { motivo: motivo || '' } })); } catch (e8) {}
+            return { sucesso: true };
+        } finally {
+            _syncBusy = false;
+        }
+    }
+    function agendarSincronizacaoPeriodica() {
+        setTimeout(function () { sincronizarTudoDaNuvem('inicio'); }, 1500);
+        if (_syncTimer) clearInterval(_syncTimer);
+        _syncTimer = setInterval(function () { sincronizarTudoDaNuvem('periodico'); }, 90000);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'visible') sincronizarTudoDaNuvem('foco');
+        });
+        window.addEventListener('focus', function () { sincronizarTudoDaNuvem('focus'); });
+    }
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                setTimeout(function () { try { iniciar(); } catch (e) {} agendarSincronizacaoPeriodica(); }, 500);
+            });
+        } else {
+            setTimeout(function () { try { iniciar(); } catch (e) {} agendarSincronizacaoPeriodica(); }, 500);
+        }
+    }
+
     return {
         iniciar: iniciar,
+        sincronizarTudoDaNuvem: sincronizarTudoDaNuvem,
+        agendarSincronizacaoPeriodica: agendarSincronizacaoPeriodica,
         status: status,
         sincronizarMembros: sincronizarMembros,
         sincronizarUmMembro: sincronizarUmMembro,

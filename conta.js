@@ -177,6 +177,13 @@ const CONTAS_MESTRAS = [
 ];
 
 function salvarMembros(lista) {
+    // Garante data de atualização para a nuvem prevalecer no outro aparelho
+    var agoraStamp = new Date().toISOString();
+    if (Array.isArray(lista)) {
+        lista.forEach(function (m) {
+            if (m && typeof m === 'object') m.atualizadoEm = agoraStamp;
+        });
+    }
     var limpa = (lista || []).filter(function (m) {
         if (!m) return false;
         try { if (isContaSistema(m)) return false; } catch (e) {}
@@ -632,6 +639,10 @@ function iniciarSessao(membro) {
     try {
         if (typeof IBNNuvem !== 'undefined' && IBNNuvem.agendarSyncSessao) {
             IBNNuvem.agendarSyncSessao(membro, 800);
+            try {
+                if (IBNNuvem.sincronizarTudoDaNuvem) setTimeout(function(){ IBNNuvem.sincronizarTudoDaNuvem('login'); }, 1000);
+                else if (IBNNuvem.puxarMembrosParaLocal) setTimeout(function(){ IBNNuvem.puxarMembrosParaLocal(); }, 1000);
+            } catch (eLoginSync) {}
         }
     } catch (e) {}
 }
