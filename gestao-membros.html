@@ -267,19 +267,38 @@
         function listarPendenciasMembro(m) {
             var itens = [];
             var st = (m.status || '').toLowerCase();
+            var nivel = String(m.nivel || '').toLowerCase();
+            var cargo = String(m.cargo || '').toLowerCase();
+            // Gestor/pastor: participa de tudo; não exige ministério. Célula e liderança de célula seguem iguais aos demais.
+            var ehGestor = nivel === 'gestor' || cargo.indexOf('gestor') !== -1 ||
+                (typeof isGestor === 'function' && isGestor(m));
+            var ehAdminMaster = nivel === 'admin' && (String(m.usuario || '').toLowerCase() === 'admin' || String(m.nome || '').toLowerCase().indexOf('admin') === 0);
+
             if (st === 'pendente') itens.push('Cadastro aguardando aprovação / alocação');
             if (st === 'rejeitado') itens.push('Cadastro rejeitado');
             if (!(m.nascimento || m.dataNascimento)) itens.push('Falta data de nascimento');
             if (!String(m.telefone || '').replace(/\D/g, '')) itens.push('Falta telefone');
             if (!String(m.email || '').trim()) itens.push('Falta e-mail');
+            // Célula: vale para todos (incluindo gestor — ele tem a célula dele)
             if (!Array.isArray(m.celulas) || !m.celulas.length) itens.push('Sem célula vinculada');
-            if (!Array.isArray(m.ministerios) || !m.ministerios.length) itens.push('Sem ministério (opcional)');
+            // Ministério: não cobra gestor (pastor) nem contas master de sistema
+            if (!ehGestor && !ehAdminMaster) {
+                if (!Array.isArray(m.ministerios) || !m.ministerios.length) itens.push('Sem ministério (opcional)');
+            }
             if (!m.endereco && !m.municipio) itens.push('Falta endereço / município');
             if (m.deveTrocarSenha) itens.push('Precisa trocar senha temporária no próximo login');
-            if ((m.cargo === 'Líder de Célula' || m.nivel === 'lider_celula') && !m.lideraCelulaId && !(m.celulas || []).some(function(c){ return c.papel === 'lider'; })) {
-                itens.push('Marcado como líder de célula, mas célula de liderança não definida');
+            // Liderança de célula: mesma regra para gestor e demais líderes
+            if ((m.cargo === 'Líder de Célula' || m.nivel === 'lider_celula' ||
+                (Array.isArray(m.funcoes) && m.funcoes.indexOf('lider_celula') !== -1) ||
+                (m.celulas || []).some(function (c) { return String(c.papel || '').toLowerCase().indexOf('lider') !== -1; })
+                ) && !m.lideraCelulaId && !(m.celulas || []).some(function(c){ return String(c.papel || '').toLowerCase() === 'lider' || String(c.papel || '').toLowerCase() === 'líder'; })) {
+                // só alerta se está marcado explicitamente como líder sem célula de liderança
+                if (m.cargo === 'Líder de Célula' || m.nivel === 'lider_celula') {
+                    itens.push('Marcado como líder de célula, mas célula de liderança não definida');
+                }
             }
-            if ((m.cargo === 'Líder de Ministério' || m.nivel === 'lider_ministerio') && !(m.lideraMinisterios && m.lideraMinisterios.length) && !m.lideraMinisterio) {
+            // Líder de ministério: não aplica cobrança ao gestor (não é pendência de pastor)
+            if (!ehGestor && (m.cargo === 'Líder de Ministério' || m.nivel === 'lider_ministerio') && !(m.lideraMinisterios && m.lideraMinisterios.length) && !m.lideraMinisterio) {
                 itens.push('Marcado como líder de ministério, mas ministério de liderança não definido');
             }
             if (Array.isArray(m.funcoesSolicitadas) && m.funcoesSolicitadas.length) {
