@@ -856,8 +856,9 @@
                             <p class="text-[11px] text-indigo-700">${nPerg ? nPerg + ' pergunta(s) no formulário' : 'Sem formulário personalizado'}</p>
                             </div>
                         </div>
-                        <div class="flex gap-2 shrink-0">
-                            <button type="button" class="btn-edit-form-ev text-xs font-bold text-primary underline" data-idx="${idx}">Formulário</button>
+                        <div class="flex flex-wrap gap-2 shrink-0">
+                            <button type="button" class="btn-edit-ev text-xs font-bold text-primary underline" data-idx="${idx}">Editar</button>
+                            <button type="button" class="btn-edit-form-ev text-xs font-bold text-indigo-700 underline" data-idx="${idx}">Formulário</button>
                             <button type="button" class="btn-rm-ev text-red-500" data-idx="${idx}"><i class="fa fa-trash"></i></button>
                         </div>
                     </div>
@@ -877,6 +878,54 @@
                     var idx = parseInt(btn.getAttribute('data-idx'), 10);
                     if (!confirm('Remover evento?')) return;
                     var l = getEventos(); l.splice(idx, 1); salvarEventos(l);
+                };
+            });
+            container.querySelectorAll('.btn-edit-ev').forEach(function (btn) {
+                btn.onclick = function () {
+                    var idx = parseInt(btn.getAttribute('data-idx'), 10);
+                    var l = getEventos();
+                    var ev = l[idx];
+                    if (!ev) return;
+                    window._editandoEventoIdx = idx;
+                    document.getElementById('nomeEvento').value = ev.nome || '';
+                    document.getElementById('localEvento').value = ev.local || '';
+                    document.getElementById('valorEvento').value = ev.valor != null ? ev.valor : 0;
+                    document.getElementById('pixEvento').value = ev.pix || '';
+                    document.getElementById('formaEvento').value = ev.forma || ev.formaPagamento || '';
+                    document.getElementById('linkPagEvento').value = ev.linkPagamento || '';
+                    document.getElementById('fotoEvento').value = (ev.fotoUrl || (ev.foto && String(ev.foto).indexOf('http') === 0 ? ev.foto : '')) || '';
+                    document.getElementById('fotoEventoData').value = (ev.foto && String(ev.foto).indexOf('data:') === 0) ? ev.foto : '';
+                    document.getElementById('videoEvento').value = ev.video || '';
+                    document.getElementById('visitaEvento').checked = ev.visitantes !== false;
+                    var prev = document.getElementById('previewFotoEvento');
+                    if (prev && ev.foto) prev.innerHTML = '<img src="' + String(ev.foto).replace(/"/g,'') + '" class="w-full h-full object-cover" alt="">';
+                    // datas + horários
+                    var boxD = document.getElementById('boxDatasEvento');
+                    if (boxD) {
+                        var ds = (Array.isArray(ev.datas) && ev.datas.length) ? ev.datas : (ev.data ? [ev.data] : ['']);
+                        var hs = Array.isArray(ev.horarios) ? ev.horarios : [];
+                        boxD.innerHTML = ds.map(function (d, i) {
+                            var h = hs[i] || ev.horario || '';
+                            return '<div class="flex flex-wrap items-center gap-2 linha-data-ev">' +
+                                '<input type="date" class="data-evento-input p-2 border rounded-lg flex-1 min-w-[140px]" value="' + String(d).slice(0,10) + '" required>' +
+                                '<input type="time" class="hora-evento-input p-2 border rounded-lg w-[130px]" value="' + String(h).slice(0,5) + '" title="Horário">' +
+                                (i > 0 ? '<button type="button" class="btn-rm-data-ev text-red-600 text-xs font-bold px-2">Remover</button>' : '') +
+                                '</div>';
+                        }).join('');
+                        boxD.querySelectorAll('.btn-rm-data-ev').forEach(function (b) {
+                            b.onclick = function () { b.closest('.linha-data-ev').remove(); };
+                        });
+                    }
+                    // formulário
+                    formPerguntasRascunho = Array.isArray(ev.formulario) && ev.formulario.length
+                        ? JSON.parse(JSON.stringify(ev.formulario))
+                        : modeloFormSimples();
+                    renderEditorPerguntasForm();
+                    var btnSub = document.querySelector('#formEvento button[type="submit"]');
+                    if (btnSub) btnSub.innerHTML = '<i class="fa fa-save"></i> Salvar alterações do evento';
+                    var formEl = document.getElementById('formEvento');
+                    if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    alert('Evento carregado para edição. Altere o que precisar e clique em “Salvar alterações do evento”.');
                 };
             });
             function renderMiniEditor(box, perguntas) {
@@ -1193,8 +1242,7 @@
             var horarios = pares.map(function (p) { return p.horario || ''; });
             var fotoUrl = (document.getElementById('fotoEvento').value || '').trim();
             var fotoData = (document.getElementById('fotoEventoData').value || '').trim();
-            l.push({
-                id: 'ev-' + Date.now(),
+            var payload = {
                 nome: document.getElementById('nomeEvento').value.trim(),
                 data: datas[0],
                 datas: datas,
@@ -1210,8 +1258,18 @@
                 linkPagamento: (document.getElementById('linkPagEvento').value || '').trim(),
                 visitantes: document.getElementById('visitaEvento').checked,
                 formulario: coletarFormularioEvento()
-            });
+            };
+            var editIdx = (typeof window._editandoEventoIdx === 'number') ? window._editandoEventoIdx : -1;
+            if (editIdx >= 0 && l[editIdx]) {
+                // mantém id e o que não veio do form
+                payload.id = l[editIdx].id || ('ev-' + Date.now());
+                l[editIdx] = Object.assign({}, l[editIdx], payload);
+            } else {
+                payload.id = 'ev-' + Date.now();
+                l.push(payload);
+            }
             salvarEventos(l);
+            window._editandoEventoIdx = -1;
             formPerguntasRascunho = modeloFormSimples();
             renderEditorPerguntasForm();
             e.target.reset();
@@ -1223,6 +1281,8 @@
             if (boxD) {
                 boxD.innerHTML = '<div class="flex flex-wrap items-center gap-2 linha-data-ev"><input type="date" class="data-evento-input p-2 border rounded-lg flex-1 min-w-[140px]" required><input type="time" class="hora-evento-input p-2 border rounded-lg w-[130px]" title="Horário"></div>';
             }
+            var btnSub = document.querySelector('#formEvento button[type="submit"]');
+            if (btnSub) btnSub.innerHTML = '<i class="fa fa-plus"></i> Publicar evento';
         });
         document.getElementById('btnBaixarEventos').addEventListener('click', () => {
             const lista = getEventos();
@@ -1256,15 +1316,33 @@
                     (st === 'aguardando_conferencia' || i.comprovanteEnviado ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600');
                 var label = st === 'confirmado' ? 'Confirmado' :
                     (i.comprovanteEnviado ? 'Aguardando conferência' : 'Pendente');
-                return '<div class="border rounded-lg p-3 bg-gray-50 flex flex-wrap justify-between gap-2">' +
+                var respHtml = '';
+                if (i.respostas && typeof i.respostas === 'object') {
+                    var keys = Object.keys(i.respostas);
+                    if (keys.length) {
+                        respHtml = '<div class="mt-2 w-full text-xs bg-white border rounded-lg p-2 space-y-1">' +
+                            '<p class="font-bold text-primary">Respostas do formulário</p>' +
+                            keys.map(function (k) {
+                                return '<p><span class="text-gray-500">' + String(k).replace(/</g,'&lt;') + ':</span> <strong>' +
+                                    String(i.respostas[k] == null ? '' : i.respostas[k]).replace(/</g,'&lt;') + '</strong></p>';
+                            }).join('') +
+                            '</div>';
+                    }
+                }
+                return '<div class="border rounded-lg p-3 bg-gray-50 space-y-1">' +
+                    '<div class="flex flex-wrap justify-between gap-2">' +
                     '<div><p class="font-bold">' + (i.nome||'') + '</p>' +
                     '<p class="text-xs text-gray-500">' + (i.eventoNome||'') + ' · ' + (i.codigo||'') +
                     ' · R$ ' + Number(i.valor||0).toFixed(2) +
-                    (i.telefone ? ' · ' + i.telefone : '') + '</p></div>' +
+                    (i.telefone ? ' · ' + i.telefone : '') +
+                    (i.email ? ' · ' + i.email : '') +
+                    (i.dataInsc ? ' · ' + i.dataInsc : '') + '</p></div>' +
                     '<div class="flex items-center gap-2">' +
                     '<span class="text-xs px-2 py-1 rounded-full ' + badge + '">' + label + '</span>' +
                     (st !== 'confirmado' ? '<button type="button" data-cod="' + i.codigo + '" class="btnConfPag text-xs font-bold bg-green-600 text-white px-2 py-1 rounded">Confirmar pagamento</button>' : '') +
-                    '</div></div>';
+                    '</div></div>' +
+                    respHtml +
+                    '</div>';
             }).join('');
             box.querySelectorAll('.btnConfPag').forEach(function(btn){
                 btn.addEventListener('click', function(){
