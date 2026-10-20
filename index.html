@@ -477,7 +477,21 @@
                                     </select>
                                 </div>
                                 <button type="button" id="btnUsarCatalogoProg" class="w-full bg-primary text-white text-sm font-bold px-3 py-2 rounded-lg">Salvar para esta data</button>
-                                <p class="text-[10px] text-gray-500">Cadastro de campos novos: Ministérios → Homens</p>
+                                <div class="border-t border-blue-200 pt-2 mt-1 space-y-1">
+                                    <p class="text-[10px] font-bold text-gray-600">Campos cadastrados (excluir teste / antigo)</p>
+                                    <ul id="listaCatalogoFutGestao" class="text-xs space-y-1 max-h-28 overflow-y-auto"></ul>
+                                </div>
+                                <div class="border-t border-blue-200 pt-2 space-y-1">
+                                    <p class="text-[10px] font-bold text-gray-600">Adicionar novo campo</p>
+                                    <input type="text" id="futNovoNomeCampo" class="w-full border rounded-lg px-2 py-1.5 text-sm" placeholder="Nome do campo (ex: Campo do Juca)">
+                                    <input type="text" id="futNovoLinkCampo" class="w-full border rounded-lg px-2 py-1.5 text-sm" placeholder="Link do Google Maps (opcional)">
+                                    <div class="flex flex-wrap gap-2">
+                                        <button type="button" id="btnGpsNovoCampo" class="text-xs border border-primary text-primary px-2 py-1.5 rounded-lg font-semibold">Usar GPS daqui</button>
+                                        <button type="button" id="btnAddNovoCampo" class="text-xs bg-secondary text-primary px-2 py-1.5 rounded-lg font-bold">Salvar no catálogo</button>
+                                    </div>
+                                    <input type="hidden" id="futNovoLat" value="">
+                                    <input type="hidden" id="futNovoLng" value="">
+                                </div>
                                 <p id="msgFut" class="text-xs hidden"></p>
                                 <p id="msgFutLider" class="text-xs hidden"></p>
                                 <button type="button" id="btnCancelarProg" class="text-xs text-gray-500">Fechar</button>
@@ -2530,6 +2544,37 @@
                 });
             }
         }
+        // Lista de gestão: excluir testes / antigos
+        var gest = document.getElementById('listaCatalogoFutGestao');
+        if (gest) {
+            if (!lista.length) {
+                gest.innerHTML = '<li class="text-gray-400">Nenhum campo no catálogo.</li>';
+            } else {
+                gest.innerHTML = lista.map(function (x) {
+                    return '<li class="flex justify-between items-center gap-2 border-b border-blue-100 py-0.5">' +
+                        '<span>' + String(x.nome || '').replace(/</g, '&lt;') + (x.lat != null ? ' <span class="text-gray-400">(GPS)</span>' : '') + '</span>' +
+                        '<button type="button" class="text-red-600 font-bold text-[11px] btn-rm-cat-fut" data-id="' + String(x.id || x.nome).replace(/"/g, '') + '">Excluir</button></li>';
+                }).join('');
+                gest.querySelectorAll('.btn-rm-cat-fut').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        if (!podeSalvarFut()) {
+                            msgFut('Sem permissão.', false);
+                            return;
+                        }
+                        var id = btn.getAttribute('data-id');
+                        var nome = (btn.parentElement && btn.parentElement.querySelector('span')) ? btn.parentElement.querySelector('span').textContent : id;
+                        if (!confirm('Excluir este campo do catálogo?\n' + nome)) return;
+                        if (typeof removerLocalDoCatalogoFutebol !== 'function') {
+                            msgFut('Atualize o conta.js.', false);
+                            return;
+                        }
+                        var r = removerLocalDoCatalogoFutebol(id);
+                        msgFut(r.mensagem || (r.sucesso ? 'Removido.' : 'Erro'), r.sucesso);
+                        if (r.sucesso) preencherSelectCatalogo();
+                    });
+                });
+            }
+        }
     }
     function abrirFormFut() {
         var form = document.getElementById('formFutProg');
@@ -2670,6 +2715,70 @@
             e.preventDefault();
             var f = document.getElementById('formFutProg');
             if (f) f.classList.add('hidden');
+        };
+        var btnGpsNovo = document.getElementById('btnGpsNovoCampo');
+        if (btnGpsNovo) btnGpsNovo.onclick = function (e) {
+            e.preventDefault();
+            if (!navigator.geolocation) {
+                msgFut('GPS não disponível — cole o link do Maps.', false);
+                return;
+            }
+            msgFut('Obtendo GPS…', null);
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                var elLat = document.getElementById('futNovoLat');
+                var elLng = document.getElementById('futNovoLng');
+                if (elLat) elLat.value = String(pos.coords.latitude);
+                if (elLng) elLng.value = String(pos.coords.longitude);
+                msgFut('GPS ok (' + pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5) + '). Agora salve no catálogo.', true);
+            }, function () {
+                msgFut('Não foi possível obter GPS — cole o link do Maps.', false);
+            }, { enableHighAccuracy: true, timeout: 15000 });
+        };
+        var btnAddNovo = document.getElementById('btnAddNovoCampo');
+        if (btnAddNovo) btnAddNovo.onclick = function (e) {
+            e.preventDefault();
+            if (!podeSalvarFut()) {
+                msgFut('Sem permissão. Entre como gestor, admin ou líder de Homens.', false);
+                return;
+            }
+            var nome = ((document.getElementById('futNovoNomeCampo') || {}).value || '').trim();
+            var link = ((document.getElementById('futNovoLinkCampo') || {}).value || '').trim();
+            var lat = (document.getElementById('futNovoLat') || {}).value;
+            var lng = (document.getElementById('futNovoLng') || {}).value;
+            lat = lat ? parseFloat(lat) : null;
+            lng = lng ? parseFloat(lng) : null;
+            if ((!lat || !lng) && link) {
+                var p2 = parseMapsLink(link);
+                if (p2) { lat = p2.lat; lng = p2.lng; }
+            }
+            if (!nome) {
+                msgFut('Digite o nome do campo.', false);
+                return;
+            }
+            if ((lat == null || lng == null) && !link) {
+                msgFut('Use o GPS ou cole o link do Maps.', false);
+                return;
+            }
+            if (typeof registrarLocalNoCatalogoFutebol !== 'function') {
+                msgFut('Atualize o conta.js.', false);
+                return;
+            }
+            var rAdd = registrarLocalNoCatalogoFutebol({
+                local: nome,
+                lat: lat,
+                lng: lng,
+                maps: link || (lat != null ? ('https://www.google.com/maps?q=' + lat + ',' + lng) : '')
+            });
+            if (rAdd.sucesso) {
+                msgFut('Campo "' + nome + '" adicionado ao catálogo.', true);
+                var n1 = document.getElementById('futNovoNomeCampo'); if (n1) n1.value = '';
+                var n2 = document.getElementById('futNovoLinkCampo'); if (n2) n2.value = '';
+                var n3 = document.getElementById('futNovoLat'); if (n3) n3.value = '';
+                var n4 = document.getElementById('futNovoLng'); if (n4) n4.value = '';
+                preencherSelectCatalogo();
+            } else {
+                msgFut(rAdd.mensagem || 'Erro ao salvar.', false);
+            }
         };
         var btnCat = document.getElementById('btnUsarCatalogoProg');
         if (btnCat) btnCat.onclick = function (e) {
@@ -3014,7 +3123,10 @@
 </script>
 
 <script>
-if (typeof getUsuarioLogado !== 'function') return null;
+(function(){
+    var destAtual = null;
+    function soMembros() {
+        if (typeof getUsuarioLogado !== 'function') return null;
         return getUsuarioLogado();
     }
     window.abrirModalAniv = function abrirModalAniv() {

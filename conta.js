@@ -3954,6 +3954,27 @@ function salvarCatalogoLocaisFutebol(lista) {
         }
     } catch (e2) {}
 }
+/** Remove um local do catálogo (por id ou nome) */
+function removerLocalDoCatalogoFutebol(idOuNome) {
+    var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+    if (typeof podeGerenciarAgendaFutebol === 'function' && !podeGerenciarAgendaFutebol(u)) {
+        return { sucesso: false, mensagem: 'Sem permissão.' };
+    }
+    var chave = String(idOuNome || '').trim();
+    if (!chave) return { sucesso: false, mensagem: 'Informe o local.' };
+    var lista = lerCatalogoLocaisFutebol();
+    var antes = lista.length;
+    lista = lista.filter(function (x) {
+        if (!x) return false;
+        if (String(x.id) === chave) return false;
+        if (String(x.nome || '').toLowerCase() === chave.toLowerCase()) return false;
+        return true;
+    });
+    if (lista.length === antes) return { sucesso: false, mensagem: 'Local não encontrado.' };
+    salvarCatalogoLocaisFutebol(lista);
+    return { sucesso: true, mensagem: 'Local removido do catálogo.' };
+}
+
 /** Inclui ou atualiza um local nomeado no catálogo */
 function registrarLocalNoCatalogoFutebol(dados) {
     var nome = String((dados && dados.local) || (dados && dados.nome) || '').trim();
