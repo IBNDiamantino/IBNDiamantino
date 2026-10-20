@@ -84,18 +84,21 @@
                             <option value="">Carregando eventos...</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Nome Completo</label>
-                        <input type="text" id="nome" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                    <div id="camposPadraoInsc">
+                        <div class="mb-4">
+                            <label class="block font-semibold mb-1">Nome Completo</label>
+                            <input type="text" id="nome" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block font-semibold mb-1">Telefone / WhatsApp</label>
+                            <input type="tel" id="telefone" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" placeholder="(65) 9 9999-9999">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block font-semibold mb-1">E-mail</label>
+                            <input type="email" id="email" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Telefone / WhatsApp</label>
-                        <input type="tel" id="telefone" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" placeholder="(65) 9 9999-9999">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1">E-mail</label>
-                        <input type="email" id="email" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
-                    </div>
+                    <div id="camposFormularioEvento" class="space-y-4 hidden"></div>
                     <button type="submit" id="btnEnviarInsc" class="w-full bg-primary text-white p-3 rounded-md font-bold hover:bg-accent">
                         <i class="fa fa-check-circle mr-2"></i> Gerar Inscrição
                     </button>
@@ -461,6 +464,68 @@
                 sel.innerHTML = '<option value="">Selecione...</option>' +
                     eventos.map(e => `<option value="${e.id}">${e.nome} (${formatarDatasDoEvento(e)}) — R$ ${Number(e.valor).toFixed(2)}</option>`).join('');
             }
+            sel.onchange = function () { renderFormularioDoEvento(sel.value); };
+            renderFormularioDoEvento(sel.value);
+        }
+
+        function renderFormularioDoEvento(eventoId) {
+            var box = document.getElementById('camposFormularioEvento');
+            var padrao = document.getElementById('camposPadraoInsc');
+            if (!box) return;
+            var ev = eventos.find(function (e) { return String(e.id) === String(eventoId); });
+            var form = (ev && Array.isArray(ev.formulario) && ev.formulario.length) ? ev.formulario : null;
+            if (!form) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                if (padrao) padrao.classList.remove('hidden');
+                var n = document.getElementById('nome'); if (n) n.required = true;
+                var t = document.getElementById('telefone'); if (t) t.required = true;
+                return;
+            }
+            // Formulário personalizado: esconde o padrão e monta as perguntas
+            if (padrao) padrao.classList.add('hidden');
+            var n2 = document.getElementById('nome'); if (n2) n2.required = false;
+            var t2 = document.getElementById('telefone'); if (t2) t2.required = false;
+            box.classList.remove('hidden');
+            box.innerHTML = form.map(function (p) {
+                var req = p.obrigatorio ? 'required' : '';
+                var id = 'cf_' + String(p.id || '').replace(/\W/g, '_');
+                var lab = String(p.label || '') + (p.obrigatorio ? ' *' : '');
+                if (p.tipo === 'texto_longo') {
+                    return '<div><label class="block font-semibold mb-1" for="' + id + '">' + lab + '</label>' +
+                        '<textarea id="' + id + '" data-fid="' + String(p.id) + '" data-flabel="' + String(p.label || '').replace(/"/g, '&quot;') + '" class="w-full p-3 border rounded-md" rows="3" ' + req + '></textarea></div>';
+                }
+                if (p.tipo === 'escolha') {
+                    var ops = (p.opcoes || []).map(function (o) {
+                        return '<option value="' + String(o).replace(/"/g, '&quot;') + '">' + o + '</option>';
+                    }).join('');
+                    return '<div><label class="block font-semibold mb-1" for="' + id + '">' + lab + '</label>' +
+                        '<select id="' + id + '" data-fid="' + String(p.id) + '" data-flabel="' + String(p.label || '').replace(/"/g, '&quot;') + '" class="w-full p-3 border rounded-md" ' + req + '>' +
+                        '<option value="">Selecione...</option>' + ops + '</select></div>';
+                }
+                var typ = 'text';
+                if (p.tipo === 'telefone') typ = 'tel';
+                if (p.tipo === 'email') typ = 'email';
+                return '<div><label class="block font-semibold mb-1" for="' + id + '">' + lab + '</label>' +
+                    '<input type="' + typ + '" id="' + id + '" data-fid="' + String(p.id) + '" data-flabel="' + String(p.label || '').replace(/"/g, '&quot;') + '" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" ' + req + '></div>';
+            }).join('');
+        }
+
+        function coletarRespostasFormularioEvento() {
+            var box = document.getElementById('camposFormularioEvento');
+            if (!box || box.classList.contains('hidden')) return { respostas: {}, nome: '', telefone: '', email: '' };
+            var respostas = {};
+            var nome = '', telefone = '', email = '';
+            box.querySelectorAll('[data-fid]').forEach(function (el) {
+                var label = el.getAttribute('data-flabel') || el.getAttribute('data-fid');
+                var val = (el.value || '').trim();
+                respostas[label] = val;
+                var low = String(label).toLowerCase();
+                if (!nome && (/nome/.test(low))) nome = val;
+                if (!telefone && (/telefone|whatsapp|celular/.test(low))) telefone = val;
+                if (!email && (/e-?mail/.test(low))) email = val;
+            });
+            return { respostas: respostas, nome: nome, telefone: telefone, email: email };
         }
 
         document.getElementById('formInsc').addEventListener('submit', function(e) {
@@ -473,24 +538,38 @@
             }
 
             const eventoId = document.getElementById('eventoSelect').value;
-            const nome = document.getElementById('nome').value.trim();
-            const telefone = document.getElementById('telefone').value.trim();
-            const email = document.getElementById('email').value.trim();
+            const evento = eventos.find(ev => ev.id === eventoId);
+            if (!evento) return alert('Selecione um evento válido');
+
+            var temFormCustom = Array.isArray(evento.formulario) && evento.formulario.length;
+            var col = temFormCustom ? coletarRespostasFormularioEvento() : { respostas: {}, nome: '', telefone: '', email: '' };
+            // valida obrigatórias do formulário custom
+            if (temFormCustom) {
+                for (var fi = 0; fi < evento.formulario.length; fi++) {
+                    var pq = evento.formulario[fi];
+                    if (!pq.obrigatorio) continue;
+                    var resp = col.respostas[pq.label];
+                    if (!resp) return alert('Preencha: ' + pq.label);
+                }
+            }
+            const nome = temFormCustom ? (col.nome || Object.values(col.respostas)[0] || '') : document.getElementById('nome').value.trim();
+            const telefone = temFormCustom ? (col.telefone || '') : document.getElementById('telefone').value.trim();
+            const email = temFormCustom ? (col.email || '') : document.getElementById('email').value.trim();
+            if (!temFormCustom) {
+                if (!nome) return alert('Informe o nome.');
+                if (!telefone) return alert('Informe o telefone.');
+            }
             const nascV = (document.getElementById('nascimentoInsc') || {}).value || '';
             const endV = (document.getElementById('enderecoInsc') || {}).value || '';
             const munV = (document.getElementById('municipioInsc') || {}).value || '';
             const paraOutro = !verificarMembro() || quemEhParticipante() === 'outro';
-            const ehVisitante = paraOutro; // ficha completa do participante
-            if (paraOutro) {
+            if (paraOutro && !temFormCustom) {
                 if (!nascV) return alert('Informe a data de nascimento do participante.');
                 if (!endV && !munV) return alert('Informe endereço ou município do participante.');
             }
 
-            const evento = eventos.find(ev => ev.id === eventoId);
-            if (!evento) return alert('Selecione um evento válido');
-
             // Evitar inscrição duplicada no mesmo evento
-            const ja = inscritos.find(i => i.eventoId === eventoId && (i.email === email || i.telefone === telefone));
+            const ja = inscritos.find(i => i.eventoId === eventoId && ((email && i.email === email) || (telefone && i.telefone === telefone)));
             if (ja) {
                 alert('Você já possui inscrição neste evento. Código: ' + ja.codigo);
                 return;
@@ -505,7 +584,8 @@
                 nascimento: nascV || (membro && membro.nascimento) || '',
                 endereco: endV || (membro && membro.endereco) || '',
                 municipio: munV || (membro && membro.municipio) || '',
-                membroId: membro.email || membro.nome
+                membroId: (membro && (membro.email || membro.nome)) || '',
+                respostas: col.respostas || {}
             };
             inscritos.push(novaInsc);
             salvarInscritos();

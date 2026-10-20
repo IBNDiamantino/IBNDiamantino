@@ -273,6 +273,20 @@
                     </div>
                     <input type="url" id="videoEvento" placeholder="Link do vídeo (YouTube)" class="p-3 border rounded-lg md:col-span-2">
                     <label class="flex items-center gap-2 text-sm md:col-span-2"><input type="checkbox" id="visitaEvento" checked class="accent-secondary"> Visitantes podem se inscrever</label>
+                    <div class="md:col-span-3 border rounded-xl p-3 bg-indigo-50 border-indigo-200 space-y-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <p class="text-xs font-bold text-primary">Formulário de inscrição (editável)</p>
+                                <p class="text-[11px] text-gray-600">Como Google Forms: cada evento pode ter perguntas diferentes.</p>
+                            </div>
+                            <div class="flex flex-wrap gap-1">
+                                <button type="button" id="btnFormPadraoCasais" class="text-[11px] font-bold bg-white border border-indigo-300 text-indigo-800 px-2 py-1 rounded">Modelo casais</button>
+                                <button type="button" id="btnFormPadraoSimples" class="text-[11px] font-bold bg-white border border-gray-300 text-gray-700 px-2 py-1 rounded">Modelo simples</button>
+                                <button type="button" id="btnAddPerguntaForm" class="text-[11px] font-bold bg-primary text-white px-2 py-1 rounded">+ Pergunta</button>
+                            </div>
+                        </div>
+                        <div id="boxPerguntasFormEvento" class="space-y-2"></div>
+                    </div>
                     <button type="submit" class="bg-secondary text-primary px-4 py-3 rounded-lg font-bold">
                         <i class="fa fa-plus"></i> Publicar evento
                     </button>
@@ -829,18 +843,126 @@
                     return txt;
                 }).join(' e ');
             }
-            container.innerHTML = lista.map((ev, idx) => `
-                <div class="flex justify-between items-center gap-3 p-3 bg-gray-50 rounded border">
-                    <div class="flex gap-3 items-center min-w-0">
-                        ${ev.foto ? '<img src="' + String(ev.foto).replace(/"/g,'') + '" alt="" class="w-12 rounded border object-cover shrink-0" style="aspect-ratio:4/5">' : ''}
-                        <div class="min-w-0">
-                        <p class="font-bold">${ev.nome}</p>
-                        <p class="text-xs text-gray-500">📅 ${_fmtDatasEv(ev)} · 📍 ${ev.local||'Não informado'} · ${Number(ev.valor)>0 ? 'R$ '+Number(ev.valor).toFixed(2) : 'Gratuito'}</p>
+            container.innerHTML = lista.map((ev, idx) => {
+                var nPerg = (Array.isArray(ev.formulario) ? ev.formulario.length : 0);
+                return `
+                <div class="p-3 bg-gray-50 rounded border space-y-2" data-ev-idx="${idx}">
+                    <div class="flex justify-between items-center gap-3">
+                        <div class="flex gap-3 items-center min-w-0">
+                            ${ev.foto ? '<img src="' + String(ev.foto).replace(/"/g,'') + '" alt="" class="w-12 rounded border object-cover shrink-0" style="aspect-ratio:4/5">' : ''}
+                            <div class="min-w-0">
+                            <p class="font-bold">${ev.nome}</p>
+                            <p class="text-xs text-gray-500">📅 ${_fmtDatasEv(ev)} · 📍 ${ev.local||'Não informado'} · ${Number(ev.valor)>0 ? 'R$ '+Number(ev.valor).toFixed(2) : 'Gratuito'}</p>
+                            <p class="text-[11px] text-indigo-700">${nPerg ? nPerg + ' pergunta(s) no formulário' : 'Sem formulário personalizado'}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            <button type="button" class="btn-edit-form-ev text-xs font-bold text-primary underline" data-idx="${idx}">Formulário</button>
+                            <button type="button" class="btn-rm-ev text-red-500" data-idx="${idx}"><i class="fa fa-trash"></i></button>
                         </div>
                     </div>
-                    <button onclick="removerEvento(${idx})" class="text-red-500 shrink-0"><i class="fa fa-trash"></i></button>
-                </div>
-            `).join('');
+                    <div class="editor-form-ev hidden border-t pt-2 space-y-2" data-editor="${idx}">
+                        <p class="text-[11px] text-gray-600">Edite as perguntas deste evento e salve.</p>
+                        <div class="box-edit-perguntas space-y-2"></div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" class="btn-add-perg-ev text-xs font-bold bg-primary text-white px-2 py-1 rounded" data-idx="${idx}">+ Pergunta</button>
+                            <button type="button" class="btn-modelo-casais-ev text-xs font-bold border px-2 py-1 rounded" data-idx="${idx}">Modelo casais</button>
+                            <button type="button" class="btn-salvar-form-ev text-xs font-bold bg-secondary text-primary px-2 py-1 rounded" data-idx="${idx}">Salvar formulário</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            container.querySelectorAll('.btn-rm-ev').forEach(function (btn) {
+                btn.onclick = function () {
+                    var idx = parseInt(btn.getAttribute('data-idx'), 10);
+                    if (!confirm('Remover evento?')) return;
+                    var l = getEventos(); l.splice(idx, 1); salvarEventos(l);
+                };
+            });
+            function renderMiniEditor(box, perguntas) {
+                if (!box) return;
+                box.innerHTML = (perguntas || []).map(function (p, i) {
+                    return '<div class="bg-white border rounded p-2 text-xs space-y-1" data-pi="' + i + '">' +
+                        '<input type="text" class="me-label w-full border rounded px-1 py-1" value="' + String(p.label || '').replace(/"/g, '&quot;') + '">' +
+                        '<div class="flex flex-wrap gap-1 items-center">' +
+                        '<select class="me-tipo border rounded px-1 py-1">' +
+                        ['texto','texto_longo','escolha','telefone','email'].map(function (t) {
+                            return '<option value="' + t + '"' + (p.tipo === t ? ' selected' : '') + '>' + t + '</option>';
+                        }).join('') +
+                        '</select>' +
+                        '<label class="flex items-center gap-1"><input type="checkbox" class="me-obr"' + (p.obrigatorio ? ' checked' : '') + '> Obr.</label>' +
+                        '<button type="button" class="me-rm text-red-600 font-bold">×</button></div>' +
+                        '<input type="text" class="me-ops w-full border rounded px-1 py-1' + (p.tipo === 'escolha' ? '' : ' hidden') + '" value="' + String((p.opcoes||[]).join(', ')).replace(/"/g,'&quot;') + '" placeholder="Opções, separadas por vírgula">' +
+                        '</div>';
+                }).join('') || '<p class="text-gray-400">Sem perguntas</p>';
+                box.querySelectorAll('.me-rm').forEach(function (b) {
+                    b.onclick = function () {
+                        var i = parseInt(b.closest('[data-pi]').getAttribute('data-pi'), 10);
+                        perguntas.splice(i, 1);
+                        renderMiniEditor(box, perguntas);
+                    };
+                });
+                box.querySelectorAll('.me-tipo').forEach(function (sel) {
+                    sel.onchange = function () {
+                        var row = sel.closest('[data-pi]');
+                        var op = row.querySelector('.me-ops');
+                        if (op) op.classList.toggle('hidden', sel.value !== 'escolha');
+                    };
+                });
+            }
+            container.querySelectorAll('.btn-edit-form-ev').forEach(function (btn) {
+                btn.onclick = function () {
+                    var idx = parseInt(btn.getAttribute('data-idx'), 10);
+                    var ed = container.querySelector('.editor-form-ev[data-editor="' + idx + '"]');
+                    if (!ed) return;
+                    ed.classList.toggle('hidden');
+                    if (ed.classList.contains('hidden')) return;
+                    var l = getEventos();
+                    var ev = l[idx] || {};
+                    var perguntas = Array.isArray(ev.formulario) ? JSON.parse(JSON.stringify(ev.formulario)) : modeloFormSimples();
+                    ed._perguntas = perguntas;
+                    renderMiniEditor(ed.querySelector('.box-edit-perguntas'), perguntas);
+                };
+            });
+            container.querySelectorAll('.btn-add-perg-ev').forEach(function (btn) {
+                btn.onclick = function () {
+                    var idx = parseInt(btn.getAttribute('data-idx'), 10);
+                    var ed = container.querySelector('.editor-form-ev[data-editor="' + idx + '"]');
+                    if (!ed || !ed._perguntas) return;
+                    ed._perguntas.push({ id: 'p' + Date.now(), label: '', tipo: 'texto', obrigatorio: false, opcoes: [] });
+                    renderMiniEditor(ed.querySelector('.box-edit-perguntas'), ed._perguntas);
+                };
+            });
+            container.querySelectorAll('.btn-modelo-casais-ev').forEach(function (btn) {
+                btn.onclick = function () {
+                    var idx = parseInt(btn.getAttribute('data-idx'), 10);
+                    var ed = container.querySelector('.editor-form-ev[data-editor="' + idx + '"]');
+                    if (!ed) return;
+                    ed._perguntas = modeloFormCasais();
+                    renderMiniEditor(ed.querySelector('.box-edit-perguntas'), ed._perguntas);
+                };
+            });
+            container.querySelectorAll('.btn-salvar-form-ev').forEach(function (btn) {
+                btn.onclick = function () {
+                    var idx = parseInt(btn.getAttribute('data-idx'), 10);
+                    var ed = container.querySelector('.editor-form-ev[data-editor="' + idx + '"]');
+                    if (!ed) return;
+                    var perguntas = [];
+                    ed.querySelectorAll('.box-edit-perguntas [data-pi]').forEach(function (row) {
+                        var label = (row.querySelector('.me-label') || {}).value || '';
+                        var tipo = (row.querySelector('.me-tipo') || {}).value || 'texto';
+                        var obr = !!(row.querySelector('.me-obr') || {}).checked;
+                        var ops = String((row.querySelector('.me-ops') || {}).value || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+                        if (!String(label).trim()) return;
+                        perguntas.push({ id: 'p' + (perguntas.length + 1), label: String(label).trim(), tipo: tipo, obrigatorio: obr, opcoes: ops });
+                    });
+                    var l = getEventos();
+                    if (!l[idx]) return;
+                    l[idx].formulario = perguntas;
+                    salvarEventos(l);
+                    alert('Formulário salvo (' + perguntas.length + ' pergunta(s)).');
+                };
+            });
             if (typeof renderInscritosEventos === 'function') renderInscritosEventos();
         }
         function removerEvento(idx) {
@@ -946,6 +1068,119 @@
             });
             return uniq;
         }
+
+        // ===== Formulário editável por evento (estilo Google Forms) =====
+        var formPerguntasRascunho = [];
+        function modeloFormSimples() {
+            return [
+                { id: 'p1', label: 'Nome completo', tipo: 'texto', obrigatorio: true, opcoes: [] },
+                { id: 'p2', label: 'Telefone / WhatsApp', tipo: 'telefone', obrigatorio: true, opcoes: [] },
+                { id: 'p3', label: 'E-mail', tipo: 'email', obrigatorio: false, opcoes: [] }
+            ];
+        }
+        function modeloFormCasais() {
+            return [
+                { id: 'p1', label: 'Nome do casal (os dois nomes)', tipo: 'texto', obrigatorio: true, opcoes: [] },
+                { id: 'p2', label: 'Situação', tipo: 'escolha', obrigatorio: true, opcoes: ['Casado(a)', 'Noivo(a)', 'União estável'] },
+                { id: 'p3', label: 'Telefone / WhatsApp', tipo: 'telefone', obrigatorio: true, opcoes: [] },
+                { id: 'p4', label: 'E-mail (opcional)', tipo: 'email', obrigatorio: false, opcoes: [] }
+            ];
+        }
+        function renderEditorPerguntasForm() {
+            var box = document.getElementById('boxPerguntasFormEvento');
+            if (!box) return;
+            if (!formPerguntasRascunho.length) {
+                box.innerHTML = '<p class="text-[11px] text-gray-500">Nenhuma pergunta. Use um modelo ou + Pergunta.</p>';
+                return;
+            }
+            box.innerHTML = formPerguntasRascunho.map(function (p, idx) {
+                var opcoesStr = (p.opcoes || []).join(', ');
+                return '<div class="bg-white border rounded-lg p-2 space-y-1" data-idx="' + idx + '">' +
+                    '<div class="flex flex-wrap gap-2 items-center">' +
+                    '<input type="text" class="fp-label flex-1 min-w-[140px] border rounded px-2 py-1 text-sm" value="' + String(p.label || '').replace(/"/g, '&quot;') + '" placeholder="Pergunta">' +
+                    '<select class="fp-tipo border rounded px-2 py-1 text-xs">' +
+                    '<option value="texto"' + (p.tipo === 'texto' ? ' selected' : '') + '>Texto</option>' +
+                    '<option value="texto_longo"' + (p.tipo === 'texto_longo' ? ' selected' : '') + '>Texto longo</option>' +
+                    '<option value="escolha"' + (p.tipo === 'escolha' ? ' selected' : '') + '>Escolha</option>' +
+                    '<option value="telefone"' + (p.tipo === 'telefone' ? ' selected' : '') + '>Telefone</option>' +
+                    '<option value="email"' + (p.tipo === 'email' ? ' selected' : '') + '>E-mail</option>' +
+                    '</select>' +
+                    '<label class="text-[11px] flex items-center gap-1"><input type="checkbox" class="fp-obr"' + (p.obrigatorio ? ' checked' : '') + '> Obrigatória</label>' +
+                    '<button type="button" class="fp-rm text-red-600 text-xs font-bold">Remover</button>' +
+                    '</div>' +
+                    '<input type="text" class="fp-opcoes w-full border rounded px-2 py-1 text-[11px]' + (p.tipo === 'escolha' ? '' : ' hidden') + '" value="' + String(opcoesStr).replace(/"/g, '&quot;') + '" placeholder="Opções separadas por vírgula (só para Escolha)">' +
+                    '</div>';
+            }).join('');
+            box.querySelectorAll('.fp-label').forEach(function (inp) {
+                inp.addEventListener('input', function () {
+                    var i = parseInt(inp.closest('[data-idx]').getAttribute('data-idx'), 10);
+                    if (formPerguntasRascunho[i]) formPerguntasRascunho[i].label = inp.value;
+                });
+            });
+            box.querySelectorAll('.fp-tipo').forEach(function (sel) {
+                sel.addEventListener('change', function () {
+                    var row = sel.closest('[data-idx]');
+                    var i = parseInt(row.getAttribute('data-idx'), 10);
+                    if (formPerguntasRascunho[i]) formPerguntasRascunho[i].tipo = sel.value;
+                    var op = row.querySelector('.fp-opcoes');
+                    if (op) op.classList.toggle('hidden', sel.value !== 'escolha');
+                });
+            });
+            box.querySelectorAll('.fp-obr').forEach(function (cb) {
+                cb.addEventListener('change', function () {
+                    var i = parseInt(cb.closest('[data-idx]').getAttribute('data-idx'), 10);
+                    if (formPerguntasRascunho[i]) formPerguntasRascunho[i].obrigatorio = !!cb.checked;
+                });
+            });
+            box.querySelectorAll('.fp-opcoes').forEach(function (inp) {
+                inp.addEventListener('input', function () {
+                    var i = parseInt(inp.closest('[data-idx]').getAttribute('data-idx'), 10);
+                    if (formPerguntasRascunho[i]) {
+                        formPerguntasRascunho[i].opcoes = String(inp.value || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+                    }
+                });
+            });
+            box.querySelectorAll('.fp-rm').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var i = parseInt(btn.closest('[data-idx]').getAttribute('data-idx'), 10);
+                    formPerguntasRascunho.splice(i, 1);
+                    renderEditorPerguntasForm();
+                });
+            });
+        }
+        function coletarFormularioEvento() {
+            return (formPerguntasRascunho || []).filter(function (p) {
+                return p && String(p.label || '').trim();
+            }).map(function (p, i) {
+                return {
+                    id: p.id || ('p' + (i + 1)),
+                    label: String(p.label || '').trim(),
+                    tipo: p.tipo || 'texto',
+                    obrigatorio: !!p.obrigatorio,
+                    opcoes: Array.isArray(p.opcoes) ? p.opcoes.filter(Boolean) : []
+                };
+            });
+        }
+        (function initFormBuilderEvento() {
+            formPerguntasRascunho = modeloFormSimples();
+            renderEditorPerguntasForm();
+            var b1 = document.getElementById('btnFormPadraoCasais');
+            if (b1) b1.onclick = function () { formPerguntasRascunho = modeloFormCasais(); renderEditorPerguntasForm(); };
+            var b2 = document.getElementById('btnFormPadraoSimples');
+            if (b2) b2.onclick = function () { formPerguntasRascunho = modeloFormSimples(); renderEditorPerguntasForm(); };
+            var b3 = document.getElementById('btnAddPerguntaForm');
+            if (b3) b3.onclick = function () {
+                formPerguntasRascunho.push({
+                    id: 'p' + Date.now(),
+                    label: '',
+                    tipo: 'texto',
+                    obrigatorio: false,
+                    opcoes: []
+                });
+                renderEditorPerguntasForm();
+            };
+        })();
+
         document.getElementById('formEvento').addEventListener('submit', (e) => {
             e.preventDefault();
             const l = getEventos();
@@ -973,9 +1208,12 @@
                 fotoUrl: fotoUrl,
                 video: (document.getElementById('videoEvento').value || '').trim(),
                 linkPagamento: (document.getElementById('linkPagEvento').value || '').trim(),
-                visitantes: document.getElementById('visitaEvento').checked
+                visitantes: document.getElementById('visitaEvento').checked,
+                formulario: coletarFormularioEvento()
             });
             salvarEventos(l);
+            formPerguntasRascunho = modeloFormSimples();
+            renderEditorPerguntasForm();
             e.target.reset();
             var dataHid = document.getElementById('fotoEventoData');
             if (dataHid) dataHid.value = '';
@@ -1050,15 +1288,24 @@
                 if (!lista.length) return alert('Sem inscritos.');
                 var csv = (typeof montarCSV === 'function')
                     ? montarCSV(
-                        ['Codigo','Nome','Evento','Telefone','Email','Valor','Status','MeioPagamento','DataInsc','DataPagamento','Tipo'],
+                        ['Codigo','Nome','Evento','Telefone','Email','Valor','Status','MeioPagamento','DataInsc','DataPagamento','Tipo','RespostasFormulario'],
                         lista.map(function(i){
+                            var resp = '';
+                            try {
+                                if (i.respostas && typeof i.respostas === 'object') {
+                                    resp = Object.keys(i.respostas).map(function (k) {
+                                        return k + ': ' + i.respostas[k];
+                                    }).join(' | ');
+                                }
+                            } catch (eR) {}
                             return [
                                 i.codigo||'', i.nome||'', i.eventoNome||'', i.telefone||'', i.email||'',
                                 i.valor||0,
                                 i.statusPagamento || (i.pago ? 'confirmado' : 'pendente'),
                                 i.meioPagamento||'',
                                 i.dataInsc||'', i.dataPagamento||'',
-                                i.tipo||''
+                                i.tipo||'',
+                                resp
                             ];
                         })
                       )
