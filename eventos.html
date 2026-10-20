@@ -290,7 +290,49 @@
         }
 
         function salvarEventos(lista) {
-            localStorage.setItem('ibn_eventos', JSON.stringify(lista));
+            localStorage.setItem('ibn_eventos', JSON.stringify(lista || []));
+            try { localStorage.setItem('eventos', JSON.stringify(lista || [])); } catch (e0) {}
+            // Sobe para a nuvem para outros aparelhos / site verem
+            try {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+                    firebase.firestore().collection('config').doc('eventos_site').set({
+                        itens: lista || [],
+                        atualizadoEm: new Date().toISOString()
+                    }, { merge: true }).catch(function () {});
+                }
+            } catch (e1) {}
+        }
+
+        /** Baixa eventos da nuvem (se houver) e mescla com o local */
+        async function puxarEventosDaNuvem() {
+            try {
+                if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) return false;
+                var snap = await firebase.firestore().collection('config').doc('eventos_site').get();
+                if (!snap.exists) return false;
+                var data = snap.data() || {};
+                var nuvem = data.itens || data.lista || [];
+                if (!Array.isArray(nuvem) || !nuvem.length) return false;
+                var local = [];
+                try { local = JSON.parse(localStorage.getItem('ibn_eventos') || '[]'); } catch (e) { local = []; }
+                if (!Array.isArray(local)) local = [];
+                // mescla por id (nuvem prevalece se mais recente ou se local não tem)
+                var map = {};
+                local.forEach(function (e) { if (e && e.id) map[e.id] = e; });
+                nuvem.forEach(function (e) {
+                    if (!e || !e.id) return;
+                    if (!map[e.id]) map[e.id] = e;
+                    else {
+                        var tL = map[e.id].atualizadoEm || map[e.id].data || '';
+                        var tN = e.atualizadoEm || e.data || '';
+                        // se nuvem tem nome/datas e local também, prefere nuvem quando veio da sync
+                        map[e.id] = Object.assign({}, map[e.id], e);
+                    }
+                });
+                var mesclada = Object.keys(map).map(function (k) { return map[k]; });
+                localStorage.setItem('ibn_eventos', JSON.stringify(mesclada));
+                try { localStorage.setItem('eventos', JSON.stringify(mesclada)); } catch (e2) {}
+                return true;
+            } catch (e3) { return false; }
         }
 
         let eventos = carregarEventos();
@@ -394,6 +436,23 @@
             carregarSelectEventos();
             atualizarUISemEvento();
             carregarListaPublica();
+            // Puxa eventos da nuvem e atualiza a tela; se só existir local, sobe para a nuvem
+            (async function syncEventosNuvem() {
+                try {
+                    var tinhaLocal = Array.isArray(eventos) && eventos.length > 0;
+                    var ok = await puxarEventosDaNuvem();
+                    if (ok) {
+                        eventos = carregarEventos();
+                        carregarCardsEventos();
+                        carregarSelectEventos();
+                        atualizarUISemEvento();
+                        renderAdminEventos();
+                    } else if (tinhaLocal) {
+                        // primeiro aparelho: publica o que já tem
+                        salvarEventos(eventos);
+                    }
+                } catch (e) {}
+            })();
         }
 
 

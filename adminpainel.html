@@ -818,6 +818,14 @@
         function salvarEventos(lista) {
             localStorage.setItem('ibn_eventos', JSON.stringify(lista));
             try { localStorage.setItem('eventos', JSON.stringify(lista)); } catch(e) {}
+            try {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+                    firebase.firestore().collection('config').doc('eventos_site').set({
+                        itens: lista || [],
+                        atualizadoEm: new Date().toISOString()
+                    }, { merge: true }).catch(function () {});
+                }
+            } catch (eN) {}
             renderizarEventos();
         }
         function renderizarEventos() {

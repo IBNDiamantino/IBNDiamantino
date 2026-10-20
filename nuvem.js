@@ -1041,6 +1041,28 @@ const IBNNuvem = (function () {
                         var itens = dc.itens || [];
                         if (Array.isArray(itens)) localStorage.setItem('ibn_catalogo_locais_futebol', JSON.stringify(itens));
                     }
+                    // Catálogo de células (gestor/admin adiciona/remove)
+                    var snapCel = await db.collection('config').doc('lista_celulas').get();
+                    if (snapCel.exists) {
+                        var dCel = snapCel.data() || {};
+                        var listaCel = dCel.itens || dCel.lista || [];
+                        if (Array.isArray(listaCel) && listaCel.length) {
+                            localStorage.setItem('ibn_lista_celulas', JSON.stringify(listaCel));
+                            try {
+                                if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
+                            } catch (eCel) {}
+                        }
+                    }
+                    // Eventos do site (inscrições)
+                    var snapEv = await db.collection('config').doc('eventos_site').get();
+                    if (snapEv.exists) {
+                        var dEv = snapEv.data() || {};
+                        var listaEv = dEv.itens || dEv.lista || [];
+                        if (Array.isArray(listaEv) && listaEv.length) {
+                            localStorage.setItem('ibn_eventos', JSON.stringify(listaEv));
+                            try { localStorage.setItem('eventos', JSON.stringify(listaEv)); } catch (eEv2) {}
+                        }
+                    }
                 }
             } catch (e7) {}
             try { window.dispatchEvent(new CustomEvent('ibn-nuvem-sincronizado', { detail: { motivo: motivo || '' } })); } catch (e8) {}
