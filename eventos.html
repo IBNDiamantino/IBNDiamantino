@@ -208,7 +208,11 @@
                         </div>
                     </div>
                 </div>
-                <button type="submit" class="bg-secondary text-primary px-4 py-2 rounded font-bold">+ Adicionar Evento</button>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="submit" id="admBtnSalvarEvento" class="bg-secondary text-primary px-4 py-2 rounded font-bold">+ Adicionar Evento</button>
+                    <button type="button" id="admBtnCancelarEdit" class="hidden text-sm text-gray-600 underline">Cancelar edição</button>
+                </div>
+                <p id="admEditStatus" class="text-xs text-indigo-700 hidden"></p>
             </form>
             <div id="listaAdminEventos" class="mt-4 text-sm space-y-2"></div>
         </section>
@@ -771,7 +775,91 @@
             });
         })();
 
-        // Admin: adicionar evento
+        // Admin: adicionar / editar evento
+        var editandoEventoIdx = -1;
+
+        function limparFormAdminEvento() {
+            editandoEventoIdx = -1;
+            var form = document.getElementById('formAdminEvento');
+            if (form) form.reset();
+            document.getElementById('admPix').value = '36.158.983/0001-36';
+            document.getElementById('admForma').value = 'PIX, Cartão (PagBank), Dinheiro';
+            var hid2 = document.getElementById('admFotoData'); if (hid2) hid2.value = '';
+            var prev2 = document.getElementById('admPreviewFoto'); if (prev2) prev2.innerHTML = '4:5';
+            var boxD = document.getElementById('admBoxDatas');
+            if (boxD) boxD.innerHTML = '<div class="flex flex-wrap gap-2 items-center mb-1 linha-adm-data"><input type="date" class="adm-data-input p-2 border rounded flex-1 min-w-[140px]" required><input type="time" class="adm-hora-input p-2 border rounded w-[130px]" title="Horário"></div>';
+            var btn = document.getElementById('admBtnSalvarEvento');
+            if (btn) btn.textContent = '+ Adicionar Evento';
+            var cancel = document.getElementById('admBtnCancelarEdit');
+            if (cancel) cancel.classList.add('hidden');
+            var st = document.getElementById('admEditStatus');
+            if (st) { st.classList.add('hidden'); st.textContent = ''; }
+        }
+
+        function carregarEventoNoForm(idx) {
+            var e = eventos[idx];
+            if (!e) return;
+            editandoEventoIdx = idx;
+            document.getElementById('admNome').value = e.nome || '';
+            document.getElementById('admValor').value = e.valor != null ? e.valor : 0;
+            document.getElementById('admPix').value = e.pix || e.pixDestino || '36.158.983/0001-36';
+            document.getElementById('admForma').value = e.forma || e.formaPagamento || 'PIX, Cartão (PagBank), Dinheiro';
+            document.getElementById('admLinkPag').value = e.linkPagamento || '';
+            var foto = e.foto || '';
+            var hid = document.getElementById('admFotoData');
+            var urlInp = document.getElementById('admFoto');
+            var prev = document.getElementById('admPreviewFoto');
+            if (foto && String(foto).indexOf('data:') === 0) {
+                if (hid) hid.value = foto;
+                if (urlInp) urlInp.value = '';
+            } else {
+                if (hid) hid.value = '';
+                if (urlInp) urlInp.value = foto || '';
+            }
+            if (prev && foto) prev.innerHTML = '<img src="' + String(foto).replace(/"/g, '') + '" class="w-full h-full object-cover" alt="">';
+            else if (prev) prev.innerHTML = '4:5';
+
+            var ds = (Array.isArray(e.datas) && e.datas.length) ? e.datas : (e.dataIso || e.data ? [String(e.dataIso || e.data).slice(0, 10)] : ['']);
+            // se data está em DD/MM/AAAA, tenta converter
+            ds = ds.map(function (d) {
+                d = String(d || '').trim();
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+                    var p = d.split('/');
+                    return p[2] + '-' + p[1] + '-' + p[0];
+                }
+                return d.slice(0, 10);
+            });
+            var hs = Array.isArray(e.horarios) ? e.horarios : [];
+            var boxD = document.getElementById('admBoxDatas');
+            if (boxD) {
+                boxD.innerHTML = ds.map(function (d, i) {
+                    var h = (hs[i] || e.horario || '').toString().slice(0, 5);
+                    return '<div class="flex flex-wrap gap-2 items-center mb-1 linha-adm-data">' +
+                        '<input type="date" class="adm-data-input p-2 border rounded flex-1 min-w-[140px]" value="' + d + '" required>' +
+                        '<input type="time" class="adm-hora-input p-2 border rounded w-[130px]" value="' + h + '" title="Horário">' +
+                        (i > 0 ? '<button type="button" class="text-red-600 text-xs font-bold btn-rm-linha-data">Remover</button>' : '') +
+                        '</div>';
+                }).join('');
+                boxD.querySelectorAll('.btn-rm-linha-data').forEach(function (b) {
+                    b.onclick = function () { b.closest('.linha-adm-data').remove(); };
+                });
+            }
+            var btn = document.getElementById('admBtnSalvarEvento');
+            if (btn) btn.textContent = 'Salvar alterações do evento';
+            var cancel = document.getElementById('admBtnCancelarEdit');
+            if (cancel) cancel.classList.remove('hidden');
+            var st = document.getElementById('admEditStatus');
+            if (st) {
+                st.classList.remove('hidden');
+                st.textContent = 'Editando: ' + (e.nome || '') + ' — altere os campos e clique em Salvar alterações.';
+            }
+            var formEl = document.getElementById('formAdminEvento');
+            if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        var btnCancelEdit = document.getElementById('admBtnCancelarEdit');
+        if (btnCancelEdit) btnCancelEdit.onclick = function () { limparFormAdminEvento(); };
+
         document.getElementById('formAdminEvento').addEventListener('submit', function(e) {
             e.preventDefault();
             const nome = document.getElementById('admNome').value.trim();
@@ -806,9 +894,7 @@
             const linkPag = (document.getElementById('admLinkPag') && document.getElementById('admLinkPag').value || '').trim();
             var fotoData = (document.getElementById('admFotoData') && document.getElementById('admFotoData').value || '').trim();
             var fotoUrl = (document.getElementById('admFoto') && document.getElementById('admFoto').value || '').trim();
-            const id = 'ev-' + Date.now();
-            eventos.push({
-                id: id,
+            var payload = {
                 nome: nome,
                 data: datasIso[0],
                 datas: datasIso,
@@ -822,18 +908,24 @@
                 formaPagamento: forma,
                 linkPagamento: linkPag,
                 foto: fotoData || fotoUrl
-            });
+            };
+            var foiEdicao = editandoEventoIdx >= 0 && !!eventos[editandoEventoIdx];
+            if (foiEdicao) {
+                payload.id = eventos[editandoEventoIdx].id || ('ev-' + Date.now());
+                // preserva formulário custom se já existir
+                if (eventos[editandoEventoIdx].formulario) payload.formulario = eventos[editandoEventoIdx].formulario;
+                eventos[editandoEventoIdx] = Object.assign({}, eventos[editandoEventoIdx], payload);
+            } else {
+                payload.id = 'ev-' + Date.now();
+                eventos.push(payload);
+            }
             salvarEventos(eventos);
-            e.target.reset();
-            document.getElementById('admPix').value = '36.158.983/0001-36';
-            document.getElementById('admForma').value = 'PIX, Cartão (PagBank), Dinheiro';
-            var hid2 = document.getElementById('admFotoData'); if (hid2) hid2.value = '';
-            var prev2 = document.getElementById('admPreviewFoto'); if (prev2) prev2.innerHTML = '4:5';
-            var boxD = document.getElementById('admBoxDatas');
-            if (boxD) boxD.innerHTML = '<div class="flex flex-wrap gap-2 items-center mb-1 linha-adm-data"><input type="date" class="adm-data-input p-2 border rounded flex-1 min-w-[140px]" required><input type="time" class="adm-hora-input p-2 border rounded w-[130px]" title="Horário"></div>';
+            limparFormAdminEvento();
             carregarCardsEventos();
             carregarSelectEventos();
+            atualizarUISemEvento();
             renderAdminEventos();
+            alert(foiEdicao ? 'Evento atualizado.' : 'Evento adicionado.');
         });
 
         function renderAdminEventos() {
@@ -841,12 +933,25 @@
             box.innerHTML = eventos.map((e, idx) => `
                 <div class="flex justify-between items-center border-b py-2 gap-2">
                     <span class="flex items-center gap-2 min-w-0">${e.foto ? '<img src="'+String(e.foto).replace(/"/g,'')+'" class="w-8 rounded object-cover shrink-0" style="aspect-ratio:4/5">' : ''}<span class="truncate">${e.nome} — ${formatarDatasDoEvento(e)} — R$ ${Number(e.valor).toFixed(2)}</span></span>
-                    <button type="button" data-idx="${idx}" class="btn-rm-evt text-red-500 text-xs shrink-0">Remover</button>
+                    <span class="flex gap-2 shrink-0">
+                        <button type="button" data-idx="${idx}" class="btn-edit-evt text-primary text-xs font-bold underline">Editar</button>
+                        <button type="button" data-idx="${idx}" class="btn-rm-evt text-red-500 text-xs">Remover</button>
+                    </span>
                 </div>
             `).join('') || '<p class="text-gray-400">Nenhum evento</p>';
+            box.querySelectorAll('.btn-edit-evt').forEach(btn => {
+                btn.onclick = function () {
+                    carregarEventoNoForm(parseInt(btn.getAttribute('data-idx'), 10));
+                };
+            });
             box.querySelectorAll('.btn-rm-evt').forEach(btn => {
                 btn.onclick = () => {
-                    eventos.splice(parseInt(btn.dataset.idx), 1);
+                    var i = parseInt(btn.dataset.idx, 10);
+                    var nome = (eventos[i] && eventos[i].nome) || 'este evento';
+                    if (!confirm('Remover o evento "' + nome + '"?\n\nAs inscrições já feitas não são apagadas automaticamente.')) return;
+                    eventos.splice(i, 1);
+                    if (editandoEventoIdx === i) limparFormAdminEvento();
+                    else if (editandoEventoIdx > i) editandoEventoIdx--;
                     salvarEventos(eventos);
                     carregarCardsEventos();
                     carregarSelectEventos();

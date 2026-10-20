@@ -550,6 +550,8 @@
                         <i class="fa fa-calendar-plus-o mr-2"></i> Ver Eventos e Fazer Inscrição
                     </a>
                 </div>
+                <!-- Destaque de eventos com inscrição (preenchido pelo JS) -->
+                <div id="destaqueEventosInscricao" class="mt-8 max-w-2xl mx-auto hidden"></div>
             </div>
         </section>
 
@@ -2249,6 +2251,90 @@
         }
 
         // ==================================================
+        // 📅 DESTAQUE DE EVENTOS COM INSCRIÇÃO (home)
+        // ==================================================
+        function destacarEventosInscricao() {
+            var box = document.getElementById('destaqueEventosInscricao');
+            if (!box) return;
+            var lista = [];
+            try {
+                var a = JSON.parse(localStorage.getItem('ibn_eventos') || 'null');
+                if (Array.isArray(a)) lista = a;
+                else {
+                    var b = JSON.parse(localStorage.getItem('eventos') || '[]');
+                    if (Array.isArray(b)) lista = b;
+                }
+            } catch (e) { lista = []; }
+            function dataIsoDe(ev) {
+                var ds = (Array.isArray(ev.datas) && ev.datas.length) ? ev.datas : [];
+                if (ds.length) return String(ds[0]).slice(0, 10);
+                var d = String(ev.dataIso || ev.data || '').trim();
+                if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) {
+                    var p = d.split('/');
+                    return p[2] + '-' + p[1] + '-' + p[0];
+                }
+                return '';
+            }
+            function fmtDataBR(iso) {
+                if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso || '';
+                var p = iso.slice(0, 10).split('-');
+                return p[2] + '/' + p[1] + '/' + p[0];
+            }
+            function fmtDatasEv(ev) {
+                var ds = (Array.isArray(ev.datas) && ev.datas.length) ? ev.datas : (dataIsoDe(ev) ? [dataIsoDe(ev)] : []);
+                var hs = Array.isArray(ev.horarios) ? ev.horarios : [];
+                return ds.map(function (d, i) {
+                    var txt = fmtDataBR(String(d).slice(0, 10));
+                    var h = (hs[i] || ev.horario || '').toString().trim();
+                    if (h) txt += ' às ' + h.slice(0, 5);
+                    return txt;
+                }).filter(Boolean).join(' e ');
+            }
+            var hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            var futuros = lista.filter(function (ev) {
+                if (!ev || !ev.nome) return false;
+                var iso = dataIsoDe(ev);
+                if (!iso) return true; // sem data: ainda mostra
+                var dt = new Date(iso + 'T12:00:00');
+                // se tem várias datas, considera a última para "já passou"
+                var todas = (Array.isArray(ev.datas) && ev.datas.length) ? ev.datas : [iso];
+                var ultima = todas.map(function (x) { return String(x).slice(0, 10); }).sort().pop();
+                var u = new Date(ultima + 'T12:00:00');
+                return u >= hoje;
+            }).sort(function (a, b) {
+                return String(dataIsoDe(a)).localeCompare(String(dataIsoDe(b)));
+            });
+            if (!futuros.length) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            box.classList.remove('hidden');
+            box.innerHTML =
+                '<div class="bg-amber-50 border-2 border-secondary/50 rounded-2xl p-5 text-left shadow-sm">' +
+                '<p class="text-sm font-bold text-primary mb-3"><i class="fa fa-star text-secondary mr-1"></i> Eventos com inscrição — não perca!</p>' +
+                '<ul class="space-y-3">' +
+                futuros.map(function (ev) {
+                    var quando = fmtDatasEv(ev) || 'Data a confirmar';
+                    var valor = Number(ev.valor) > 0 ? ('R$ ' + Number(ev.valor).toFixed(2)) : 'Gratuito';
+                    return '<li class="bg-white rounded-xl border border-secondary/30 p-3 flex flex-wrap items-center justify-between gap-2">' +
+                        '<div class="min-w-0">' +
+                        '<p class="font-bold text-primary">' + String(ev.nome).replace(/</g, '&lt;') + '</p>' +
+                        '<p class="text-xs text-gray-600 mt-0.5"><i class="fa fa-calendar mr-1"></i>' + quando +
+                        ' · <span class="text-secondary font-semibold">' + valor + '</span></p>' +
+                        '</div>' +
+                        '<a href="eventos.html#inscricao" class="shrink-0 bg-secondary text-primary text-xs font-bold px-3 py-2 rounded-lg hover:bg-yellow-400">' +
+                        'Faça sua inscrição <i class="fa fa-arrow-right ml-1"></i></a>' +
+                        '</li>';
+                }).join('') +
+                '</ul>' +
+                '<p class="text-center mt-3"><a href="eventos.html" class="text-sm font-bold text-primary underline">Ver todos os eventos</a></p>' +
+                '</div>';
+        }
+
+        // ==================================================
         // 🚀 INICIALIZAR TUDO
         // ==================================================
         document.addEventListener('DOMContentLoaded', function() {
@@ -2275,6 +2361,7 @@
             try {
                 verificarSessao();
                 mostrarAlertaDoDia();
+                try { destacarEventosInscricao(); } catch (eEv) { console.warn(eEv); }
 
         // Puxa quadro de avisos da nuvem (se houver)
         (async function puxarAvisosDia() {
