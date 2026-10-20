@@ -238,14 +238,39 @@
                     </ol>
                 </div>
                 <form id="formEvento" class="grid md:grid-cols-3 gap-3 mb-6">
-                    <input type="text" id="nomeEvento" placeholder="Nome do evento" required class="p-3 border rounded-lg">
-                    <input type="date" id="dataEvento" required class="p-3 border rounded-lg">
+                    <input type="text" id="nomeEvento" placeholder="Nome do evento" required class="p-3 border rounded-lg md:col-span-3">
+                    <div class="md:col-span-3 border rounded-xl p-3 bg-gray-50 space-y-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <label class="text-xs font-bold text-gray-700">Datas do evento (pode ser mais de um dia)</label>
+                            <button type="button" id="btnAddDataEvento" class="text-xs font-bold bg-primary text-white px-3 py-1.5 rounded-lg">+ Outro dia</button>
+                        </div>
+                        <p class="text-[11px] text-gray-500">Ex.: curso de casais dia 7 e 8 — adicione as duas datas.</p>
+                        <div id="boxDatasEvento" class="space-y-2">
+                            <div class="flex flex-wrap items-center gap-2 linha-data-ev">
+                                <input type="date" class="data-evento-input p-2 border rounded-lg flex-1 min-w-[140px]" required>
+                                <input type="time" class="hora-evento-input p-2 border rounded-lg w-[130px]" title="Horário">
+                            </div>
+                        </div>
+                    </div>
                     <input type="text" id="localEvento" placeholder="Local" class="p-3 border rounded-lg">
                     <input type="number" id="valorEvento" placeholder="Valor R$ (0 = gratuito)" min="0" step="0.01" value="0" class="p-3 border rounded-lg">
                     <input type="text" id="pixEvento" placeholder="Chave PIX da igreja" class="p-3 border rounded-lg">
                     <input type="text" id="formaEvento" placeholder="Formas aceitas" value="PIX, Cartão (PagBank), Dinheiro" class="p-3 border rounded-lg">
                     <input type="url" id="linkPagEvento" placeholder="Link PagBank / PagSeguro de pagamento" class="p-3 border rounded-lg md:col-span-2">
-                    <input type="url" id="fotoEvento" placeholder="Link da foto de divulgação" class="p-3 border rounded-lg">
+                    <div class="md:col-span-3 border rounded-xl p-3 bg-gray-50 space-y-2">
+                        <p class="text-xs font-bold text-gray-700">Imagem de divulgação (formato 4:5)</p>
+                        <p class="text-[11px] text-gray-500">Envie a arte no padrão 4:5 (ex.: 1080×1350). Ou cole um link da imagem.</p>
+                        <div class="flex flex-wrap gap-3 items-start">
+                            <div class="w-28 shrink-0">
+                                <div id="previewFotoEvento" class="w-28 bg-white border-2 border-dashed border-gray-300 rounded-lg overflow-hidden flex items-center justify-center text-[10px] text-gray-400 text-center px-1" style="aspect-ratio:4/5;">4:5</div>
+                            </div>
+                            <div class="flex-1 min-w-[180px] space-y-2">
+                                <input type="file" id="fileFotoEvento" accept="image/*" class="w-full text-sm">
+                                <input type="url" id="fotoEvento" placeholder="Ou link da foto de divulgação" class="w-full p-2 border rounded-lg text-sm">
+                                <input type="hidden" id="fotoEventoData" value="">
+                            </div>
+                        </div>
+                    </div>
                     <input type="url" id="videoEvento" placeholder="Link do vídeo (YouTube)" class="p-3 border rounded-lg md:col-span-2">
                     <label class="flex items-center gap-2 text-sm md:col-span-2"><input type="checkbox" id="visitaEvento" checked class="accent-secondary"> Visitantes podem se inscrever</label>
                     <button type="submit" class="bg-secondary text-primary px-4 py-3 rounded-lg font-bold">
@@ -709,9 +734,10 @@
             try {
                 var listaE = getEventos();
                 if (listaE.length) {
-                    var csvE = _montarCSV(['Nome','Data','Local','Valor','PIX','Formas','LinkPagamento'],
+                    var csvE = _montarCSV(['Nome','Data','Datas','Local','Valor','PIX','Formas','LinkPagamento'],
                         listaE.map(function(ev){
-                            return [ev.nome||'', _fmtDataCSV(ev.data), ev.local||'', ev.valor||0, ev.pix||'', ev.forma||ev.formaPagamento||'', ev.linkPagamento||''];
+                            var ds = (Array.isArray(ev.datas) && ev.datas.length) ? ev.datas : (ev.data ? [ev.data] : []);
+                            return [ev.nome||'', _fmtDataCSV(ev.data), ds.map(_fmtDataCSV).join(' | '), ev.local||'', ev.valor||0, ev.pix||'', ev.forma||ev.formaPagamento||'', ev.linkPagamento||''];
                         }));
                     baixar(csvE, 'eventos_' + dataArq + '.csv');
                     ok++;
@@ -788,13 +814,31 @@
                 container.innerHTML = '<p class="text-gray-400">Nenhum evento cadastrado.</p>';
                 return;
             }
+            function _fmtDatasEv(ev) {
+                var ds = (Array.isArray(ev.datas) && ev.datas.length) ? ev.datas : (ev.data ? [ev.data] : []);
+                var hs = Array.isArray(ev.horarios) ? ev.horarios : [];
+                return ds.map(function (d, i) {
+                    d = String(d || '');
+                    var txt = d;
+                    if (/^\d{4}-\d{2}-\d{2}/.test(d)) {
+                        var p = d.slice(0, 10).split('-');
+                        txt = p[2] + '/' + p[1] + '/' + p[0];
+                    }
+                    var h = (hs[i] || ev.horario || '').trim();
+                    if (h) txt += ' às ' + h;
+                    return txt;
+                }).join(' e ');
+            }
             container.innerHTML = lista.map((ev, idx) => `
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded border">
-                    <div>
+                <div class="flex justify-between items-center gap-3 p-3 bg-gray-50 rounded border">
+                    <div class="flex gap-3 items-center min-w-0">
+                        ${ev.foto ? '<img src="' + String(ev.foto).replace(/"/g,'') + '" alt="" class="w-12 rounded border object-cover shrink-0" style="aspect-ratio:4/5">' : ''}
+                        <div class="min-w-0">
                         <p class="font-bold">${ev.nome}</p>
-                        <p class="text-xs text-gray-500">📅 ${ev.data} · 📍 ${ev.local||'Não informado'} · ${Number(ev.valor)>0 ? 'R$ '+Number(ev.valor).toFixed(2) : 'Gratuito'}</p>
+                        <p class="text-xs text-gray-500">📅 ${_fmtDatasEv(ev)} · 📍 ${ev.local||'Não informado'} · ${Number(ev.valor)>0 ? 'R$ '+Number(ev.valor).toFixed(2) : 'Gratuito'}</p>
+                        </div>
                     </div>
-                    <button onclick="removerEvento(${idx})" class="text-red-500"><i class="fa fa-trash"></i></button>
+                    <button onclick="removerEvento(${idx})" class="text-red-500 shrink-0"><i class="fa fa-trash"></i></button>
                 </div>
             `).join('');
             if (typeof renderInscritosEventos === 'function') renderInscritosEventos();
@@ -803,24 +847,144 @@
             if (!confirm('Remover evento?')) return;
             const l = getEventos(); l.splice(idx, 1); salvarEventos(l);
         }
+        // Datas múltiplas + imagem 4:5
+        (function setupEventoDatasEFoto() {
+            var box = document.getElementById('boxDatasEvento');
+            var btnAdd = document.getElementById('btnAddDataEvento');
+            if (btnAdd && box) {
+                btnAdd.addEventListener('click', function () {
+                    var row = document.createElement('div');
+                    row.className = 'flex flex-wrap items-center gap-2 linha-data-ev';
+                    row.innerHTML = '<input type="date" class="data-evento-input p-2 border rounded-lg flex-1 min-w-[140px]">' +
+                        '<input type="time" class="hora-evento-input p-2 border rounded-lg w-[130px]" title="Horário">' +
+                        '<button type="button" class="btn-rm-data-ev text-red-600 text-xs font-bold px-2">Remover</button>';
+                    box.appendChild(row);
+                    row.querySelector('.btn-rm-data-ev').onclick = function () { row.remove(); };
+                });
+            }
+            var fileInp = document.getElementById('fileFotoEvento');
+            var urlInp = document.getElementById('fotoEvento');
+            var dataInp = document.getElementById('fotoEventoData');
+            var prev = document.getElementById('previewFotoEvento');
+            function mostrarPreview(src) {
+                if (!prev) return;
+                if (src) {
+                    prev.innerHTML = '<img src="' + src.replace(/"/g, '') + '" alt="Divulgação" class="w-full h-full object-cover">';
+                } else {
+                    prev.innerHTML = '4:5';
+                }
+            }
+            if (fileInp) {
+                fileInp.addEventListener('change', function () {
+                    var f = fileInp.files && fileInp.files[0];
+                    if (!f) return;
+                    if (f.size > 2.5 * 1024 * 1024) {
+                        alert('Imagem grande demais (máx. ±2,5 MB). Comprima um pouco ou use o link.');
+                        fileInp.value = '';
+                        return;
+                    }
+                    var reader = new FileReader();
+                    reader.onload = function () {
+                        var dataUrl = String(reader.result || '');
+                        // Redimensiona leve para caber no armazenamento local
+                        var img = new Image();
+                        img.onload = function () {
+                            var maxW = 1080;
+                            var w = img.width;
+                            var h = img.height;
+                            if (w > maxW) {
+                                h = Math.round(h * (maxW / w));
+                                w = maxW;
+                            }
+                            var canvas = document.createElement('canvas');
+                            canvas.width = w;
+                            canvas.height = h;
+                            var ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, h);
+                            var out = canvas.toDataURL('image/jpeg', 0.82);
+                            if (dataInp) dataInp.value = out;
+                            if (urlInp) urlInp.value = '';
+                            mostrarPreview(out);
+                        };
+                        img.onerror = function () {
+                            if (dataInp) dataInp.value = dataUrl;
+                            mostrarPreview(dataUrl);
+                        };
+                        img.src = dataUrl;
+                    };
+                    reader.readAsDataURL(f);
+                });
+            }
+            if (urlInp) {
+                urlInp.addEventListener('input', function () {
+                    if (urlInp.value.trim()) {
+                        if (dataInp) dataInp.value = '';
+                        if (fileInp) fileInp.value = '';
+                        mostrarPreview(urlInp.value.trim());
+                    }
+                });
+            }
+        })();
+        function coletarDatasEventoForm() {
+            var pares = [];
+            document.querySelectorAll('#boxDatasEvento .linha-data-ev').forEach(function (row) {
+                var dInp = row.querySelector('.data-evento-input');
+                var hInp = row.querySelector('.hora-evento-input');
+                var v = dInp ? (dInp.value || '').trim() : '';
+                if (!v) return;
+                var h = hInp ? (hInp.value || '').trim() : '';
+                pares.push({ data: v, horario: h });
+            });
+            pares.sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });
+            // remove data duplicada (mantém a primeira com horário, se houver)
+            var seen = {};
+            var uniq = [];
+            pares.forEach(function (p) {
+                if (seen[p.data]) return;
+                seen[p.data] = true;
+                uniq.push(p);
+            });
+            return uniq;
+        }
         document.getElementById('formEvento').addEventListener('submit', (e) => {
             e.preventDefault();
             const l = getEventos();
+            var pares = coletarDatasEventoForm();
+            if (!pares.length) {
+                alert('Informe pelo menos uma data do evento.');
+                return;
+            }
+            var datas = pares.map(function (p) { return p.data; });
+            var horarios = pares.map(function (p) { return p.horario || ''; });
+            var fotoUrl = (document.getElementById('fotoEvento').value || '').trim();
+            var fotoData = (document.getElementById('fotoEventoData').value || '').trim();
             l.push({
                 id: 'ev-' + Date.now(),
                 nome: document.getElementById('nomeEvento').value.trim(),
-                data: document.getElementById('dataEvento').value,
+                data: datas[0],
+                datas: datas,
+                horario: horarios[0] || '',
+                horarios: horarios,
                 local: document.getElementById('localEvento').value.trim(),
                 valor: parseFloat(document.getElementById('valorEvento').value) || 0,
                 pix: (document.getElementById('pixEvento').value || '').trim() || '36.158.983/0001-36',
                 forma: (document.getElementById('formaEvento').value || 'PIX').trim(),
-                foto: (document.getElementById('fotoEvento').value || '').trim(),
+                foto: fotoData || fotoUrl,
+                fotoUrl: fotoUrl,
                 video: (document.getElementById('videoEvento').value || '').trim(),
                 linkPagamento: (document.getElementById('linkPagEvento').value || '').trim(),
                 visitantes: document.getElementById('visitaEvento').checked
             });
             salvarEventos(l);
             e.target.reset();
+            var dataHid = document.getElementById('fotoEventoData');
+            if (dataHid) dataHid.value = '';
+            var prev = document.getElementById('previewFotoEvento');
+            if (prev) prev.innerHTML = '4:5';
+            var boxD = document.getElementById('boxDatasEvento');
+            if (boxD) {
+                boxD.innerHTML = '<div class="flex flex-wrap items-center gap-2 linha-data-ev"><input type="date" class="data-evento-input p-2 border rounded-lg flex-1 min-w-[140px]" required><input type="time" class="hora-evento-input p-2 border rounded-lg w-[130px]" title="Horário"></div>';
+            }
         });
         document.getElementById('btnBaixarEventos').addEventListener('click', () => {
             const lista = getEventos();

@@ -178,11 +178,33 @@
             <p class="text-sm text-gray-500 mb-4">Adicione eventos, valores e formas de pagamento. Os dados ficam salvos neste navegador (depois pode migrar para servidor).</p>
             <form id="formAdminEvento" class="space-y-3 max-w-xl">
                 <input type="text" id="admNome" placeholder="Nome do evento" required class="w-full p-2 border rounded">
-                <input type="date" id="admData" required class="w-full p-2 border rounded">
+                <div class="border rounded-lg p-2 bg-gray-50 space-y-2">
+                    <div class="flex justify-between items-center gap-2">
+                        <label class="text-xs font-bold text-gray-700">Datas (pode ser mais de um dia)</label>
+                        <button type="button" id="admBtnAddData" class="text-xs font-bold bg-primary text-white px-2 py-1 rounded">+ Outro dia</button>
+                    </div>
+                    <div id="admBoxDatas">
+                        <div class="flex flex-wrap gap-2 items-center mb-1 linha-adm-data">
+                            <input type="date" class="adm-data-input p-2 border rounded flex-1 min-w-[140px]" required>
+                            <input type="time" class="adm-hora-input p-2 border rounded w-[130px]" title="Horário">
+                        </div>
+                    </div>
+                </div>
                 <input type="number" id="admValor" placeholder="Valor (R$) — 0 = gratuito" step="0.01" min="0" required class="w-full p-2 border rounded">
                 <input type="text" id="admPix" placeholder="Chave PIX da igreja" value="36.158.983/0001-36" class="w-full p-2 border rounded">
                 <input type="text" id="admForma" placeholder="Formas aceitas" value="PIX, Cartão (PagBank), Dinheiro" class="w-full p-2 border rounded">
                 <input type="url" id="admLinkPag" placeholder="Link PagBank de pagamento (opcional)" class="w-full p-2 border rounded">
+                <div class="border rounded-lg p-2 bg-gray-50 space-y-2">
+                    <p class="text-xs font-bold text-gray-700">Imagem 4:5 (divulgação)</p>
+                    <div class="flex gap-3 items-start">
+                        <div id="admPreviewFoto" class="w-20 bg-white border border-dashed rounded flex items-center justify-center text-[10px] text-gray-400" style="aspect-ratio:4/5">4:5</div>
+                        <div class="flex-1 space-y-1">
+                            <input type="file" id="admFileFoto" accept="image/*" class="w-full text-sm">
+                            <input type="url" id="admFoto" placeholder="Ou link da imagem" class="w-full p-2 border rounded text-sm">
+                            <input type="hidden" id="admFotoData" value="">
+                        </div>
+                    </div>
+                </div>
                 <button type="submit" class="bg-secondary text-primary px-4 py-2 rounded font-bold">+ Adicionar Evento</button>
             </form>
             <div id="listaAdminEventos" class="mt-4 text-sm space-y-2"></div>
@@ -204,8 +226,20 @@
         // Agenda começa vazia — o admin adiciona os eventos
         const EVENTOS_PADRAO = [];
 
+        function formatarDatasDoEvento(ev) {
+            if (!ev) return '';
+            var ds = (Array.isArray(ev.datas) && ev.datas.length) ? ev.datas : (ev.data ? [ev.data] : []);
+            var hs = Array.isArray(ev.horarios) ? ev.horarios : [];
+            return ds.map(function (d, i) {
+                var txt = formatarDataEvento(d);
+                var h = (hs[i] || ev.horario || '').trim();
+                if (h) txt += ' às ' + h;
+                return txt;
+            }).filter(Boolean).join(' e ');
+        }
         function formatarDataEvento(d) {
             if (!d) return '';
+            if (Array.isArray(d)) return d.map(formatarDataEvento).filter(Boolean).join(' e ');
             d = String(d).trim();
             // já está DD/MM/AAAA
             if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) return d;
@@ -399,15 +433,17 @@
             }
             container.innerHTML = eventos.map((e, i) => `
                 <div class="bg-white rounded-xl shadow-lg p-6 border-2 ${i === 0 ? 'border-secondary' : 'border-gray-100'}">
-                    <div class="grid md:grid-cols-2 gap-4 items-center">
-                        <div>
+                    <div class="grid md:grid-cols-3 gap-4 items-center">
+                        ${e.foto ? '<div class="md:col-span-1 flex justify-center"><img src="' + String(e.foto).replace(/"/g,'') + '" alt="' + String(e.nome||'').replace(/"/g,'') + '" class="w-40 max-w-full rounded-xl border object-cover shadow-sm" style="aspect-ratio:4/5"></div>' : ''}
+                        <div class="${e.foto ? 'md:col-span-1' : 'md:col-span-2'}">
                             ${i === 0 ? '<p class="text-sm text-secondary font-bold">PRÓXIMO</p>' : ''}
                             <h3 class="text-xl font-bold text-primary mt-1">${e.nome}</h3>
-                            <p class="mt-2"><i class="fa fa-calendar"></i> ${formatarDataEvento(e.data)}</p>
+                            <p class="mt-2"><i class="fa fa-calendar"></i> ${formatarDatasDoEvento(e)}</p>
+                            ${e.local ? '<p class="text-sm text-gray-600 mt-1"><i class="fa fa-map-marker"></i> ' + e.local + '</p>' : ''}
                             <p class="text-lg font-bold text-secondary mt-2">${Number(e.valor) > 0 ? 'R$ ' + Number(e.valor).toFixed(2) : 'Gratuito'}</p>
                             <p class="text-xs text-gray-500 mt-1">${e.forma || e.formaPagamento || 'PIX, Cartão (PagBank), Dinheiro'}</p>
                         </div>
-                        <a href="#inscricao" class="bg-secondary text-primary p-3 rounded-lg font-bold text-center hover:bg-yellow-400">
+                        <a href="#inscricao" class="bg-secondary text-primary p-3 rounded-lg font-bold text-center hover:bg-yellow-400 ${e.foto ? 'md:col-span-1' : ''}">
                             <i class="fa fa-pencil-square-o mr-2"></i> Inscrever-se
                         </a>
                     </div>
@@ -423,7 +459,7 @@
             } else {
                 sel.disabled = false;
                 sel.innerHTML = '<option value="">Selecione...</option>' +
-                    eventos.map(e => `<option value="${e.id}">${e.nome} — R$ ${Number(e.valor).toFixed(2)}</option>`).join('');
+                    eventos.map(e => `<option value="${e.id}">${e.nome} (${formatarDatasDoEvento(e)}) — R$ ${Number(e.valor).toFixed(2)}</option>`).join('');
             }
         }
 
@@ -601,33 +637,120 @@
             `;
         }
 
+        // Admin: datas múltiplas + foto 4:5
+        (function setupAdmEventoExtra() {
+            var btn = document.getElementById('admBtnAddData');
+            var box = document.getElementById('admBoxDatas');
+            if (btn && box) {
+                btn.addEventListener('click', function () {
+                    var row = document.createElement('div');
+                    row.className = 'flex flex-wrap gap-2 items-center mb-1 linha-adm-data';
+                    row.innerHTML = '<input type="date" class="adm-data-input p-2 border rounded flex-1 min-w-[140px]">' +
+                        '<input type="time" class="adm-hora-input p-2 border rounded w-[130px]" title="Horário">' +
+                        '<button type="button" class="text-red-600 text-xs font-bold">Remover</button>';
+                    row.querySelector('button').onclick = function () { row.remove(); };
+                    box.appendChild(row);
+                });
+            }
+            var file = document.getElementById('admFileFoto');
+            var url = document.getElementById('admFoto');
+            var hid = document.getElementById('admFotoData');
+            var prev = document.getElementById('admPreviewFoto');
+            function prevShow(src) {
+                if (!prev) return;
+                prev.innerHTML = src ? '<img src="' + src.replace(/"/g,'') + '" class="w-full h-full object-cover">' : '4:5';
+            }
+            if (file) file.addEventListener('change', function () {
+                var f = file.files && file.files[0];
+                if (!f) return;
+                if (f.size > 2.5 * 1024 * 1024) { alert('Imagem grande (máx. 2,5 MB).'); file.value = ''; return; }
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var img = new Image();
+                    img.onload = function () {
+                        var maxW = 1080, w = img.width, h = img.height;
+                        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+                        var c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        c.getContext('2d').drawImage(img, 0, 0, w, h);
+                        var out = c.toDataURL('image/jpeg', 0.82);
+                        if (hid) hid.value = out;
+                        if (url) url.value = '';
+                        prevShow(out);
+                    };
+                    img.src = reader.result;
+                };
+                reader.readAsDataURL(f);
+            });
+            if (url) url.addEventListener('input', function () {
+                if (url.value.trim()) {
+                    if (hid) hid.value = '';
+                    if (file) file.value = '';
+                    prevShow(url.value.trim());
+                }
+            });
+        })();
+
         // Admin: adicionar evento
         document.getElementById('formAdminEvento').addEventListener('submit', function(e) {
             e.preventDefault();
             const nome = document.getElementById('admNome').value.trim();
-            const dataRaw = document.getElementById('admData').value.trim();
-            const data = formatarDataEvento(dataRaw);
+            var pares = [];
+            document.querySelectorAll('#admBoxDatas .linha-adm-data').forEach(function (row) {
+                var dInp = row.querySelector('.adm-data-input');
+                var hInp = row.querySelector('.adm-hora-input');
+                var v = dInp ? (dInp.value || '').trim() : '';
+                if (!v) return;
+                pares.push({ data: v, horario: hInp ? (hInp.value || '').trim() : '' });
+            });
+            // fallback se estrutura antiga
+            if (!pares.length) {
+                document.querySelectorAll('#admBoxDatas .adm-data-input').forEach(function (inp) {
+                    var v = (inp.value || '').trim();
+                    if (v) pares.push({ data: v, horario: '' });
+                });
+            }
+            pares.sort(function (a, b) { return String(a.data).localeCompare(String(b.data)); });
+            var seen = {}, uniq = [];
+            pares.forEach(function (p) {
+                if (seen[p.data]) return;
+                seen[p.data] = true;
+                uniq.push(p);
+            });
+            var datasIso = uniq.map(function (p) { return p.data; });
+            var horarios = uniq.map(function (p) { return p.horario || ''; });
+            if (!datasIso.length) { alert('Informe pelo menos uma data.'); return; }
             const valor = parseFloat(document.getElementById('admValor').value) || 0;
             const pix = document.getElementById('admPix').value.trim() || '36.158.983/0001-36';
             const forma = document.getElementById('admForma').value.trim() || 'PIX, Cartão (PagBank), Dinheiro';
             const linkPag = (document.getElementById('admLinkPag') && document.getElementById('admLinkPag').value || '').trim();
+            var fotoData = (document.getElementById('admFotoData') && document.getElementById('admFotoData').value || '').trim();
+            var fotoUrl = (document.getElementById('admFoto') && document.getElementById('admFoto').value || '').trim();
             const id = 'ev-' + Date.now();
             eventos.push({
                 id: id,
                 nome: nome,
-                data: data,
-                dataIso: dataRaw,
+                data: datasIso[0],
+                datas: datasIso,
+                dataIso: datasIso[0],
+                horario: horarios[0] || '',
+                horarios: horarios,
                 valor: valor,
                 pix: pix,
                 pixDestino: pix,
                 forma: forma,
                 formaPagamento: forma,
-                linkPagamento: linkPag
+                linkPagamento: linkPag,
+                foto: fotoData || fotoUrl
             });
             salvarEventos(eventos);
             e.target.reset();
             document.getElementById('admPix').value = '36.158.983/0001-36';
             document.getElementById('admForma').value = 'PIX, Cartão (PagBank), Dinheiro';
+            var hid2 = document.getElementById('admFotoData'); if (hid2) hid2.value = '';
+            var prev2 = document.getElementById('admPreviewFoto'); if (prev2) prev2.innerHTML = '4:5';
+            var boxD = document.getElementById('admBoxDatas');
+            if (boxD) boxD.innerHTML = '<div class="flex flex-wrap gap-2 items-center mb-1 linha-adm-data"><input type="date" class="adm-data-input p-2 border rounded flex-1 min-w-[140px]" required><input type="time" class="adm-hora-input p-2 border rounded w-[130px]" title="Horário"></div>';
             carregarCardsEventos();
             carregarSelectEventos();
             renderAdminEventos();
@@ -636,9 +759,9 @@
         function renderAdminEventos() {
             const box = document.getElementById('listaAdminEventos');
             box.innerHTML = eventos.map((e, idx) => `
-                <div class="flex justify-between items-center border-b py-2">
-                    <span>${e.nome} — ${e.data} — R$ ${Number(e.valor).toFixed(2)}</span>
-                    <button type="button" data-idx="${idx}" class="btn-rm-evt text-red-500 text-xs">Remover</button>
+                <div class="flex justify-between items-center border-b py-2 gap-2">
+                    <span class="flex items-center gap-2 min-w-0">${e.foto ? '<img src="'+String(e.foto).replace(/"/g,'')+'" class="w-8 rounded object-cover shrink-0" style="aspect-ratio:4/5">' : ''}<span class="truncate">${e.nome} — ${formatarDatasDoEvento(e)} — R$ ${Number(e.valor).toFixed(2)}</span></span>
+                    <button type="button" data-idx="${idx}" class="btn-rm-evt text-red-500 text-xs shrink-0">Remover</button>
                 </div>
             `).join('') || '<p class="text-gray-400">Nenhum evento</p>';
             box.querySelectorAll('.btn-rm-evt').forEach(btn => {
