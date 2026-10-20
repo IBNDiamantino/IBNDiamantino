@@ -315,22 +315,63 @@
                 var local = [];
                 try { local = JSON.parse(localStorage.getItem('ibn_eventos') || '[]'); } catch (e) { local = []; }
                 if (!Array.isArray(local)) local = [];
-                // mescla por id (nuvem prevalece se mais recente ou se local não tem)
+                // mescla por id — nunca perde formulário custom se uma das fontes tiver
                 var map = {};
+                function nForm(ev) {
+                    return (ev && Array.isArray(ev.formulario)) ? ev.formulario.length : 0;
+                }
+                function mesclarEv(a, b) {
+                    var out = Object.assign({}, a || {}, b || {});
+                    // formulário: fica o que tiver mais perguntas
+                    if (nForm(a) >= nForm(b) && nForm(a) > 0) out.formulario = a.formulario;
+                    else if (nForm(b) > 0) out.formulario = b.formulario;
+                    // foto: prefere a que existir
+                    if (!out.foto && (a && a.foto)) out.foto = a.foto;
+                    if (!out.foto && (b && b.foto)) out.foto = b.foto;
+                    // datas/horários: prefere o mais completo
+                    if ((!out.datas || !out.datas.length) && a && a.datas) out.datas = a.datas;
+                    if ((!out.horarios || !out.horarios.length) && a && a.horarios) out.horarios = a.horarios;
+                    return out;
+                }
                 local.forEach(function (e) { if (e && e.id) map[e.id] = e; });
                 nuvem.forEach(function (e) {
                     if (!e || !e.id) return;
                     if (!map[e.id]) map[e.id] = e;
-                    else {
-                        var tL = map[e.id].atualizadoEm || map[e.id].data || '';
-                        var tN = e.atualizadoEm || e.data || '';
-                        // se nuvem tem nome/datas e local também, prefere nuvem quando veio da sync
-                        map[e.id] = Object.assign({}, map[e.id], e);
-                    }
+                    else map[e.id] = mesclarEv(map[e.id], e);
+                });
+                // também mescla por nome se ids diferentes (evita perder formulário)
+                nuvem.forEach(function (eN) {
+                    if (!eN || !eN.nome) return;
+                    local.forEach(function (eL) {
+                        if (!eL || !eL.nome) return;
+                        if (String(eL.nome).toLowerCase().trim() !== String(eN.nome).toLowerCase().trim()) return;
+                        if (eL.id === eN.id) return;
+                        var base = map[eL.id] || eL;
+                        var m = mesclarEv(base, eN);
+                        map[eL.id] = m;
+                        if (map[eN.id]) map[eN.id] = mesclarEv(map[eN.id], m);
+                    });
                 });
                 var mesclada = Object.keys(map).map(function (k) { return map[k]; });
+                // dedup por nome (fica o que tem formulário)
+                var porNome = {};
+                mesclada.forEach(function (e) {
+                    var k = String(e.nome || e.id).toLowerCase().trim();
+                    if (!porNome[k] || nForm(e) > nForm(porNome[k])) porNome[k] = e;
+                });
+                mesclada = Object.keys(porNome).map(function (k) { return porNome[k]; });
                 localStorage.setItem('ibn_eventos', JSON.stringify(mesclada));
                 try { localStorage.setItem('eventos', JSON.stringify(mesclada)); } catch (e2) {}
+                // se local tinha formulário e nuvem não, reenvia a versão mesclada
+                try {
+                    var precisaSubir = mesclada.some(function (e) { return nForm(e) > 0; });
+                    if (precisaSubir) {
+                        firebase.firestore().collection('config').doc('eventos_site').set({
+                            itens: mesclada,
+                            atualizadoEm: new Date().toISOString()
+                        }, { merge: true }).catch(function () {});
+                    }
+                } catch (eUp) {}
                 return true;
             } catch (e3) { return false; }
         }

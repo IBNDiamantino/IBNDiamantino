@@ -369,8 +369,8 @@
                     <a href="#transmissoes" class="bg-secondary text-primary px-8 py-3 rounded-md font-bold text-lg hover:bg-yellow-400 transition-colors">
                         <i class="fa fa-play mr-2"></i> Ver Transmissões
                     </a>
-                    <a href="eventos.html" class="bg-white/20 hover:bg-white/30 px-8 py-3 rounded-md font-bold text-lg transition-colors border border-white/30">
-                        <i class="fa fa-calendar mr-2"></i> Eventos e Inscrições
+                    <a href="eventos.html" id="btnHeroEventos" class="bg-white/20 hover:bg-white/30 px-8 py-3 rounded-md font-bold text-lg transition-colors border border-white/30">
+                        <i class="fa fa-calendar mr-2"></i> <span id="txtHeroEventos">Eventos e Inscrições</span>
                     </a>
                     <a href="#celulas" class="bg-white/20 hover:bg-white/30 px-8 py-3 rounded-md font-bold text-lg transition-colors border border-white/30">
                         <i class="fa fa-map-marker mr-2"></i> Encontrar Célula
@@ -2319,10 +2319,25 @@
             }).sort(function (a, b) {
                 return String(dataIsoDe(a)).localeCompare(String(dataIsoDe(b)));
             });
+            // Botão do hero: destaca quando há evento com inscrição
+            var btnHero = document.getElementById('btnHeroEventos');
+            var txtHero = document.getElementById('txtHeroEventos');
             if (!futuros.length) {
                 box.classList.add('hidden');
                 box.innerHTML = '';
+                if (btnHero) {
+                    btnHero.className = 'bg-white/20 hover:bg-white/30 px-8 py-3 rounded-md font-bold text-lg transition-colors border border-white/30';
+                }
+                if (txtHero) txtHero.textContent = 'Eventos e Inscrições';
                 return;
+            }
+            if (btnHero) {
+                btnHero.className = 'bg-secondary text-primary px-8 py-3 rounded-md font-bold text-lg hover:bg-yellow-400 transition-colors shadow-lg ring-2 ring-yellow-300 animate-pulse';
+            }
+            if (txtHero) {
+                txtHero.textContent = futuros.length === 1
+                    ? ('Tem evento — confira!')
+                    : ('Tem ' + futuros.length + ' eventos — confira!');
             }
             box.classList.remove('hidden');
             box.innerHTML =
