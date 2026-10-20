@@ -898,6 +898,10 @@
         (async function initCelulas() {
             try {
                 if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
+                // puxa catálogo da nuvem (alterações feitas em outro PC)
+                if (typeof puxarListaCelulasDaNuvem === 'function') {
+                    await puxarListaCelulasDaNuvem();
+                }
                 if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
                     await IBNNuvem.puxarMembrosParaLocal();
                 } else if (typeof deduplicarMembrosLocais === 'function') {
@@ -907,6 +911,20 @@
             renderLista();
             if (usuario && (isAdmin(usuario) || isGestor(usuario))) renderCatalogoCelAdmin();
         })();
+        // quando a nuvem sincronizar depois, atualiza a lista na tela
+        window.addEventListener('ibn-nuvem-sincronizado', function () {
+            try {
+                if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
+                renderLista();
+                if (usuario && (isAdmin(usuario) || isGestor(usuario))) renderCatalogoCelAdmin();
+            } catch (e) {}
+        });
+        window.addEventListener('ibn-lista-celulas-atualizada', function () {
+            try {
+                renderLista();
+                if (usuario && (isAdmin(usuario) || isGestor(usuario))) renderCatalogoCelAdmin();
+            } catch (e) {}
+        });
 
         // Abre célula se veio na URL ?id=
         var params = new URLSearchParams(window.location.search);

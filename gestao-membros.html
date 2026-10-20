@@ -625,20 +625,50 @@
         document.getElementById('btnCopiarSenha').addEventListener('click', async function() {
             const senha = document.getElementById('senhaTempValor').value;
             const msg = document.getElementById('msgCopiouSenha');
-            try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(senha);
-                } else {
-                    const inp = document.getElementById('senhaTempValor');
-                    inp.select();
-                    document.execCommand('copy');
-                }
+            const inp = document.getElementById('senhaTempValor');
+            async function tentarCopiar(texto) {
+                // 1) Clipboard API (HTTPS)
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(texto);
+                        return true;
+                    }
+                } catch (e1) {}
+                // 2) select + execCommand no input
+                try {
+                    if (inp) {
+                        inp.removeAttribute('readonly');
+                        inp.focus();
+                        inp.select();
+                        inp.setSelectionRange(0, texto.length);
+                        var ok = document.execCommand('copy');
+                        inp.setAttribute('readonly', 'readonly');
+                        if (ok) return true;
+                    }
+                } catch (e2) {}
+                // 3) textarea temporária (funciona melhor em alguns celulares)
+                try {
+                    var ta = document.createElement('textarea');
+                    ta.value = texto;
+                    ta.setAttribute('readonly', '');
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    ta.setSelectionRange(0, texto.length);
+                    var ok2 = document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    if (ok2) return true;
+                } catch (e3) {}
+                return false;
+            }
+            var ok = await tentarCopiar(senha);
+            if (ok) {
                 msg.textContent = 'Copiado! Cole no WhatsApp, SMS ou e-mail.';
                 msg.classList.remove('hidden');
-            } catch (e) {
-                const inp = document.getElementById('senhaTempValor');
-                inp.select();
-                msg.textContent = 'Selecione a senha acima e use Ctrl+C (ou toque longo → Copiar).';
+            } else {
+                if (inp) { inp.focus(); inp.select(); }
+                msg.textContent = 'Toque na senha acima, selecione tudo e use Copiar (toque longo no celular ou Ctrl+C).';
                 msg.classList.remove('hidden');
             }
         });

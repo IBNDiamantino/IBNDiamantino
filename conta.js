@@ -141,15 +141,40 @@ function carregarListaCelulas() {
 function salvarListaCelulas(lista) {
     if (Array.isArray(lista)) LISTA_CELULAS = lista;
     localStorage.setItem(CHAVE_LISTA_CELULAS, JSON.stringify(LISTA_CELULAS));
-    try {
-        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+    // sobe para a nuvem (tenta de novo se o Firebase ainda estiver iniciando)
+    function subir() {
+        try {
+            if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) return false;
             firebase.firestore().collection('config').doc('lista_celulas').set({
                 itens: LISTA_CELULAS,
                 atualizadoEm: new Date().toISOString()
-            }, { merge: true }).catch(function () {});
-        }
-    } catch (e2) {}
+            }, { merge: true }).then(function () {
+                try { window.dispatchEvent(new CustomEvent('ibn-lista-celulas-salva')); } catch (e0) {}
+            }).catch(function () {});
+            return true;
+        } catch (e2) { return false; }
+    }
+    if (!subir()) {
+        setTimeout(function () { subir(); }, 1500);
+        setTimeout(function () { subir(); }, 4000);
+    }
     return { sucesso: true };
+}
+
+/** Baixa catálogo de células da nuvem (outros aparelhos veem as alterações) */
+async function puxarListaCelulasDaNuvem() {
+    try {
+        if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) return false;
+        var snap = await firebase.firestore().collection('config').doc('lista_celulas').get();
+        if (!snap.exists) return false;
+        var d = snap.data() || {};
+        var itens = d.itens || d.lista || [];
+        if (!Array.isArray(itens) || !itens.length) return false;
+        localStorage.setItem(CHAVE_LISTA_CELULAS, JSON.stringify(itens));
+        carregarListaCelulas();
+        try { window.dispatchEvent(new CustomEvent('ibn-lista-celulas-atualizada')); } catch (e1) {}
+        return true;
+    } catch (e) { return false; }
 }
 
 function podeGerenciarCatalogoCelulas(u) {
