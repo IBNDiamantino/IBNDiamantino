@@ -34,11 +34,27 @@
             <i class="fa fa-info-circle"></i> Faça <a href="login.html?destino=celulas.html" class="font-bold underline">login</a> para ver membros, enviar relatório ou exportar dados.
         </div>
 
-        <div id="barraAdmin" class="hidden mb-6 p-4 bg-white border-2 border-secondary/40 rounded-xl">
-            <p class="font-bold text-primary mb-2"><i class="fa fa-lock"></i> Área do Gestor / Administrador</p>
+        <div id="barraAdmin" class="hidden mb-6 p-4 bg-white border-2 border-secondary/40 rounded-xl space-y-3">
+            <p class="font-bold text-primary"><i class="fa fa-lock"></i> Área do Gestor / Administrador</p>
             <button type="button" id="btnExportGeral" class="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-accent">
                 <i class="fa fa-download"></i> Exportar todos os relatórios (CSV)
             </button>
+            <div class="border-t pt-3 space-y-2">
+                <p class="text-sm font-bold text-primary">Gerenciar células (adicionar / editar / remover)</p>
+                <p class="text-[11px] text-gray-500">Altera o catálogo de células do site. Membros da igreja não são apagados ao remover uma célula da lista.</p>
+                <div class="grid sm:grid-cols-2 gap-2">
+                    <input type="text" id="novaCelNome" class="border rounded-lg px-3 py-2 text-sm" placeholder="Nome da célula">
+                    <select id="novaCelDia" class="border rounded-lg px-3 py-2 text-sm">
+                        <option value="terca">Terça-feira</option>
+                        <option value="sabado">Sábado</option>
+                    </select>
+                    <input type="text" id="novaCelEnd" class="border rounded-lg px-3 py-2 text-sm sm:col-span-2" placeholder="Endereço (opcional)">
+                    <input type="text" id="novaCelHorario" class="border rounded-lg px-3 py-2 text-sm" placeholder="Horário (ex: Terça 20h)">
+                    <button type="button" id="btnAddCelulaCatalogo" class="bg-secondary text-primary font-bold text-sm px-3 py-2 rounded-lg">+ Adicionar célula</button>
+                </div>
+                <p id="msgCatalogoCel" class="text-xs hidden"></p>
+                <ul id="listaCatalogoCelAdmin" class="text-sm space-y-1 max-h-48 overflow-y-auto"></ul>
+            </div>
         </div>
 
 
@@ -313,7 +329,9 @@
         }
         function textoEnderecoCelula(id) {
             var meta = META_CELULAS[id] || {};
-            if (!CELULAS_LOCAL_AJUSTAVEL.includes(id)) return meta.endereco || '';
+            var cel = (typeof LISTA_CELULAS !== 'undefined') ? LISTA_CELULAS.find(function (c) { return c.id === id; }) : null;
+            var ajustavel = CELULAS_LOCAL_AJUSTAVEL.includes(id) || (cel && cel.localAjustavel) || (cel && cel.dia === 'sabado');
+            if (!ajustavel) return (cel && cel.endereco) || meta.endereco || '';
             var loc = localAtualCelula(id);
             if (loc && (loc.anfitriao || loc.endereco)) {
                 var partes = [];
@@ -321,7 +339,74 @@
                 if (loc.endereco) partes.push(loc.endereco);
                 return partes.join(' — ');
             }
-            return 'Local definido pelo líder a cada sábado';
+            return (cel && cel.endereco) || meta.endereco || 'Local definido pelo líder a cada sábado';
+        }
+
+        function msgCatalogo(txt, ok) {
+            var el = document.getElementById('msgCatalogoCel');
+            if (!el) return;
+            el.textContent = txt || '';
+            el.classList.remove('hidden');
+            el.className = 'text-xs ' + (ok === true ? 'text-green-700' : (ok === false ? 'text-red-600' : 'text-gray-600'));
+        }
+
+        function renderCatalogoCelAdmin() {
+            var ul = document.getElementById('listaCatalogoCelAdmin');
+            if (!ul || typeof LISTA_CELULAS === 'undefined') return;
+            if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
+            ul.innerHTML = LISTA_CELULAS.map(function (c) {
+                return '<li class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 py-1">' +
+                    '<span><strong>' + String(c.nome).replace(/</g,'&lt;') + '</strong> <span class="text-gray-500 text-xs">(' + (c.dia === 'sabado' ? 'sábado' : 'terça') + ')</span></span>' +
+                    '<span class="flex gap-2">' +
+                    '<button type="button" class="text-xs font-bold text-primary underline btn-edit-cat-cel" data-id="' + c.id + '">Editar</button>' +
+                    '<button type="button" class="text-xs font-bold text-red-600 btn-rm-cat-cel" data-id="' + c.id + '" data-nome="' + String(c.nome).replace(/"/g,'') + '">Remover</button>' +
+                    '</span></li>';
+            }).join('') || '<li class="text-gray-400">Nenhuma célula no catálogo.</li>';
+            ul.querySelectorAll('.btn-rm-cat-cel').forEach(function (btn) {
+                btn.onclick = function () {
+                    var id = btn.getAttribute('data-id');
+                    var nome = btn.getAttribute('data-nome') || id;
+                    if (!confirm('Remover a célula "' + nome + '" do catálogo?\n\nOs membros da igreja não são apagados — só sai da lista de células.')) return;
+                    if (typeof removerCelulaCatalogo !== 'function') {
+                        msgCatalogo('Função não disponível. Atualize conta.js.', false);
+                        return;
+                    }
+                    var r = removerCelulaCatalogo(id);
+                    msgCatalogo(r.mensagem || (r.sucesso ? 'Removida.' : 'Erro'), r.sucesso);
+                    if (r.sucesso) {
+                        renderCatalogoCelAdmin();
+                        renderLista();
+                    }
+                };
+            });
+            ul.querySelectorAll('.btn-edit-cat-cel').forEach(function (btn) {
+                btn.onclick = function () {
+                    var id = btn.getAttribute('data-id');
+                    var c = LISTA_CELULAS.find(function (x) { return x.id === id; });
+                    if (!c) return;
+                    var nome = prompt('Nome da célula:', c.nome);
+                    if (nome == null) return;
+                    nome = String(nome).trim();
+                    if (!nome) return alert('Nome obrigatório.');
+                    var dia = prompt('Dia (terca ou sabado):', c.dia || 'terca');
+                    if (dia == null) return;
+                    dia = String(dia).toLowerCase().indexOf('sab') >= 0 ? 'sabado' : 'terca';
+                    var end = prompt('Endereço (opcional):', c.endereco || '');
+                    if (end == null) return;
+                    var hor = prompt('Horário (opcional):', c.horario || '');
+                    if (hor == null) return;
+                    if (typeof editarCelulaCatalogo !== 'function') {
+                        msgCatalogo('Função não disponível. Atualize conta.js.', false);
+                        return;
+                    }
+                    var r = editarCelulaCatalogo(id, { nome: nome, dia: dia, endereco: end, horario: hor, localAjustavel: dia === 'sabado' });
+                    msgCatalogo(r.mensagem || (r.sucesso ? 'Atualizada.' : 'Erro'), r.sucesso);
+                    if (r.sucesso) {
+                        renderCatalogoCelAdmin();
+                        renderLista();
+                    }
+                };
+            });
         }
 
         let celulaAberta = null;
@@ -340,12 +425,13 @@
                 var st = (typeof statusPendenciasCelula === 'function') ? statusPendenciasCelula(c.id) : { cor: null, motivos: [] };
                 var bola = (typeof htmlBolinhaStatus === 'function') ? htmlBolinhaStatus(st) : '';
                 var dica = (st.motivos && st.motivos.length) ? '<p class="text-xs text-gray-400 mt-1">' + st.motivos.join(' · ') + '</p>' : '';
+                var diaTxt = meta.dia || c.horario || (c.dia === 'sabado' ? 'Sábado' : 'Terça 20h');
                 return (
                     '<button type="button" data-id="' + c.id + '" class="btn-celula w-full text-left p-4 bg-white rounded-xl border shadow-sm hover:border-secondary hover:shadow-md transition">' +
                     '<div class="flex items-start justify-between gap-2">' +
                     '<p class="font-bold text-primary">' + c.nome + '</p>' + bola +
                     '</div>' +
-                    '<p class="text-xs text-gray-500 mt-1">' + (meta.dia || '') + ' · ' + textoEnderecoCelula(c.id) + '</p>' +
+                    '<p class="text-xs text-gray-500 mt-1">' + diaTxt + ' · ' + textoEnderecoCelula(c.id) + '</p>' +
                     '<p class="text-xs text-secondary mt-1">' + n + ' membro(s) · Líder: ' + nomeOuTraco(eq.lider) + '</p>' +
                     dica +
                     '</button>'
@@ -779,9 +865,39 @@
             document.getElementById('avisoLogin').classList.remove('hidden');
         } else if (isAdmin(usuario) || isGestor(usuario)) {
             document.getElementById('barraAdmin').classList.remove('hidden');
+            renderCatalogoCelAdmin();
+            var btnAddCat = document.getElementById('btnAddCelulaCatalogo');
+            if (btnAddCat) {
+                btnAddCat.onclick = function () {
+                    var nome = (document.getElementById('novaCelNome') || {}).value || '';
+                    var dia = (document.getElementById('novaCelDia') || {}).value || 'terca';
+                    var end = (document.getElementById('novaCelEnd') || {}).value || '';
+                    var hor = (document.getElementById('novaCelHorario') || {}).value || '';
+                    if (typeof adicionarCelulaCatalogo !== 'function') {
+                        msgCatalogo('Função não disponível. Atualize conta.js.', false);
+                        return;
+                    }
+                    var r = adicionarCelulaCatalogo({
+                        nome: nome,
+                        dia: dia,
+                        endereco: end,
+                        horario: hor || (dia === 'sabado' ? 'Sábado' : 'Terça 20h'),
+                        localAjustavel: dia === 'sabado'
+                    });
+                    msgCatalogo(r.mensagem || (r.sucesso ? 'Adicionada.' : 'Erro'), r.sucesso);
+                    if (r.sucesso) {
+                        document.getElementById('novaCelNome').value = '';
+                        document.getElementById('novaCelEnd').value = '';
+                        document.getElementById('novaCelHorario').value = '';
+                        renderCatalogoCelAdmin();
+                        renderLista();
+                    }
+                };
+            }
         }
         (async function initCelulas() {
             try {
+                if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
                 if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
                     await IBNNuvem.puxarMembrosParaLocal();
                 } else if (typeof deduplicarMembrosLocais === 'function') {
@@ -789,6 +905,7 @@
                 }
             } catch (e) { console.warn(e); }
             renderLista();
+            if (usuario && (isAdmin(usuario) || isGestor(usuario))) renderCatalogoCelAdmin();
         })();
 
         // Abre célula se veio na URL ?id=

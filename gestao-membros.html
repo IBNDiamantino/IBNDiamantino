@@ -193,6 +193,7 @@
         LISTA_CARGOS.forEach(c => {
             document.getElementById('alocCargo').innerHTML += `<option value="${c}">${c}</option>`;
         });
+        if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
         LISTA_CELULAS.filter(c => c.dia === 'terca').forEach(c => {
             document.getElementById('alocTerca').innerHTML += `<option value="${c.id}">${c.nome}</option>`;
         });

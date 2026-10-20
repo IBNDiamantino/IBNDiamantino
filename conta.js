@@ -86,7 +86,7 @@ function buscarMesmaPessoa(nome, nascimento, lista) {
 }
 
 // ---------- CATÁLOGOS FIXOS ----------
-const LISTA_CELULAS = [
+const LISTA_CELULAS_PADRAO = [
     { id: 'somos-igreja', nome: 'Célula Somos a Igreja', dia: 'terca' },
     { id: 'genesis', nome: 'Célula Gênesis', dia: 'terca' },
     { id: 'fonte-agua', nome: 'Célula Fonte de Água Viva', dia: 'terca' },
@@ -99,6 +99,135 @@ const LISTA_CELULAS = [
     { id: 'adolescentes', nome: 'Célula de Adolescentes', dia: 'sabado' },
     { id: 'jovens', nome: 'Célula de Jovens', dia: 'sabado' }
 ];
+
+const CHAVE_LISTA_CELULAS = 'ibn_lista_celulas';
+
+/** Lista ativa de células (pode ser editada por gestor/admin) */
+var LISTA_CELULAS = LISTA_CELULAS_PADRAO.slice();
+
+function _slugCelula(nome) {
+    return String(nome || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 40) || ('celula-' + Date.now());
+}
+
+function carregarListaCelulas() {
+    var salva = [];
+    try { salva = JSON.parse(localStorage.getItem(CHAVE_LISTA_CELULAS) || '[]'); } catch (e) { salva = []; }
+    if (!Array.isArray(salva) || !salva.length) {
+        LISTA_CELULAS = LISTA_CELULAS_PADRAO.map(function (c) { return Object.assign({}, c); });
+        return LISTA_CELULAS;
+    }
+    // mescla: mantém as salvas; se faltar alguma padrão antiga, não força de volta (gestor pode ter removido)
+    LISTA_CELULAS = salva.filter(function (c) { return c && c.id && c.nome; }).map(function (c) {
+        return {
+            id: String(c.id),
+            nome: String(c.nome),
+            dia: (c.dia === 'sabado' ? 'sabado' : 'terca'),
+            endereco: c.endereco || '',
+            horario: c.horario || '',
+            localAjustavel: !!c.localAjustavel
+        };
+    });
+    if (!LISTA_CELULAS.length) {
+        LISTA_CELULAS = LISTA_CELULAS_PADRAO.map(function (c) { return Object.assign({}, c); });
+    }
+    return LISTA_CELULAS;
+}
+
+function salvarListaCelulas(lista) {
+    if (Array.isArray(lista)) LISTA_CELULAS = lista;
+    localStorage.setItem(CHAVE_LISTA_CELULAS, JSON.stringify(LISTA_CELULAS));
+    try {
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+            firebase.firestore().collection('config').doc('lista_celulas').set({
+                itens: LISTA_CELULAS,
+                atualizadoEm: new Date().toISOString()
+            }, { merge: true }).catch(function () {});
+        }
+    } catch (e2) {}
+    return { sucesso: true };
+}
+
+function podeGerenciarCatalogoCelulas(u) {
+    u = u || (typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null);
+    if (!u) return false;
+    if (typeof isGestor === 'function' && isGestor(u)) return true;
+    if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+    var n = String(u.nivel || '').toLowerCase();
+    return n === 'gestor' || n === 'admin';
+}
+
+/** Cria uma nova célula no catálogo (gestor/admin) */
+function adicionarCelulaCatalogo(dados) {
+    if (!podeGerenciarCatalogoCelulas()) {
+        return { sucesso: false, mensagem: 'Somente gestor ou administrador pode adicionar células.' };
+    }
+    carregarListaCelulas();
+    var nome = String((dados && dados.nome) || '').trim();
+    if (!nome) return { sucesso: false, mensagem: 'Informe o nome da célula.' };
+    var dia = (dados && dados.dia === 'sabado') ? 'sabado' : 'terca';
+    var idBase = _slugCelula(nome);
+    var id = idBase;
+    var n = 2;
+    while (LISTA_CELULAS.some(function (c) { return c.id === id; })) {
+        id = idBase + '-' + n;
+        n++;
+    }
+    var reg = {
+        id: id,
+        nome: nome,
+        dia: dia,
+        endereco: String((dados && dados.endereco) || '').trim(),
+        horario: String((dados && dados.horario) || (dia === 'sabado' ? 'Sábado' : 'Terça 20h')).trim(),
+        localAjustavel: !!(dados && dados.localAjustavel) || dia === 'sabado'
+    };
+    LISTA_CELULAS.push(reg);
+    LISTA_CELULAS.sort(function (a, b) {
+        if (a.dia !== b.dia) return a.dia === 'terca' ? -1 : 1;
+        return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+    });
+    salvarListaCelulas(LISTA_CELULAS);
+    return { sucesso: true, celula: reg, mensagem: 'Célula adicionada.' };
+}
+
+/** Atualiza nome/dia/endereço de uma célula existente */
+function editarCelulaCatalogo(id, dados) {
+    if (!podeGerenciarCatalogoCelulas()) {
+        return { sucesso: false, mensagem: 'Somente gestor ou administrador pode editar células.' };
+    }
+    carregarListaCelulas();
+    var ix = LISTA_CELULAS.findIndex(function (c) { return c.id === id; });
+    if (ix < 0) return { sucesso: false, mensagem: 'Célula não encontrada.' };
+    var c = LISTA_CELULAS[ix];
+    if (dados && dados.nome) c.nome = String(dados.nome).trim();
+    if (dados && (dados.dia === 'terca' || dados.dia === 'sabado')) c.dia = dados.dia;
+    if (dados && dados.endereco != null) c.endereco = String(dados.endereco).trim();
+    if (dados && dados.horario != null) c.horario = String(dados.horario).trim();
+    if (dados && typeof dados.localAjustavel === 'boolean') c.localAjustavel = dados.localAjustavel;
+    LISTA_CELULAS[ix] = c;
+    salvarListaCelulas(LISTA_CELULAS);
+    return { sucesso: true, celula: c, mensagem: 'Célula atualizada.' };
+}
+
+/** Remove célula do catálogo (não apaga membros da igreja) */
+function removerCelulaCatalogo(id) {
+    if (!podeGerenciarCatalogoCelulas()) {
+        return { sucesso: false, mensagem: 'Somente gestor ou administrador pode remover células.' };
+    }
+    carregarListaCelulas();
+    var antes = LISTA_CELULAS.length;
+    LISTA_CELULAS = LISTA_CELULAS.filter(function (c) { return c.id !== id; });
+    if (LISTA_CELULAS.length === antes) return { sucesso: false, mensagem: 'Célula não encontrada.' };
+    salvarListaCelulas(LISTA_CELULAS);
+    return { sucesso: true, mensagem: 'Célula removida do catálogo.' };
+}
+
+// carrega lista salva assim que o script sobe
+try { carregarListaCelulas(); } catch (eLoadCel) {}
 
 const LISTA_MINISTERIOS = [
     'Atmosfera', 'Acolhimento', 'Mulheres', 'Homens', 'Intercessão',

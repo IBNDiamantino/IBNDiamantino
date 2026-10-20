@@ -181,7 +181,8 @@
             window.location.href = 'cadastro.html';
         }
 
-        // Preenche selects
+        // Preenche selects (lista atual de células — novas entram, excluídas saem)
+        if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
         const selTerca = document.getElementById('celulaTerca');
         const selSabado = document.getElementById('celulaSabado');
         LISTA_CELULAS.filter(c => c.dia === 'terca').forEach(c => {
