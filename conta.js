@@ -2970,6 +2970,139 @@ function htmlBolinhaStatus(st) {
     return '<span class="inline-block w-3 h-3 rounded-full ' + corCls + ' flex-shrink-0" title="' + String(titulo).replace(/"/g, '&quot;') + '"></span>';
 }
 
+
+/**
+ * Define papel na célula: lider | anfitriao | lider_treino | membro
+ * Gestor/admin ou líder da célula. Só um líder e um anfitrião por célula;
+ * vários líderes em treinamento.
+ */
+function definirPapelNaCelula(membroId, celulaId, papel) {
+    var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+    if (!u) return { sucesso: false, mensagem: 'Faça login.' };
+    var pode = false;
+    try {
+        if (typeof isAdmin === 'function' && isAdmin(u)) pode = true;
+        if (typeof isGestor === 'function' && isGestor(u)) pode = true;
+        if (u.nivel === 'admin' || u.nivel === 'gestor') pode = true;
+        if (typeof isLiderCelula === 'function' && isLiderCelula(u, celulaId)) pode = true;
+        if (typeof podeGerenciarPessoasCelula === 'function' && podeGerenciarPessoasCelula(celulaId)) pode = true;
+    } catch (e) {}
+    if (!pode) return { sucesso: false, mensagem: 'Somente gestor, admin ou líder desta célula podem alterar papéis.' };
+
+    papel = String(papel || 'membro').toLowerCase().replace(/\s+/g, '_');
+    if (papel === 'líder' || papel === 'lider_celula') papel = 'lider';
+    if (papel === 'anfitrião' || papel === 'anfitria') papel = 'anfitriao';
+    if (papel === 'treino' || papel === 'lider_em_treinamento') papel = 'lider_treino';
+    if (['lider', 'anfitriao', 'lider_treino', 'membro'].indexOf(papel) < 0) {
+        return { sucesso: false, mensagem: 'Papel inválido.' };
+    }
+
+    var lista = lerMembros();
+    var idx = lista.findIndex(function (m) { return String(m.id) === String(membroId); });
+    if (idx < 0) return { sucesso: false, mensagem: 'Membro não encontrado.' };
+    var m = lista[idx];
+    var cel = (typeof LISTA_CELULAS !== 'undefined' ? LISTA_CELULAS : []).find(function (c) { return c.id === celulaId; });
+    if (!cel) return { sucesso: false, mensagem: 'Célula inválida.' };
+
+    // Garante vínculo na célula
+    if (!Array.isArray(m.celulas)) m.celulas = [];
+    var ja = m.celulas.some(function (c) {
+        return (typeof idCelulaDe === 'function' ? idCelulaDe(c) : (c && c.id)) === celulaId;
+    });
+    if (!ja) {
+        m.celulas.push({ id: cel.id, nome: cel.nome, dia: cel.dia, papel: papel === 'membro' ? 'membro' : papel });
+    } else {
+        m.celulas = m.celulas.map(function (c) {
+            var id = typeof idCelulaDe === 'function' ? idCelulaDe(c) : (c && c.id);
+            if (id !== celulaId) return c;
+            var o = Object.assign({}, c);
+            if (papel === 'membro') {
+                delete o.papel;
+                o.papel = 'membro';
+            } else if (papel === 'lider_treino') {
+                o.papel = o.papel === 'lider' ? 'lider' : (o.papel || 'membro');
+            } else {
+                o.papel = papel;
+            }
+            return o;
+        });
+    }
+
+    if (!m.celulaPapeis) m.celulaPapeis = {};
+    if (!m.celulaPapeisStatus) m.celulaPapeisStatus = {};
+    var arr = Array.isArray(m.celulaPapeis[celulaId]) ? m.celulaPapeis[celulaId].slice() : [];
+
+    function semPapel(a, p) { return a.filter(function (x) { return x !== p; }); }
+
+    if (papel === 'membro') {
+        arr = semPapel(arr, 'lider');
+        arr = semPapel(arr, 'anfitriao');
+        arr = semPapel(arr, 'lider_treino');
+        m.celulaPapeis[celulaId] = arr;
+        if (m.lideraCelulaId && String(m.lideraCelulaId) === String(celulaId)) m.lideraCelulaId = '';
+    } else if (papel === 'lider_treino') {
+        if (arr.indexOf('lider_treino') < 0) arr.push('lider_treino');
+        m.celulaPapeis[celulaId] = arr;
+        if (!m.celulaPapeisStatus[celulaId] || m.celulaPapeisStatus[celulaId] === 'ok') {
+            m.celulaPapeisStatus[celulaId] = 'em_analise';
+        }
+    } else {
+        // lider ou anfitriao: só um por célula — remove dos outros
+        lista.forEach(function (outro, j) {
+            if (j === idx || !outro) return;
+            var oc = Array.isArray(outro.celulas) ? outro.celulas : [];
+            var nesta = oc.some(function (c) {
+                return (typeof idCelulaDe === 'function' ? idCelulaDe(c) : (c && c.id)) === celulaId;
+            });
+            if (!nesta) return;
+            if (!outro.celulaPapeis) outro.celulaPapeis = {};
+            var oa = Array.isArray(outro.celulaPapeis[celulaId]) ? outro.celulaPapeis[celulaId].slice() : [];
+            oa = semPapel(oa, papel);
+            outro.celulaPapeis[celulaId] = oa;
+            if (Array.isArray(outro.celulas)) {
+                outro.celulas = outro.celulas.map(function (c) {
+                    var id = typeof idCelulaDe === 'function' ? idCelulaDe(c) : (c && c.id);
+                    if (id !== celulaId) return c;
+                    var o = Object.assign({}, c);
+                    if (String(o.papel || '') === papel) o.papel = 'membro';
+                    return o;
+                });
+            }
+            if (papel === 'lider' && outro.lideraCelulaId && String(outro.lideraCelulaId) === String(celulaId)) {
+                outro.lideraCelulaId = '';
+            }
+            lista[j] = outro;
+        });
+        if (arr.indexOf(papel) < 0) arr.push(papel);
+        // líder principal não precisa ficar só como treino
+        if (papel === 'lider') arr = semPapel(arr, 'lider_treino');
+        m.celulaPapeis[celulaId] = arr;
+        m.celulaPapeisStatus[celulaId] = 'aprovado';
+        if (papel === 'lider') {
+            m.lideraCelulaId = celulaId;
+            if (!m.cargo || /membro/i.test(String(m.cargo))) m.cargo = 'Líder de Célula';
+        }
+        if (papel === 'anfitriao') {
+            if (!m.cargo || /membro/i.test(String(m.cargo))) m.cargo = 'Anfitrião';
+        }
+    }
+
+    lista[idx] = m;
+    if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(m);
+    salvarMembros(lista);
+    try {
+        if (typeof enviarMembroParaNuvem === 'function') enviarMembroParaNuvem(m);
+        // também os que perderam o papel
+        lista.forEach(function (x) {
+            if (x && String(x.id) !== String(m.id) && typeof enviarMembroParaNuvem === 'function') {
+                try { enviarMembroParaNuvem(x); } catch (e2) {}
+            }
+        });
+    } catch (e3) {}
+    var labels = { lider: 'Líder', anfitriao: 'Anfitrião(ã)', lider_treino: 'Líder em treinamento', membro: 'Membro' };
+    return { sucesso: true, mensagem: (m.nome || 'Membro') + ' → ' + (labels[papel] || papel), membro: m };
+}
+
 function adicionarMembroACelula(membroId, celulaId) {
     if (!podeGerenciarPessoasCelula(celulaId)) {
         return { sucesso: false, mensagem: 'Somente o líder ou o anfitrião desta célula podem adicionar pessoas.' };

@@ -1102,23 +1102,174 @@
             sel.innerHTML = lista.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('');
             if (lista.indexOf('Atmosfera') >= 0) sel.value = 'Atmosfera';
         }
+        // Estado do formulário de escala (seleção por membro do ministério)
+        var escAdminModelo = [];
+        var escAdminSelecoes = {};
+        var escAdminIntegrantes = [];
+
+        function escAdminDataIso() {
+            return (document.getElementById('escalaDataDia') || {}).value || '';
+        }
+        function escAdminNomesUsados() {
+            var u = {};
+            Object.keys(escAdminSelecoes).forEach(function (fn) {
+                (escAdminSelecoes[fn] || []).forEach(function (n) { u[n] = true; });
+            });
+            return u;
+        }
+        /** Já escalados em OUTRO ministério no mesmo dia (Atmosfera tem prioridade se já preencheu) */
+        function escAdminOcupadosOutros(dataIso, minAtual) {
+            var mapa = {};
+            if (!dataIso || typeof lerTodasEscalasCultos !== 'function') return mapa;
+            try {
+                var all = lerTodasEscalasCultos() || {};
+                Object.keys(all).forEach(function (min) {
+                    if (String(min).toLowerCase() === String(minAtual || '').toLowerCase()) return;
+                    (all[min] || []).forEach(function (linha) {
+                        if (String(linha.dataIso || '') !== String(dataIso)) return;
+                        var funcoes = linha.funcoes || {};
+                        Object.keys(funcoes).forEach(function (fn) {
+                            (funcoes[fn] || []).forEach(function (nomeE) {
+                                var nome = String(nomeE || '').trim();
+                                if (!nome) return;
+                                mapa[nome] = min;
+                                escAdminIntegrantes.forEach(function (p) {
+                                    if (typeof nomeBateEscala === 'function' && nomeBateEscala(p.nome, nomeE)) {
+                                        mapa[p.nome] = min;
+                                    }
+                                });
+                            });
+                        });
+                    });
+                });
+            } catch (e) {}
+            return mapa;
+        }
+        function escAdminDisponiveis(minAtual) {
+            var usados = escAdminNomesUsados();
+            var ocup = escAdminOcupadosOutros(escAdminDataIso(), minAtual);
+            return escAdminIntegrantes.filter(function (p) {
+                return !usados[p.nome] && !ocup[p.nome];
+            }).sort(function (a, b) {
+                return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+            });
+        }
+        function renderFormEscalaFuncoesAdmin() {
+            var min = (document.getElementById('escalaMinisterioSel') || {}).value || 'Atmosfera';
+            var box = document.getElementById('formEscalaFuncoes');
+            if (!box) return;
+            var html = '';
+            if (!escAdminIntegrantes.length) {
+                html += '<p class="text-xs text-amber-700 mb-2">Sem integrantes cadastrados neste ministério. Cadastre membros no ministério ou digite os nomes abaixo.</p>';
+            } else {
+                html += '<p class="text-[11px] text-gray-600 mb-2">Clique na função e escolha o membro. <strong>Atmosfera</strong> tem prioridade no dia; nos outros, só entram quem ainda estiver livre.</p>';
+            }
+            escAdminModelo.forEach(function (it) {
+                var fn = String(it.funcao || '');
+                if (/^observa/i.test(fn)) return;
+                var sel = escAdminSelecoes[fn] || [];
+                var chips = sel.length
+                    ? sel.map(function (n) {
+                        return '<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-900 text-[11px] font-semibold px-1.5 py-0.5 rounded mr-1 mb-0.5">' +
+                            n + ' <button type="button" data-rm-fn="' + encodeURIComponent(fn) + '" data-rm-nome="' + encodeURIComponent(n) + '" class="esc-adm-rm text-red-600 font-bold leading-none">×</button></span>';
+                    }).join('')
+                    : '<span class="text-gray-400 text-[11px]">Ninguém — clique para escolher</span>';
+                html += '<div class="border rounded-lg mb-1.5 bg-white">' +
+                    '<button type="button" class="esc-adm-open w-full flex items-center gap-2 px-2.5 py-2 text-left hover:bg-gray-50" data-open-fn="' + encodeURIComponent(fn) + '">' +
+                    '<span class="text-gray-500 text-xs">▶</span>' +
+                    '<span class="flex-1 min-w-0"><span class="text-xs font-bold text-gray-800">' + fn +
+                    (it.qtd ? ' <span class="font-normal text-gray-500">(até ' + it.qtd + ')</span>' : '') +
+                    '</span><span class="block mt-0.5">' + chips + '</span></span></button>' +
+                    '<div class="esc-adm-panel hidden border-t bg-gray-50 max-h-40 overflow-y-auto px-1 py-1" data-panel-fn="' + encodeURIComponent(fn) + '"></div></div>';
+            });
+            // Fallback digitação se não houver integrantes
+            if (!escAdminIntegrantes.length) {
+                escAdminModelo.forEach(function (it) {
+                    if (/^observa/i.test(it.funcao || '')) return;
+                    html += '<input type="text" class="escala-campo-funcao w-full border rounded px-2 py-1.5 text-sm mb-1" data-funcao="' +
+                        String(it.funcao).replace(/"/g, '') + '" placeholder="' + String(it.funcao) + ' — nomes separados por vírgula">';
+                });
+            }
+            box.innerHTML = html;
+            box.classList.remove('hidden');
+
+            box.querySelectorAll('.esc-adm-rm').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var f = decodeURIComponent(btn.getAttribute('data-rm-fn') || '');
+                    var n = decodeURIComponent(btn.getAttribute('data-rm-nome') || '');
+                    escAdminSelecoes[f] = (escAdminSelecoes[f] || []).filter(function (x) { return x !== n; });
+                    renderFormEscalaFuncoesAdmin();
+                });
+            });
+            box.querySelectorAll('.esc-adm-open').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var fn = decodeURIComponent(btn.getAttribute('data-open-fn') || '');
+                    var panels = box.querySelectorAll('.esc-adm-panel');
+                    panels.forEach(function (p) { p.classList.add('hidden'); p.innerHTML = ''; });
+                    var panel = null;
+                    panels.forEach(function (p) {
+                        if (decodeURIComponent(p.getAttribute('data-panel-fn') || '') === fn) panel = p;
+                    });
+                    if (!panel) return;
+                    panel.classList.remove('hidden');
+                    var disp = escAdminDisponiveis(min);
+                    var ocup = escAdminOcupadosOutros(escAdminDataIso(), min);
+                    var info = '';
+                    if (!escAdminDataIso()) {
+                        info += '<p class="text-[11px] text-amber-700 px-2 py-1">Informe a data acima para respeitar Atmosfera e evitar conflito no dia.</p>';
+                    }
+                    var bloqueados = escAdminIntegrantes.filter(function (p) { return ocup[p.nome]; });
+                    if (bloqueados.length) {
+                        info += '<p class="text-[11px] text-gray-500 px-2 py-1 border-b">Já em outro ministério neste dia:<br>' +
+                            bloqueados.map(function (p) { return p.nome + ' → ' + ocup[p.nome]; }).join('<br>') + '</p>';
+                    }
+                    if (!disp.length) {
+                        panel.innerHTML = info + '<p class="text-[11px] text-gray-500 px-2 py-1">Nenhum disponível neste ministério.</p>';
+                        return;
+                    }
+                    panel.innerHTML = info + disp.map(function (p) {
+                        return '<button type="button" class="esc-adm-pick w-full text-left text-xs px-2 py-1.5 hover:bg-indigo-100 border-b border-gray-100" data-fn="' +
+                            encodeURIComponent(fn) + '" data-nome="' + encodeURIComponent(p.nome) + '">' + p.nome +
+                            (p.papel ? ' <span class="text-gray-400">(' + p.papel + ')</span>' : '') + '</button>';
+                    }).join('');
+                    panel.querySelectorAll('.esc-adm-pick').forEach(function (b) {
+                        b.addEventListener('click', function () {
+                            var f = decodeURIComponent(b.getAttribute('data-fn') || '');
+                            var n = decodeURIComponent(b.getAttribute('data-nome') || '');
+                            if (!escAdminSelecoes[f]) escAdminSelecoes[f] = [];
+                            var max = 0;
+                            escAdminModelo.forEach(function (m) { if (m.funcao === f) max = m.qtd || 0; });
+                            if (max > 0 && escAdminSelecoes[f].length >= max) {
+                                if (!window.confirm('Limite sugerido: ' + max + '. Incluir mesmo assim?')) return;
+                            }
+                            if (escAdminSelecoes[f].indexOf(n) === -1) escAdminSelecoes[f].push(n);
+                            renderFormEscalaFuncoesAdmin();
+                        });
+                    });
+                });
+            });
+        }
         function montarFormEscalaDia() {
             var min = (document.getElementById('escalaMinisterioSel') || {}).value || 'Atmosfera';
             var box = document.getElementById('formEscalaFuncoes');
             if (!box || typeof lerModeloFuncoesMinisterio !== 'function') return;
-            var modelo = lerModeloFuncoesMinisterio(min);
-            var html = '';
-            modelo.forEach(function(item, idx) {
-                if (/^observa/i.test(item.funcao)) return;
-                var q = item.qtd > 0 ? item.qtd : 1;
-                html += '<div class="border rounded-lg p-2 bg-indigo-50/50">';
-                html += '<p class="text-xs font-bold text-primary mb-1">' + item.funcao + ' <span class="text-gray-500 font-normal">(sugerido: ' + (item.qtd || '—') + ' pessoa(s))</span></p>';
-                html += '<input type="text" class="escala-campo-funcao w-full border rounded px-2 py-1.5 text-sm" data-funcao="' + String(item.funcao).replace(/"/g,'') + '" placeholder="Nomes separados por vírgula">';
-                html += '</div>';
+            escAdminModelo = (lerModeloFuncoesMinisterio(min) || []).filter(function (it) {
+                return it && it.funcao && !/^observa/i.test(it.funcao);
             });
-            box.innerHTML = html;
-            box.classList.remove('hidden');
-            document.getElementById('btnSalvarDiaEscala').classList.remove('hidden');
+            escAdminSelecoes = {};
+            escAdminModelo.forEach(function (it) { escAdminSelecoes[it.funcao] = []; });
+            escAdminIntegrantes = [];
+            try {
+                var integrantes = (typeof membrosDoMinisterio === 'function') ? membrosDoMinisterio(min) : [];
+                escAdminIntegrantes = (integrantes || []).map(function (p) {
+                    return { id: p.id, nome: String(p.nome || '').trim(), papel: p.papel || '' };
+                }).filter(function (p) { return p.nome; });
+            } catch (e) { escAdminIntegrantes = []; }
+            renderFormEscalaFuncoesAdmin();
+            var btnSalvar = document.getElementById('btnSalvarDiaEscala');
+            if (btnSalvar) btnSalvar.classList.remove('hidden');
             montarEditorModelo(min);
         }
         function montarEditorModelo(min) {
@@ -1136,6 +1287,11 @@
         document.getElementById('escalaMinisterioSel') && document.getElementById('escalaMinisterioSel').addEventListener('change', function(){
             montarEditorModelo(this.value);
         });
+        document.getElementById('escalaDataDia') && document.getElementById('escalaDataDia').addEventListener('change', function(){
+            if (document.getElementById('formEscalaFuncoes') && !document.getElementById('formEscalaFuncoes').classList.contains('hidden')) {
+                try { renderFormEscalaFuncoesAdmin(); } catch (e) {}
+            }
+        });
         document.getElementById('btnSalvarDiaEscala') && document.getElementById('btnSalvarDiaEscala').addEventListener('click', function() {
             var min = document.getElementById('escalaMinisterioSel').value;
             var dataIso = document.getElementById('escalaDataDia').value;
@@ -1151,8 +1307,15 @@
                 label = (dias[dt.getDay()] || '') + ' ' + p[2] + '/' + p[1] + '/' + String(p[0]).slice(2);
             }
             var preenchimento = {};
+            // Preferência: seleções pelos nomes do ministério
+            Object.keys(escAdminSelecoes || {}).forEach(function (fn) {
+                var nomes = (escAdminSelecoes[fn] || []).slice();
+                if (nomes.length) preenchimento[fn] = nomes;
+            });
+            // Fallback: campos digitados
             document.querySelectorAll('.escala-campo-funcao').forEach(function(inp) {
                 var fn = inp.getAttribute('data-funcao');
+                if (preenchimento[fn] && preenchimento[fn].length) return;
                 var nomes = String(inp.value || '').split(/[,;/]+/).map(function(x){ return x.trim(); }).filter(Boolean);
                 if (nomes.length) preenchimento[fn] = nomes;
             });

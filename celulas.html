@@ -394,14 +394,52 @@
                 ul.innerHTML = '<li class="text-gray-400">Nenhum membro vinculado a esta célula no cadastro.</li>';
             } else {
                 var podeRem = (typeof podeGerenciarPessoasCelula === 'function') && podeGerenciarPessoasCelula(id);
+                var podePapel = podeRem || (typeof isAdmin === 'function' && isAdmin()) || (typeof isGestor === 'function' && isGestor()) ||
+                    (usuario && (usuario.nivel === 'admin' || usuario.nivel === 'gestor'));
+                function papelAtualMembro(m) {
+                    var pp = (typeof papeisNaCelula === 'function') ? papeisNaCelula(m, id) : [];
+                    if (pp.indexOf('lider') >= 0 || (m.lideraCelulaId && String(m.lideraCelulaId) === String(id))) return 'lider';
+                    if (pp.indexOf('anfitriao') >= 0) return 'anfitriao';
+                    if (pp.indexOf('lider_treino') >= 0) return 'lider_treino';
+                    return 'membro';
+                }
                 ul.innerHTML = eq.membros.map(function(m) {
-                    var papel = m.cargo || m.funcaoEspecifica || 'Membro';
-                    if (m.status === 'visitante' || m.tipo === 'visitante') papel = 'Visitante';
+                    var pa = papelAtualMembro(m);
+                    var labels = { lider: 'Líder', anfitriao: 'Anfitrião(ã)', lider_treino: 'Em treinamento', membro: 'Membro' };
+                    if (m.status === 'visitante' || m.tipo === 'visitante') {
+                        return '<li class="flex flex-wrap justify-between gap-2 items-center border-b border-gray-100 py-2"><span>' + (m.nome || '—') + ' <span class="text-xs text-gray-400">(Visitante)</span></span>' +
+                            (podeRem ? '<button type="button" class="btn-rem-cel text-xs text-red-600 font-bold" data-id="' + m.id + '" data-nome="' + String(m.nome || '').replace(/"/g, '') + '">Remover</button>' : '') + '</li>';
+                    }
+                    var sel = '';
+                    if (podePapel && typeof definirPapelNaCelula === 'function') {
+                        sel = '<select class="sel-papel-cel text-xs border rounded-lg px-1.5 py-1 bg-white" data-id="' + m.id + '">' +
+                            '<option value="membro"' + (pa === 'membro' ? ' selected' : '') + '>Membro</option>' +
+                            '<option value="lider"' + (pa === 'lider' ? ' selected' : '') + '>Líder</option>' +
+                            '<option value="anfitriao"' + (pa === 'anfitriao' ? ' selected' : '') + '>Anfitrião(ã)</option>' +
+                            '<option value="lider_treino"' + (pa === 'lider_treino' ? ' selected' : '') + '>Líder em treinamento</option>' +
+                            '</select>';
+                    } else {
+                        sel = '<span class="text-xs text-gray-400">(' + (labels[pa] || 'Membro') + ')</span>';
+                    }
                     var btn = podeRem
                         ? '<button type="button" class="btn-rem-cel text-xs text-red-600 font-bold" data-id="' + m.id + '" data-nome="' + String(m.nome || '').replace(/"/g, '') + '">Remover</button>'
                         : '';
-                    return '<li class="flex justify-between gap-2 items-center border-b border-gray-100 py-1"><span>' + (m.nome || '—') + ' <span class="text-xs text-gray-400">(' + papel + ')</span></span><span>' + btn + '</span></li>';
+                    return '<li class="flex flex-wrap justify-between gap-2 items-center border-b border-gray-100 py-2">' +
+                        '<span class="font-medium text-sm">' + (m.nome || '—') + '</span>' +
+                        '<span class="flex flex-wrap items-center gap-2">' + sel + btn + '</span></li>';
                 }).join('');
+                ul.querySelectorAll('.sel-papel-cel').forEach(function(sel) {
+                    sel.addEventListener('change', function() {
+                        var mid = sel.getAttribute('data-id');
+                        var papel = sel.value;
+                        var r = definirPapelNaCelula(mid, id, papel);
+                        if (r.sucesso) { abrirCelula(id); renderLista(); }
+                        else {
+                            alert(r.mensagem || 'Não foi possível alterar o papel.');
+                            abrirCelula(id);
+                        }
+                    });
+                });
                 ul.querySelectorAll('.btn-rem-cel').forEach(function(btn) {
                     btn.addEventListener('click', function() {
                         var nome = btn.getAttribute('data-nome') || 'esta pessoa';
