@@ -509,12 +509,43 @@
                             <p class="text-lg font-bold text-secondary mt-2">${Number(e.valor) > 0 ? 'R$ ' + Number(e.valor).toFixed(2) : 'Gratuito'}</p>
                             <p class="text-xs text-gray-500 mt-1">${e.forma || e.formaPagamento || 'PIX, Cartão (PagBank), Dinheiro'}</p>
                         </div>
-                        <a href="#inscricao" class="bg-secondary text-primary p-3 rounded-lg font-bold text-center hover:bg-yellow-400 ${e.foto ? 'md:col-span-1' : ''}">
+                        <button type="button" data-ev-id="${e.id}" class="btn-inscrever-ev bg-secondary text-primary p-3 rounded-lg font-bold text-center hover:bg-yellow-400 ${e.foto ? 'md:col-span-1' : ''}">
                             <i class="fa fa-pencil-square-o mr-2"></i> Inscrever-se
-                        </a>
+                        </button>
                     </div>
                 </div>
             `).join('');
+            container.querySelectorAll('.btn-inscrever-ev').forEach(function (btn) {
+                btn.onclick = function () {
+                    selecionarEventoParaInscricao(btn.getAttribute('data-ev-id'));
+                };
+            });
+        }
+
+        function selecionarEventoParaInscricao(eventoId) {
+            var sel = document.getElementById('eventoSelect');
+            if (!sel) return;
+            // garante opções atualizadas
+            carregarSelectEventos();
+            if (eventoId) {
+                sel.value = String(eventoId);
+                // se não achou (id diferente), tenta pelo nome
+                if (!sel.value) {
+                    var ev = eventos.find(function (e) { return String(e.id) === String(eventoId); });
+                    if (ev) {
+                        for (var i = 0; i < sel.options.length; i++) {
+                            if (sel.options[i].text.indexOf(ev.nome) === 0 || sel.options[i].value === String(ev.id)) {
+                                sel.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            renderFormularioDoEvento(sel.value);
+            var sec = document.getElementById('inscricao');
+            if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            try { sel.focus(); } catch (e) {}
         }
 
         function carregarSelectEventos() {
@@ -524,8 +555,15 @@
                 sel.disabled = true;
             } else {
                 sel.disabled = false;
+                var prev = sel.value;
                 sel.innerHTML = '<option value="">Selecione...</option>' +
                     eventos.map(e => `<option value="${e.id}">${e.nome} (${formatarDatasDoEvento(e)}) — R$ ${Number(e.valor).toFixed(2)}</option>`).join('');
+                // se só há 1 evento, já seleciona; senão mantém o que estava
+                if (prev && eventos.some(function (e) { return String(e.id) === String(prev); })) {
+                    sel.value = prev;
+                } else if (eventos.length === 1) {
+                    sel.value = eventos[0].id;
+                }
             }
             sel.onchange = function () { renderFormularioDoEvento(sel.value); };
             renderFormularioDoEvento(sel.value);

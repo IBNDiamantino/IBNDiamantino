@@ -2253,9 +2253,22 @@
         // ==================================================
         // 📅 DESTAQUE DE EVENTOS COM INSCRIÇÃO (home)
         // ==================================================
-        function destacarEventosInscricao() {
+        async function destacarEventosInscricao() {
             var box = document.getElementById('destaqueEventosInscricao');
             if (!box) return;
+            try {
+                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+                    var snap = await firebase.firestore().collection('config').doc('eventos_site').get();
+                    if (snap.exists) {
+                        var d = snap.data() || {};
+                        var itens = d.itens || d.lista || [];
+                        if (Array.isArray(itens) && itens.length) {
+                            localStorage.setItem('ibn_eventos', JSON.stringify(itens));
+                            try { localStorage.setItem('eventos', JSON.stringify(itens)); } catch (e0) {}
+                        }
+                    }
+                }
+            } catch (eN) {}
             var lista = [];
             try {
                 var a = JSON.parse(localStorage.getItem('ibn_eventos') || 'null');
@@ -2361,7 +2374,7 @@
             try {
                 verificarSessao();
                 mostrarAlertaDoDia();
-                try { destacarEventosInscricao(); } catch (eEv) { console.warn(eEv); }
+                try { Promise.resolve(destacarEventosInscricao()).catch(function () {}); } catch (eEv) { console.warn(eEv); }
 
         // Puxa quadro de avisos da nuvem (se houver)
         (async function puxarAvisosDia() {
