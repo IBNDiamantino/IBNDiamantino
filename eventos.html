@@ -269,20 +269,28 @@
                 var b = JSON.parse(localStorage.getItem('eventos') || 'null');
                 var lista = Array.isArray(a) && a.length ? a : (Array.isArray(b) ? b : []);
                 return lista.map(function(e, i) {
-                    return {
-                        id: e.id || ('ev-' + i),
-                        nome: e.nome || e.titulo || 'Evento',
-                        data: formatarDataEvento(e.data || ''),
-                        dataIso: e.dataIso || e.data || '',
-                        local: e.local || '',
-                        valor: e.valor != null ? Number(e.valor) : 0,
-                        pix: e.pix || e.chavePix || '36.158.983/0001-36',
-                        forma: e.forma || e.formas || 'PIX',
-                        foto: e.foto || e.imagem || '',
-                        video: e.video || e.videoUrl || '',
-                        visitantes: e.visitantes !== false,
-                        linkPagamento: e.linkPagamento || e.link_pagamento || e.linkPago || ''
-                    };
+                    // mantém TODOS os campos (formulário, datas, horários, foto…)
+                    var out = Object.assign({}, e);
+                    out.id = e.id || ('ev-' + i);
+                    out.nome = e.nome || e.titulo || 'Evento';
+                    out.data = formatarDataEvento(e.data || (Array.isArray(e.datas) && e.datas[0]) || '');
+                    out.dataIso = e.dataIso || e.data || (Array.isArray(e.datas) && e.datas[0]) || '';
+                    out.datas = Array.isArray(e.datas) ? e.datas : (out.dataIso ? [String(out.dataIso).slice(0, 10)] : []);
+                    out.horario = e.horario || (Array.isArray(e.horarios) && e.horarios[0]) || '';
+                    out.horarios = Array.isArray(e.horarios) ? e.horarios : (out.horario ? [out.horario] : []);
+                    out.local = e.local || '';
+                    out.valor = e.valor != null ? Number(e.valor) : 0;
+                    out.pix = e.pix || e.chavePix || '36.158.983/0001-36';
+                    out.forma = e.forma || e.formas || e.formaPagamento || 'PIX';
+                    out.formaPagamento = e.formaPagamento || out.forma;
+                    out.foto = e.foto || e.imagem || '';
+                    out.fotoUrl = e.fotoUrl || '';
+                    out.video = e.video || e.videoUrl || '';
+                    out.visitantes = e.visitantes !== false;
+                    out.linkPagamento = e.linkPagamento || e.link_pagamento || e.linkPago || '';
+                    // formulário personalizado — era descartado aqui (bug)
+                    out.formulario = Array.isArray(e.formulario) ? e.formulario : [];
+                    return out;
                 });
             } catch (err) {
                 return EVENTOS_PADRAO.slice();
