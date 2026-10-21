@@ -570,12 +570,28 @@
                     return { n: -1, excluido: true };
                 }
                 let n = 0;
-                if (st === 'pendente') n++;
+                if (st === 'pendente' || st === 'aguardando') n++;
                 if (!(m.nascimento || m.dataNascimento)) n++;
                 const tel = String(m.telefone || '').replace(/\D/g, '');
                 if (!tel) n++;
                 if (!String(m.email || '').trim()) n++;
                 if (!Array.isArray(m.celulas) || !m.celulas.length) n++;
+                // Funções pedidas pelo membro
+                if (Array.isArray(m.funcoesSolicitadas) && m.funcoesSolicitadas.length) n++;
+                // Ministérios em análise (membro marcou / gestão ainda não confirmou)
+                try {
+                    var mins = Array.isArray(m.ministerios) ? m.ministerios : [];
+                    var qtdMinAnalise = 0;
+                    mins.forEach(function (nome) {
+                        if (typeof statusMinisterioMembro === 'function') {
+                            if (statusMinisterioMembro(m, nome) === 'em_analise') qtdMinAnalise++;
+                        } else {
+                            var stM = (m.ministeriosStatus || {})[nome] || (m.ministeriosStatus || {})[String(nome).toLowerCase()] || '';
+                            if (!stM || stM === 'em_analise' || stM === 'pendente') qtdMinAnalise++;
+                        }
+                    });
+                    if (qtdMinAnalise > 0) n += 1; // conta como 1 bloco de pendência (amarelo/laranja)
+                } catch (eMin) {}
                 return { n: n, excluido: false };
             }
 
