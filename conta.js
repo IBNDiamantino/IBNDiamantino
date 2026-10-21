@@ -1313,6 +1313,7 @@ function atualizarPerfil(dadosNovos) {
     const indice = lista.findIndex(m => String(m.id) === String(usuario.id));
     if (indice === -1) return { sucesso: false };
 
+    const atual = lista[indice];
     const { nivel, status, funcoes, cargo, funcoesAprovadas, ...seguros } = dadosNovos;
     // cargo / funções oficiais só mudam com aprovação da gestão
     delete seguros.cargo;
@@ -1325,9 +1326,9 @@ function atualizarPerfil(dadosNovos) {
     }
 
     if (Array.isArray(dadosNovos.funcoesSolicitadas)) {
-        const aprovadas = Array.isArray(lista[indice].funcoesAprovadas) && lista[indice].funcoesAprovadas.length
-            ? lista[indice].funcoesAprovadas
-            : (lista[indice].cargo ? [lista[indice].cargo] : ['Membro(a)']);
+        const aprovadas = Array.isArray(atual.funcoesAprovadas) && atual.funcoesAprovadas.length
+            ? atual.funcoesAprovadas
+            : (atual.cargo ? [atual.cargo] : ['Membro(a)']);
         // solicita só o que ainda não está aprovado
         const pedidas = dadosNovos.funcoesSolicitadas.filter(function (f) {
             return aprovadas.indexOf(f) === -1 && String(f).indexOf('Membro') !== 0;
@@ -1335,9 +1336,38 @@ function atualizarPerfil(dadosNovos) {
         seguros.funcoesSolicitadas = pedidas;
     }
 
-    lista[indice] = { ...lista[indice], ...seguros };
+    // Ministérios: novos pedidos ficam em análise; os já aprovados pela gestão permanecem aprovados
+    if (Array.isArray(dadosNovos.ministerios)) {
+        var minsNovos = dadosNovos.ministerios.map(function (x) { return String(x).trim(); }).filter(Boolean);
+        var stMap = Object.assign({}, atual.ministeriosStatus || {});
+        var minsAntes = Array.isArray(atual.ministerios) ? atual.ministerios : [];
+        minsNovos.forEach(function (nome) {
+            var key = String(nome).trim();
+            var jaTinha = minsAntes.some(function (x) {
+                return String(x).trim().toLowerCase() === key.toLowerCase();
+            });
+            var st = stMap[key] || stMap[key.toLowerCase()] || '';
+            // só marca em análise se é novo ou ainda não estava aprovado
+            if (!jaTinha || (st !== 'aprovado' && st !== 'ok')) {
+                stMap[key] = 'em_analise';
+            }
+        });
+        // remove status de ministérios que o membro desmarcou
+        Object.keys(stMap).forEach(function (k) {
+            var ainda = minsNovos.some(function (n) {
+                return String(n).toLowerCase() === String(k).toLowerCase();
+            });
+            if (!ainda) delete stMap[k];
+        });
+        seguros.ministerios = minsNovos;
+        seguros.ministeriosStatus = stMap;
+    }
+
+    lista[indice] = { ...atual, ...seguros };
+    try { if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(lista[indice]); } catch (e0) {}
     salvarMembros(lista);
     iniciarSessao(lista[indice]);
+    try { enviarMembroParaNuvem(lista[indice]); } catch (e1) {}
     try {
         if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
             IBNNuvem.registrarAtividade('editar_perfil', 'Atualizou dados cadastrais', lista[indice]);
@@ -1399,8 +1429,19 @@ function aprovarMembro(membroId, alocacao) {
     if (!aprovadas.length) aprovadas.push('Membro(a)');
     m.funcoesAprovadas = aprovadas;
 
+    // Ministérios alocados pela gestão ficam aprovados; os que saíram somem do status
+    if (!m.ministeriosStatus) m.ministeriosStatus = {};
+    var minsFinais = Array.isArray(m.ministerios) ? m.ministerios : [];
+    var novoSt = {};
+    minsFinais.forEach(function (nome) {
+        novoSt[String(nome).trim()] = 'aprovado';
+    });
+    m.ministeriosStatus = novoSt;
+
+    try { if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(m); } catch (eA) {}
     lista[idx] = m;
     salvarMembros(lista);
+    try { enviarMembroParaNuvem(m); } catch (eB) {}
     return { sucesso: true, membro: m };
 }
 

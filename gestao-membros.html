@@ -305,6 +305,20 @@
             if (Array.isArray(m.funcoesSolicitadas) && m.funcoesSolicitadas.length) {
                 itens.push('Funções pedidas pelo membro (aprovar ou ajustar): ' + m.funcoesSolicitadas.join(', '));
             }
+            // Ministérios solicitados / em análise (membro marcou de novo ou ainda não confirmado)
+            try {
+                var mins = Array.isArray(m.ministerios) ? m.ministerios : [];
+                var emAnalise = mins.filter(function (nome) {
+                    if (typeof statusMinisterioMembro === 'function') {
+                        return statusMinisterioMembro(m, nome) === 'em_analise';
+                    }
+                    var st = (m.ministeriosStatus || {})[nome] || (m.ministeriosStatus || {})[String(nome).toLowerCase()] || '';
+                    return !st || st === 'em_analise' || st === 'pendente';
+                });
+                if (emAnalise.length) {
+                    itens.push('Ministérios em análise (confirmar ou ajustar): ' + emAnalise.join(', '));
+                }
+            } catch (eMin) {}
             return itens;
         }
 
