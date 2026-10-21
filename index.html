@@ -852,6 +852,16 @@
                 try { initMap(); } catch(e) { console.error('initMap:', e); }
             }
         }
+        // Google chama isso quando a chave/domínio/faturamento bloqueia o mapa
+        window.gm_authFailure = function () {
+            console.error('Google Maps: autenticação falhou (chave, domínio ou faturamento).');
+            window.__mapaPronto = false;
+            if (typeof mostrarMapaFallback === 'function') {
+                try {
+                    mostrarMapaFallback('Google Maps bloqueado para este domínio. Use a lista rápida ou "Abrir no Google Maps".');
+                } catch (e) {}
+            }
+        };
     </script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDvIb1B_rLoN1VIamugnaw5IJQ85ksBcpM&language=pt-BR&region=BR&callback=onGoogleMapsReady"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1239,22 +1249,23 @@
             }
         };
 
-        // Dados das células (CSV IBN) — coordenadas aproximadas por bairro.
-        // Líderes/anfitriões podem salvar a localização REAL (fica no aparelho / site).
+        // Coordenadas aproximadas por bairro (mapa). A LISTA de células vem do catálogo (conta.js / nuvem).
         const CHAVE_COORDS_CELULAS = 'ibn_celulas_coords';
-        const celulasBase = [
-            { id: 'somos-igreja', nome: "Célula Somos a Igreja", endereco: "Rua Pirarara, 97", bairro: "Solar", localidade: "Novo Diamantino", lat: -14.3795, lng: -56.3915 },
-            { id: 'genesis', nome: "Célula Gênesis", endereco: "Rua das Paineiras, 541", bairro: "Centro", localidade: "Novo Diamantino", lat: -14.3810, lng: -56.3930 },
-            { id: 'fonte-agua', nome: "Célula Fonte de Água Viva", endereco: "Rua Jacarandá, 321", bairro: "Centro", localidade: "Novo Diamantino", lat: -14.3805, lng: -56.3920 },
-            { id: 'ebenezer', nome: "Célula Ebenézer", endereco: "Rua Cajarana, 533", bairro: "Bom Jesus", localidade: "Novo Diamantino", lat: -14.3780, lng: -56.3890 },
-            { id: 'shamah', nome: "Célula Shamah", endereco: "Rua 5 Alta Floresta, 241", bairro: "Bom Jesus", localidade: "Novo Diamantino", lat: -14.3775, lng: -56.3880 },
-            { id: 'morada', nome: "Célula Morada", endereco: "Rua B, 25", bairro: "Buriti", localidade: "Diamantino", lat: -14.4120, lng: -56.4480 },
-            { id: 'atos2', nome: "Célula Atos 2", endereco: "Rua 2, próximo ao ginásio de esportes", bairro: "Buriti", localidade: "Diamantino", lat: -14.4135, lng: -56.4495 },
-            { id: 'primeiro-mandamento', nome: "Célula Primeiro Mandamento", endereco: "Rua Manoel Ferreira de Arruda, 33", bairro: "Buriti", localidade: "Diamantino", lat: -14.4145, lng: -56.4505 },
-            { id: 'missao', nome: "Célula Missão", endereco: "Centro", bairro: "Centro", localidade: "Alto Paraguai", lat: -14.5200, lng: -56.4800 },
-            { id: 'adolescentes', nome: "Célula de Adolescentes", endereco: "Local definido pelo líder a cada sábado", bairro: "A definir", localidade: "Diamantino", lat: -14.4089, lng: -56.4458 },
-            { id: 'jovens', nome: "Célula de Jovens", endereco: "Local definido pelo líder a cada sábado", bairro: "A definir", localidade: "Diamantino", lat: -14.4089, lng: -56.4458 }
-        ];
+        const celulasCoordsBase = {
+            'somos-igreja': { endereco: "Rua Pirarara, 97", bairro: "Solar", localidade: "Novo Diamantino", lat: -14.3795, lng: -56.3915 },
+            'genesis': { endereco: "Rua das Paineiras, 541", bairro: "Centro", localidade: "Novo Diamantino", lat: -14.3810, lng: -56.3930 },
+            'fonte-agua': { endereco: "Rua Jacarandá, 321", bairro: "Centro", localidade: "Novo Diamantino", lat: -14.3805, lng: -56.3920 },
+            'ebenezer': { endereco: "Rua Cajarana, 533", bairro: "Bom Jesus", localidade: "Novo Diamantino", lat: -14.3780, lng: -56.3890 },
+            'shamah': { endereco: "Rua 5 Alta Floresta, 241", bairro: "Bom Jesus", localidade: "Novo Diamantino", lat: -14.3775, lng: -56.3880 },
+            'morada': { endereco: "Rua B, 25", bairro: "Buriti", localidade: "Diamantino", lat: -14.4120, lng: -56.4480 },
+            'atos2': { endereco: "Rua 2, próximo ao ginásio de esportes", bairro: "Buriti", localidade: "Diamantino", lat: -14.4135, lng: -56.4495 },
+            'primeiro-mandamento': { endereco: "Rua Manoel Ferreira de Arruda, 33", bairro: "Buriti", localidade: "Diamantino", lat: -14.4145, lng: -56.4505 },
+            'missao': { endereco: "Centro", bairro: "Centro", localidade: "Alto Paraguai", lat: -14.5200, lng: -56.4800 },
+            'adolescentes': { endereco: "Local definido pelo líder a cada sábado", bairro: "A definir", localidade: "Diamantino", lat: -14.4089, lng: -56.4458 },
+            'jovens': { endereco: "Local definido pelo líder a cada sábado", bairro: "A definir", localidade: "Diamantino", lat: -14.4089, lng: -56.4458 }
+        };
+        // fallback genérico (Diamantino centro) para célula nova sem coordenada
+        const COORDS_PADRAO_MT = { lat: -14.4089, lng: -56.4458, bairro: '', localidade: 'Diamantino' };
 
         function carregarCoordsSalvas() {
             try {
@@ -1262,26 +1273,87 @@
             } catch (e) { return {}; }
         }
 
+        /** Fonte da verdade: LISTA_CELULAS (mesmo catálogo da Organização). Coords vêm do mapa base + salvas. */
         function aplicarCoordsSalvas() {
             const salvas = carregarCoordsSalvas();
-            return celulasBase.map(function(c) {
-                const s = salvas[c.id];
-                const lat = (s && typeof s.lat === 'number') ? s.lat : c.lat;
-                const lng = (s && typeof s.lng === 'number') ? s.lng : c.lng;
-                const real = !!(s && s.real);
-                return Object.assign({}, c, {
+            var catalogo = [];
+            try {
+                if (typeof carregarListaCelulas === 'function') catalogo = carregarListaCelulas() || [];
+                else if (typeof LISTA_CELULAS !== 'undefined' && Array.isArray(LISTA_CELULAS)) catalogo = LISTA_CELULAS;
+            } catch (e0) { catalogo = []; }
+            if (!catalogo.length) {
+                // fallback: ids do mapa base
+                catalogo = Object.keys(celulasCoordsBase).map(function (id) {
+                    return { id: id, nome: 'Célula', endereco: (celulasCoordsBase[id] || {}).endereco || '' };
+                });
+            }
+            return catalogo.map(function (cat) {
+                var id = String(cat.id || '');
+                var base = celulasCoordsBase[id] || {};
+                var s = salvas[id];
+                var lat = (s && typeof s.lat === 'number') ? s.lat : (typeof base.lat === 'number' ? base.lat : COORDS_PADRAO_MT.lat);
+                var lng = (s && typeof s.lng === 'number') ? s.lng : (typeof base.lng === 'number' ? base.lng : COORDS_PADRAO_MT.lng);
+                var real = !!(s && s.real);
+                var endereco = (cat.endereco && String(cat.endereco).trim()) || base.endereco || 'Endereço a definir';
+                var bairro = base.bairro || COORDS_PADRAO_MT.bairro || '';
+                var localidade = base.localidade || COORDS_PADRAO_MT.localidade || 'Diamantino';
+                var nome = cat.nome || base.nome || id;
+                return {
+                    id: id,
+                    nome: nome,
+                    endereco: endereco,
+                    bairro: bairro,
+                    localidade: localidade,
                     lat: lat,
                     lng: lng,
                     real: real,
-                    // Texto legível
-                    enderecoCompleto: c.endereco + ' — ' + c.bairro + ', ' + c.localidade,
-                    // Query limpa para o Google Maps (sem travessão / "nº")
-                    queryMaps: c.endereco + ', ' + c.bairro + ', ' + c.localidade + ' - MT, Brasil'
-                });
+                    dia: cat.dia || '',
+                    horario: cat.horario || '',
+                    enderecoCompleto: endereco + (bairro ? ' — ' + bairro : '') + (localidade ? ', ' + localidade : ''),
+                    queryMaps: endereco + (bairro ? ', ' + bairro : '') + ', ' + localidade + ' - MT, Brasil'
+                };
             });
         }
 
         let celulas = aplicarCoordsSalvas();
+
+        /** Recarrega lista da home após sincronizar catálogo da nuvem */
+        function sincronizarCelulasHomeComCatalogo() {
+            celulas = aplicarCoordsSalvas();
+            // se o mapa já existe, recria marcadores
+            if (typeof mapa !== 'undefined' && mapa && typeof google !== 'undefined' && google.maps) {
+                try {
+                    (marcadores || []).forEach(function (m) { try { m.setMap(null); } catch (e) {} });
+                    marcadores = [];
+                    celulas.forEach(function (celula, idx) {
+                        var marcador = new google.maps.Marker({
+                            position: { lat: celula.lat, lng: celula.lng },
+                            map: mapa,
+                            title: celula.nome,
+                            icon: {
+                                url: celula.real
+                                    ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
+                                    : 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                                scaledSize: new google.maps.Size(32, 32)
+                            }
+                        });
+                        var statusLoc = celula.real
+                            ? '<span style="color:#15803d;font-size:11px;">● Localização confirmada</span>'
+                            : '<span style="color:#a16207;font-size:11px;">● Aproximada (bairro)</span>';
+                        var janela = new google.maps.InfoWindow({
+                            content: '<div style="min-width:230px;padding:4px;"><h4 style="font-weight:bold;margin:0 0 4px;color:#0A1A3F;">' +
+                                celula.nome + '</h4><p style="font-size:13px;color:#555;margin:0 0 4px;">' +
+                                (celula.enderecoCompleto || celula.endereco) + '</p><p style="margin:0 0 8px;">' + statusLoc +
+                                '</p><a href="' + linkComoChegar(celula) + '" target="_blank" style="color:#D4AF37;font-weight:bold;text-decoration:none;font-size:13px;">Como Chegar →</a></div>'
+                        });
+                        marcador.addListener('click', function () { janela.open(mapa, marcador); });
+                        marcador.celulaIdx = idx;
+                        marcadores.push(marcador);
+                    });
+                } catch (eMap) { console.warn(eMap); }
+            }
+            if (typeof renderizarListaCompacta === 'function') renderizarListaCompacta();
+        }
 
         // Links de navegação: SEMPRE por coordenada (evita "lugar não encontrado")
         function linkComoChegar(c, origem) {
@@ -2447,19 +2519,38 @@
                     }, { passive: true });
                 }
 
+                // Catálogo de células da nuvem → mesma lista da Organização
+                (async function syncCelulasHome() {
+                    try {
+                        if (typeof puxarListaCelulasDaNuvem === 'function') await puxarListaCelulasDaNuvem();
+                        else if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
+                    } catch (eC) {}
+                    try { sincronizarCelulasHomeComCatalogo(); } catch (eS) {}
+                })();
+                window.addEventListener('ibn-lista-celulas-atualizada', function () {
+                    try { sincronizarCelulasHomeComCatalogo(); } catch (e) {}
+                });
+                window.addEventListener('ibn-nuvem-sincronizado', function () {
+                    try { sincronizarCelulasHomeComCatalogo(); } catch (e) {}
+                });
+
                 // Mapa — tenta agora; se a API ainda não carregou, o callback onGoogleMapsReady cuida
                 if (typeof google !== 'undefined' && google.maps) {
                     initMap();
                 } else if (window.__mapaPronto) {
                     initMap();
                 }
-                // Fallback garantido: lista sempre aparece, e se o mapa não carregar em 5s mostra aviso
+                // Fallback: lista sempre; se o mapa falhar (API/chave/domínio) troca pelo aviso
                 setTimeout(function() {
-                    if (!mapa) {
-                        mostrarMapaFallback('Mapa interativo indisponível no momento. Use a lista abaixo com os endereços e links do Google Maps.');
+                    var el = document.getElementById('mapaCelulas');
+                    var texto = el ? (el.innerText || el.textContent || '') : '';
+                    var falhou = !mapa || /Ops|deu errado|Something went wrong|não carregou|Sorry/i.test(texto);
+                    if (falhou) {
+                        mapa = null;
+                        mostrarMapaFallback('Mapa interativo indisponível no momento. Use a lista abaixo ou "Abrir no Google Maps".');
                     }
-                    renderizarListaCompacta();
-                }, 5000);
+                    try { sincronizarCelulasHomeComCatalogo(); } catch (e) { try { renderizarListaCompacta(); } catch (e2) {} }
+                }, 4000);
             } catch (err) {
                 console.error('Erro na inicialização geral:', err);
             }
