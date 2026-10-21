@@ -180,6 +180,49 @@ const IBNNuvem = (function () {
                 if (ehSistema(m) || foiExcl(m)) return;
                 porId[String(m.id)] = m;
             });
+            function incorporarMinisteriosEmAnalise(dest, origem) {
+                if (!dest || !origem) return;
+                var minsDest = Array.isArray(dest.ministerios) ? dest.ministerios.slice() : [];
+                var stDest = Object.assign({}, dest.ministeriosStatus || {});
+                var stOri = origem.ministeriosStatus || {};
+                (Array.isArray(origem.ministerios) ? origem.ministerios : []).forEach(function (n) {
+                    var nome = String(n || '').trim();
+                    if (!nome) return;
+                    var st = stOri[nome] || stOri[nome.toLowerCase()] || '';
+                    // Só incorpora pedidos em análise (não força de volta o que já foi removido como aprovado em outro lado)
+                    if (st !== 'em_analise' && st !== 'pendente' && st !== '') return;
+                    if (st === 'aprovado' || st === 'ok') return;
+                    var ja = minsDest.some(function (x) {
+                        return String(x).trim().toLowerCase() === nome.toLowerCase();
+                    });
+                    if (!ja) minsDest.push(nome);
+                    if (stDest[nome] !== 'aprovado' && stDest[nome] !== 'ok') {
+                        stDest[nome] = 'em_analise';
+                    }
+                });
+                // Se origem não tem status mas tem ministério extra e dest é mais antigo, também puxa
+                if (ts(origem) >= ts(dest)) {
+                    (Array.isArray(origem.ministerios) ? origem.ministerios : []).forEach(function (n) {
+                        var nome = String(n || '').trim();
+                        if (!nome) return;
+                        var ja = minsDest.some(function (x) {
+                            return String(x).trim().toLowerCase() === nome.toLowerCase();
+                        });
+                        if (!ja) {
+                            minsDest.push(nome);
+                            if (!stDest[nome]) stDest[nome] = 'em_analise';
+                        }
+                    });
+                    // lista oficial da origem mais nova
+                    if (Array.isArray(origem.ministerios) && origem.ministerios.length) {
+                        minsDest = origem.ministerios.map(function (x) { return String(x).trim(); }).filter(Boolean);
+                        stDest = Object.assign({}, stDest, stOri);
+                    }
+                }
+                dest.ministerios = minsDest;
+                dest.ministeriosStatus = stDest;
+            }
+
             (r.lista || []).forEach(function (m) {
                 if (!m || m.id === undefined) return;
                 if (ehSistema(m) || foiExcl(m)) return;
@@ -199,6 +242,11 @@ const IBNNuvem = (function () {
                 }
                 if (!porId[id].senha && senhaLocal) porId[id].senha = senhaLocal;
                 if (!porId[id].respostaSeguranca && respLocal) porId[id].respostaSeguranca = respLocal;
+                // Garante que pedidos de ministério em análise não se percam entre aparelhos
+                try {
+                    incorporarMinisteriosEmAnalise(porId[id], loc);
+                    incorporarMinisteriosEmAnalise(porId[id], m);
+                } catch (eMin) {}
                 // Nunca rebaixar admin/gestor por causa de cópia antiga no outro aparelho
                 (function preservarNivelGestao(a, b, dest) {
                     var rank = function (n) {

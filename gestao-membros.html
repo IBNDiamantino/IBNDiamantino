@@ -736,7 +736,24 @@
             if (e.key === 'Enter') renderizar();
         });
 
-        renderizar();
+        // Sempre puxa membros da nuvem ao abrir (evita PC e celular com listas diferentes)
+        (async function iniciarGestaoMembros() {
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
+                    await IBNNuvem.puxarMembrosParaLocal();
+                }
+            } catch (ePuxa) { console.warn('puxarMembros:', ePuxa); }
+            try { renderizar(); } catch (eR) {}
+            // Re-puxa a cada 45s enquanto a página estiver aberta
+            setInterval(async function () {
+                try {
+                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
+                        await IBNNuvem.puxarMembrosParaLocal();
+                        renderizar();
+                    }
+                } catch (e2) {}
+            }, 45000);
+        })();
     </script>
 </body>
 </html>
