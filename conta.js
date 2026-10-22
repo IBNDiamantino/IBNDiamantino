@@ -361,25 +361,35 @@ function salvarMembros(lista) {
     } catch (e) { /* silencioso */ }
 }
 
-/** Garante um membro específico na nuvem (cadastro / edição) */
+/** Garante um membro específico na nuvem (cadastro / edição). Retorna Promise com { sucesso, mensagem }. */
 function enviarMembroParaNuvem(membro) {
     try {
-        if (typeof IBNNuvem === 'undefined' || !IBNNuvem.sincronizarUmMembro || !membro) return;
+        if (typeof IBNNuvem === 'undefined' || !IBNNuvem.sincronizarUmMembro || !membro) {
+            return Promise.resolve({ sucesso: false, mensagem: 'Nuvem não disponível neste aparelho', semNuvem: true });
+        }
         if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(membro);
-        IBNNuvem.sincronizarUmMembro(membro).then(function (r) {
+        return IBNNuvem.sincronizarUmMembro(membro).then(function (r) {
             if (r && !r.sucesso) {
                 console.warn('Nuvem (1 membro):', r.mensagem || r);
                 if (typeof avisarFalhaNuvem === 'function') {
                     avisarFalhaNuvem('Cadastro do membro', r.mensagem || 'Não sincronizou');
                 }
+                return { sucesso: false, mensagem: (r && r.mensagem) || 'Não sincronizou com a nuvem' };
             }
+            if (r && r.ignorado) {
+                return { sucesso: true, mensagem: 'Nuvem já tinha versão mais recente', ignorado: true };
+            }
+            return { sucesso: true, mensagem: 'Enviado para a nuvem' };
         }).catch(function (e) {
             console.warn('Nuvem (1 membro):', e);
             if (typeof avisarFalhaNuvem === 'function') {
                 avisarFalhaNuvem('Cadastro do membro', (e && e.message) || String(e));
             }
+            return { sucesso: false, mensagem: (e && e.message) || String(e) };
         });
-    } catch (e) {}
+    } catch (e) {
+        return Promise.resolve({ sucesso: false, mensagem: (e && e.message) || String(e) });
+    }
 }
 
 
@@ -1459,7 +1469,6 @@ function atualizarPerfil(dadosNovos) {
     try { if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(lista[indice]); } catch (e0) {}
     salvarMembros(lista);
     iniciarSessao(lista[indice]);
-    try { enviarMembroParaNuvem(lista[indice]); } catch (e1) {}
     try {
         if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
             var det = (seguros.alteracoesPendentesGestao && seguros.alteracoesPendentesGestao.resumo)
@@ -1468,7 +1477,32 @@ function atualizarPerfil(dadosNovos) {
             IBNNuvem.registrarAtividade('editar_perfil', det, lista[indice]);
         }
     } catch (e) {}
-    return { sucesso: true };
+
+    // Retorna Promise: local ok + status real da nuvem
+    return Promise.resolve(enviarMembroParaNuvem(lista[indice])).then(function (rn) {
+        var nuvemOk = !!(rn && rn.sucesso);
+        var msgLocal = 'Dados salvos neste aparelho.';
+        var msgNuvem = nuvemOk
+            ? ' Também enviados para a nuvem (gestão pode ver).'
+            : (rn && rn.semNuvem
+                ? ' Nuvem offline neste aparelho — gestão só verá após sincronizar.'
+                : ' Atenção: não foi possível enviar à nuvem' + (rn && rn.mensagem ? ' (' + rn.mensagem + ')' : '') + '.');
+        return {
+            sucesso: true,
+            local: true,
+            nuvem: nuvemOk,
+            mensagem: msgLocal + msgNuvem,
+            membro: lista[indice]
+        };
+    }).catch(function () {
+        return {
+            sucesso: true,
+            local: true,
+            nuvem: false,
+            mensagem: 'Dados salvos neste aparelho. Não foi possível confirmar o envio à nuvem.',
+            membro: lista[indice]
+        };
+    });
 }
 
 function aprovarMembro(membroId, alocacao) {

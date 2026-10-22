@@ -311,9 +311,12 @@
             })();
         })();
 
-        // Salva alterações via conta.js
-        document.getElementById('formDados').addEventListener('submit', function(e) {
+        // Salva alterações via conta.js — espera a nuvem e mostra status real
+        document.getElementById('formDados').addEventListener('submit', async function(e) {
             e.preventDefault();
+            var msg = document.getElementById('msg');
+            var btn = e.target.querySelector('button[type="submit"]');
+            if (btn) { btn.disabled = true; btn.setAttribute('data-txt', btn.innerHTML); btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> Salvando…'; }
 
             var celulas = [];
             var idT = document.getElementById('celulaTerca').value;
@@ -331,7 +334,7 @@
                 ministerios.push(el.value);
             });
 
-            const dadosNovos = {
+            var dadosNovos = {
                 telefone: document.getElementById('telefone').value.trim(),
                 email: document.getElementById('email').value.trim().toLowerCase(),
                 sexo: document.getElementById('sexo').value,
@@ -355,22 +358,37 @@
                 })()
             };
 
-            const r = (typeof atualizarPerfil === 'function')
-                ? atualizarPerfil(dadosNovos)
-                : { sucesso: false, mensagem: 'Função de atualização indisponível.' };
+            msg.classList.remove('hidden');
+            msg.className = 'text-sm mt-2 text-center text-gray-600 font-semibold';
+            msg.textContent = 'Salvando e enviando para a nuvem…';
 
-            const msg = document.getElementById('msg');
-            if (r && r.sucesso) {
-                msg.textContent = '✅ Dados atualizados com sucesso!';
-                msg.className = 'text-green-600 mt-2 text-center font-bold';
-                msg.classList.remove('hidden');
-                setTimeout(function() {
-                    window.location.href = 'area-membro.html';
-                }, 1200);
-            } else {
-                msg.textContent = (r && r.mensagem) || 'Não foi possível salvar. Tente novamente.';
-                msg.className = 'text-red-500 mt-2 text-center font-bold';
-                msg.classList.remove('hidden');
+            try {
+                var r = (typeof atualizarPerfil === 'function')
+                    ? await Promise.resolve(atualizarPerfil(dadosNovos))
+                    : { sucesso: false, mensagem: 'Função de atualização indisponível.' };
+
+                if (r && r.sucesso) {
+                    if (r.nuvem) {
+                        msg.className = 'text-sm mt-2 text-center text-green-700 font-bold';
+                        msg.textContent = '✅ ' + (r.mensagem || 'Dados salvos e enviados para a nuvem. A gestão pode ver as alterações.');
+                    } else {
+                        msg.className = 'text-sm mt-2 text-center text-amber-700 font-bold';
+                        msg.textContent = '⚠️ ' + (r.mensagem || 'Salvo neste aparelho, mas a nuvem não confirmou. Tente de novo com internet.');
+                    }
+                    setTimeout(function() {
+                        window.location.href = 'area-membro.html';
+                    }, r.nuvem ? 1800 : 3500);
+                } else {
+                    msg.className = 'text-sm mt-2 text-center text-red-600 font-bold';
+                    msg.textContent = '❌ ' + ((r && r.mensagem) || 'Não foi possível salvar. Tente novamente.');
+                }
+            } catch (err) {
+                msg.className = 'text-sm mt-2 text-center text-red-600 font-bold';
+                msg.textContent = '❌ Erro ao salvar: ' + ((err && err.message) || String(err));
+            }
+            if (btn) {
+                btn.disabled = false;
+                if (btn.getAttribute('data-txt')) btn.innerHTML = btn.getAttribute('data-txt');
             }
         });
     </script>
