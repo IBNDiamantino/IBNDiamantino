@@ -31,6 +31,16 @@
     </header>
 
     <main class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- Espelho da nuvem: master/adm/gestor vê o mesmo que Luana e demais -->
+        <div id="bannerNuvemGestao" class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="font-bold"><i class="fa fa-cloud"></i> Espelho da igreja (nuvem)</p>
+                <p id="txtSyncGestao" class="text-xs mt-0.5 text-blue-800">Carregando dados da nuvem…</p>
+            </div>
+            <button type="button" id="btnAtualizarNuvemGestao" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-accent whitespace-nowrap">
+                <i class="fa fa-refresh"></i> Atualizar da nuvem agora
+            </button>
+        </div>
         <!-- Filtros -->
         <div class="bg-white rounded-xl shadow p-4 mb-6 flex flex-wrap gap-3 items-end">
             <div>
@@ -182,8 +192,17 @@
             window.location.href = 'login.html';
         }
 
-        document.getElementById('nivelUsuario').textContent =
-            usuario.nivel === 'gestor' ? 'Gestor Master' : 'Administrador';
+        (function () {
+            var rotulo = 'Administrador';
+            if (typeof isGestorMaster === 'function' && isGestorMaster(usuario)) {
+                rotulo = 'Gestor Master (sistema — espelho de tudo)';
+            } else if (usuario.nivel === 'gestor') {
+                rotulo = 'Gestor';
+            } else if (typeof isContaSistema === 'function' && isContaSistema(usuario)) {
+                rotulo = 'Admin Master (sistema — espelho de tudo)';
+            }
+            document.getElementById('nivelUsuario').textContent = rotulo;
+        })();
         document.getElementById('btnSair').addEventListener('click', function(e) {
             e.preventDefault();
             sair();
@@ -745,23 +764,49 @@
             if (e.key === 'Enter') renderizar();
         });
 
-        // Sempre puxa membros da nuvem ao abrir (evita PC e celular com listas diferentes)
-        (async function iniciarGestaoMembros() {
+        async function atualizarEspelhoNuvem(manual) {
+            var txt = document.getElementById('txtSyncGestao');
+            var btn = document.getElementById('btnAtualizarNuvemGestao');
+            if (txt) txt.textContent = manual ? 'Atualizando da nuvem…' : 'Sincronizando com a nuvem…';
+            if (btn && manual) { btn.disabled = true; }
             try {
-                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
-                    await IBNNuvem.puxarMembrosParaLocal();
-                }
-            } catch (ePuxa) { console.warn('puxarMembros:', ePuxa); }
-            try { renderizar(); } catch (eR) {}
-            // Re-puxa a cada 45s enquanto a página estiver aberta
-            setInterval(async function () {
-                try {
-                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
-                        await IBNNuvem.puxarMembrosParaLocal();
-                        renderizar();
+                var r = null;
+                if (typeof IBNNuvem !== 'undefined') {
+                    if (IBNNuvem.sincronizarTudoDaNuvem) {
+                        await IBNNuvem.sincronizarTudoDaNuvem(manual ? 'gestao-manual' : 'gestao-auto');
                     }
-                } catch (e2) {}
-            }, 45000);
+                    if (IBNNuvem.puxarMembrosParaLocal) {
+                        r = await IBNNuvem.puxarMembrosParaLocal();
+                    }
+                }
+                var qtd = (r && r.lista) ? r.lista.length : ((typeof lerMembros === 'function') ? lerMembros().length : 0);
+                var agora = new Date();
+                var hh = String(agora.getHours()).padStart(2, '0');
+                var mm = String(agora.getMinutes()).padStart(2, '0');
+                if (txt) {
+                    txt.textContent = 'Última sincronização ' + hh + ':' + mm + ' — ' + qtd + ' membro(s). Alterações da Luana, Murian e demais entram aqui automaticamente.';
+                }
+                try { renderizar(); } catch (eR) {}
+                return true;
+            } catch (e) {
+                if (txt) txt.textContent = 'Falha ao ler a nuvem: ' + ((e && e.message) || String(e)) + '. Verifique a internet.';
+                try { renderizar(); } catch (eR2) {}
+                return false;
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        var btnNuvem = document.getElementById('btnAtualizarNuvemGestao');
+        if (btnNuvem) {
+            btnNuvem.addEventListener('click', function () { atualizarEspelhoNuvem(true); });
+        }
+
+        // Master/adm/gestor: sempre o mesmo espelho da nuvem ao abrir
+        (async function iniciarGestaoMembros() {
+            await atualizarEspelhoNuvem(false);
+            // Re-puxa a cada 30s enquanto a página estiver aberta
+            setInterval(function () { atualizarEspelhoNuvem(false); }, 30000);
         })();
     </script>
 </body>
