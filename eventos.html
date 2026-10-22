@@ -192,8 +192,9 @@
             </div>
         </section>
 
-        <section id="listaPublica" class="mb-12">
-            <h2 class="text-2xl font-bold mb-6 text-primary">Inscritos</h2>
+        <!-- Lista de inscritos: só gestão (admin/gestor) -->
+        <section id="listaPublica" class="hidden mb-12">
+            <h2 class="text-2xl font-bold mb-6 text-primary">Inscritos <span class="text-sm font-normal text-gray-500">(somente gestão)</span></h2>
             <div id="listaPub" class="bg-white rounded-xl shadow-lg p-6">
                 <p class="text-gray-500 text-center">Carregando...</p>
             </div>
@@ -965,10 +966,28 @@
             localStorage.setItem('inscritosIBN', JSON.stringify(inscritos));
         }
 
+        function podeVerInscritosGestao() {
+            try {
+                if (typeof isAdmin === 'function' && isAdmin()) return true;
+                if (typeof isGestor === 'function' && isGestor()) return true;
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (u && (u.nivel === 'admin' || u.nivel === 'gestor')) return true;
+            } catch (e) {}
+            return false;
+        }
+
         function carregarListaPublica() {
+            const sec = document.getElementById('listaPublica');
             const container = document.getElementById('listaPub');
+            // Público geral não vê quantidade nem nomes de inscritos
+            if (!podeVerInscritosGestao()) {
+                if (sec) sec.classList.add('hidden');
+                return;
+            }
+            if (sec) sec.classList.remove('hidden');
+            if (!container) return;
             if (inscritos.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center">Ninguém inscrito ainda. Seja o primeiro! ✨</p>';
+                container.innerHTML = '<p class="text-gray-500 text-center">Nenhum inscrito ainda.</p>';
                 return;
             }
             const pagos = inscritos.filter(i => i.pago).length;
@@ -980,6 +999,7 @@
                             <div>
                                 <span class="font-semibold">${i.nome}</span>
                                 <span class="text-xs text-gray-500 block sm:inline sm:ml-2">${i.eventoNome || ''}</span>
+                                <span class="text-xs text-gray-400 block">${i.tipo === 'visitante' ? 'Visitante' : 'Membro'} · ${i.telefone || ''}</span>
                             </div>
                             <span class="text-xs px-2 py-1 rounded-full w-fit ${i.pago ? 'status-pago' : 'status-pendente'}">
                                 ${i.pago ? '✅ Pago' : '⏳ Pendente'}
