@@ -590,8 +590,13 @@
                             if (!stM || stM === 'em_analise' || stM === 'pendente') qtdMinAnalise++;
                         }
                     });
-                    if (qtdMinAnalise > 0) n += 1; // conta como 1 bloco de pendência (amarelo/laranja)
+                    if (qtdMinAnalise > 0) n += 1;
                 } catch (eMin) {}
+                // Alterações do formulário Meus Dados ainda não conferidas pela gestão
+                try {
+                    var alt = m.alteracoesPendentesGestao;
+                    if (alt && Array.isArray(alt.resumo) && alt.resumo.length) n += 1;
+                } catch (eAlt) {}
                 return { n: n, excluido: false };
             }
 

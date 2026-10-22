@@ -65,6 +65,31 @@ const IBNNuvem = (function () {
         return copia;
     }
 
+    function _tsMembro(m) {
+        return Date.parse((m && (m.atualizadoEm || m.criadoEm || m.dataCadastro)) || '') || 0;
+    }
+
+    /** Só grava se a versão local for igual ou mais nova que a da nuvem (evita PC antigo apagar celular) */
+    async function _gravarMembroSeMaisNovo(col, m) {
+        var pub = membroPublico(m);
+        if (!pub) return { ok: false, motivo: 'invalido' };
+        var ref = col.doc(String(m.id));
+        var tLocal = _tsMembro(m);
+        try {
+            var snap = await ref.get();
+            if (snap.exists) {
+                var remote = snap.data() || {};
+                var tRemote = _tsMembro(remote);
+                if (tRemote > tLocal) {
+                    return { ok: false, motivo: 'nuvem_mais_nova', remoto: remote };
+                }
+            }
+        } catch (eGet) { /* se não ler, tenta gravar mesmo assim */ }
+        if (!pub.atualizadoEm) pub.atualizadoEm = new Date().toISOString();
+        await ref.set(pub, { merge: true });
+        return { ok: true };
+    }
+
     async function sincronizarMembros(lista) {
         if (!iniciar() || !db) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
         try {
@@ -75,20 +100,19 @@ const IBNNuvem = (function () {
                 if (typeof membroFoiExcluido === 'function' && membroFoiExcluido(m)) return false;
                 return true;
             });
-            // Firestore: no máximo 500 ops por batch
-            const CHUNK = 400;
             let enviados = 0;
-            for (let i = 0; i < itens.length; i += CHUNK) {
-                const fatia = itens.slice(i, i + CHUNK);
-                const batch = db.batch();
-                fatia.forEach(function (m) {
-                    var pub = membroPublico(m);
-                    if (pub) batch.set(col.doc(String(m.id)), pub, { merge: true });
-                });
-                await batch.commit();
-                enviados += fatia.length;
+            let ignorados = 0;
+            // Um a um com comparação de data — mais seguro que batch cego
+            for (let i = 0; i < itens.length; i++) {
+                try {
+                    var r = await _gravarMembroSeMaisNovo(col, itens[i]);
+                    if (r.ok) enviados++;
+                    else ignorados++;
+                } catch (eItem) {
+                    console.warn('sync membro', itens[i] && itens[i].id, eItem);
+                }
             }
-            return { sucesso: true, quantidade: enviados };
+            return { sucesso: true, quantidade: enviados, ignorados: ignorados };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
             console.warn('IBNNuvem.sincronizarMembros:', ultimoErro);
@@ -109,9 +133,17 @@ const IBNNuvem = (function () {
             if (typeof membroFoiExcluido === 'function' && membroFoiExcluido(m)) {
                 return { sucesso: false, mensagem: 'Membro na lista de excluídos' };
             }
-            var pub1 = membroPublico(m);
-            if (!pub1) return { sucesso: false, mensagem: 'Dados inválidos' };
-            await db.collection('membros').doc(String(m.id)).set(pub1, { merge: true });
+            if (typeof marcarMembroAtualizado === 'function') {
+                try { marcarMembroAtualizado(m); } catch (eM) {}
+            } else if (!m.atualizadoEm) {
+                m.atualizadoEm = new Date().toISOString();
+            }
+            var col = db.collection('membros');
+            var r = await _gravarMembroSeMaisNovo(col, m);
+            if (!r.ok && r.motivo === 'nuvem_mais_nova') {
+                return { sucesso: true, ignorado: true, mensagem: 'Nuvem já tinha versão mais recente deste membro' };
+            }
+            if (!r.ok) return { sucesso: false, mensagem: r.motivo || 'Falha ao gravar' };
             return { sucesso: true };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
@@ -273,10 +305,22 @@ const IBNNuvem = (function () {
             if (typeof deduplicarMembrosLocais === 'function') {
                 mesclada = deduplicarMembrosLocais();
             }
-            // Atualiza sessão logada (cargos/lideranças vindas da nuvem)
+            // Atualiza sessão logada (cargos/lideranças/ministérios vindos da nuvem)
             try {
                 if (typeof atualizarSessaoDoCadastro === 'function') atualizarSessaoDoCadastro();
             } catch (eSess) {}
+            try {
+                // Reforço: se o usuário logado está na lista mesclada, atualiza sessão com dados novos
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (u && u.id !== undefined) {
+                    var naLista = mesclada.find(function (x) { return String(x.id) === String(u.id); });
+                    if (naLista && typeof iniciarSessao === 'function') {
+                        // mantém senha da sessão se a mescla não trouxe
+                        if (!naLista.senha && u.senha) naLista.senha = u.senha;
+                        iniciarSessao(naLista);
+                    }
+                }
+            } catch (eSess2) {}
             return { sucesso: true, lista: mesclada };
         } catch (e) {
             return { sucesso: false, mensagem: String(e) };
@@ -771,9 +815,12 @@ const IBNNuvem = (function () {
         } catch (e) {}
         return {
             sucesso: r1.sucesso,
-            mensagem: 'Membros: ' + membros.length + ' · Relatórios: ' + okRel + '/' + rels.length +
+            mensagem: 'Membros enviados: ' + (r1.quantidade || 0) + '/' + membros.length +
+                (r1.ignorados ? ' (ignorados mais novos na nuvem: ' + r1.ignorados + ')' : '') +
+                ' · Relatórios: ' + okRel + '/' + rels.length +
                 ' · Fotos: ' + okFoto + ' · Fotos célula: ' + okFc,
-            membros: membros.length,
+            membros: r1.quantidade || 0,
+            ignorados: r1.ignorados || 0,
             relatorios: okRel
         };
     }
@@ -1122,7 +1169,7 @@ const IBNNuvem = (function () {
     function agendarSincronizacaoPeriodica() {
         setTimeout(function () { sincronizarTudoDaNuvem('inicio'); }, 1500);
         if (_syncTimer) clearInterval(_syncTimer);
-        _syncTimer = setInterval(function () { sincronizarTudoDaNuvem('periodico'); }, 90000);
+        _syncTimer = setInterval(function () { sincronizarTudoDaNuvem('periodico'); }, 30000);
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'visible') sincronizarTudoDaNuvem('foco');
         });

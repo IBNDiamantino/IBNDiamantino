@@ -319,6 +319,15 @@
                     itens.push('Ministérios em análise (confirmar ou ajustar): ' + emAnalise.join(', '));
                 }
             } catch (eMin) {}
+            // Qualquer alteração feita pelo membro no formulário (Meus Dados)
+            try {
+                var alt = m.alteracoesPendentesGestao;
+                if (alt && Array.isArray(alt.resumo) && alt.resumo.length) {
+                    alt.resumo.forEach(function (linha) {
+                        if (itens.indexOf(linha) === -1) itens.push(linha);
+                    });
+                }
+            } catch (eAlt) {}
             return itens;
         }
 

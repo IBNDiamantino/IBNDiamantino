@@ -1319,10 +1319,29 @@ function atualizarPerfil(dadosNovos) {
     delete seguros.cargo;
     delete seguros.funcoesAprovadas;
 
+    // ---- Diff: tudo que o membro mudou no formulário vira pendência da gestão ----
+    var resumoPend = [];
+    var camposDados = [];
+    function normTxt(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+    function normTel(v) { return String(v || '').replace(/\D/g, ''); }
+    function idsCelulas(arr) {
+        return (Array.isArray(arr) ? arr : []).map(function (c) {
+            return String((c && c.id) || c || '').toLowerCase();
+        }).filter(Boolean).sort().join('|');
+    }
+    function nomesMins(arr) {
+        return (Array.isArray(arr) ? arr : []).map(function (x) {
+            return String(x).trim().toLowerCase();
+        }).filter(Boolean).sort().join('|');
+    }
+
     if (seguros.celulas) {
         const v = validarCelulas(seguros.celulas);
         if (v.erro) return { sucesso: false, mensagem: v.erro };
         seguros.celulas = v.lista;
+        if (idsCelulas(seguros.celulas) !== idsCelulas(atual.celulas)) {
+            resumoPend.push('Célula(s) alterada(s) pelo membro');
+        }
     }
 
     if (Array.isArray(dadosNovos.funcoesSolicitadas)) {
@@ -1334,33 +1353,106 @@ function atualizarPerfil(dadosNovos) {
             return aprovadas.indexOf(f) === -1 && String(f).indexOf('Membro') !== 0;
         });
         seguros.funcoesSolicitadas = pedidas;
+        if (pedidas.length) {
+            resumoPend.push('Funções pedidas: ' + pedidas.join(', '));
+        }
     }
 
-    // Ministérios: novos pedidos ficam em análise; os já aprovados pela gestão permanecem aprovados
+    // Ministérios: qualquer marcação nova ou que ainda não foi aprovada = em análise
     if (Array.isArray(dadosNovos.ministerios)) {
         var minsNovos = dadosNovos.ministerios.map(function (x) { return String(x).trim(); }).filter(Boolean);
         var stMap = Object.assign({}, atual.ministeriosStatus || {});
         var minsAntes = Array.isArray(atual.ministerios) ? atual.ministerios : [];
+        var novosNomes = [];
         minsNovos.forEach(function (nome) {
             var key = String(nome).trim();
             var jaTinha = minsAntes.some(function (x) {
                 return String(x).trim().toLowerCase() === key.toLowerCase();
             });
             var st = stMap[key] || stMap[key.toLowerCase()] || '';
-            // só marca em análise se é novo ou ainda não estava aprovado
+            // novo OU ainda não aprovado pela gestão → em análise (adm/gestor vê)
             if (!jaTinha || (st !== 'aprovado' && st !== 'ok')) {
                 stMap[key] = 'em_analise';
+                if (!jaTinha) novosNomes.push(key);
             }
         });
         // remove status de ministérios que o membro desmarcou
+        var removidos = [];
         Object.keys(stMap).forEach(function (k) {
             var ainda = minsNovos.some(function (n) {
                 return String(n).toLowerCase() === String(k).toLowerCase();
             });
-            if (!ainda) delete stMap[k];
+            if (!ainda) {
+                if (stMap[k] === 'aprovado' || stMap[k] === 'ok') removidos.push(k);
+                delete stMap[k];
+            }
+        });
+        minsAntes.forEach(function (x) {
+            var nome = String(x).trim();
+            var ainda = minsNovos.some(function (n) {
+                return String(n).toLowerCase() === nome.toLowerCase();
+            });
+            if (!ainda && removidos.indexOf(nome) === -1) removidos.push(nome);
         });
         seguros.ministerios = minsNovos;
         seguros.ministeriosStatus = stMap;
+        if (nomesMins(minsNovos) !== nomesMins(minsAntes)) {
+            if (novosNomes.length) resumoPend.push('Ministérios novos em análise: ' + novosNomes.join(', '));
+            if (removidos.length) resumoPend.push('Ministérios desmarcados pelo membro: ' + removidos.join(', '));
+            if (!novosNomes.length && !removidos.length) {
+                resumoPend.push('Ministérios alterados (conferir alocação)');
+            }
+        }
+        // Sempre lista o que ainda está em análise (inclui marcar mais um depois do laranja)
+        var aindaAnalise = minsNovos.filter(function (n) {
+            var st = stMap[n] || stMap[String(n).toLowerCase()] || '';
+            return st === 'em_analise' || st === 'pendente' || !st;
+        });
+        if (aindaAnalise.length) {
+            var linhaMin = 'Ministérios em análise: ' + aindaAnalise.join(', ');
+            if (resumoPend.indexOf(linhaMin) === -1 &&
+                !resumoPend.some(function (r) { return r.indexOf('Ministérios novos') === 0; })) {
+                resumoPend.push(linhaMin);
+            }
+        }
+    }
+
+    // Dados cadastrais (telefone, e-mail, endereço, etc.)
+    var mapaCampos = [
+        { k: 'telefone', label: 'telefone', cmp: function (a, b) { return normTel(a) !== normTel(b); } },
+        { k: 'email', label: 'e-mail', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'endereco', label: 'endereço', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'municipio', label: 'município', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'uf', label: 'UF', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'nascimento', label: 'nascimento', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'estadoCivil', label: 'estado civil', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'sexo', label: 'sexo', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'batismo', label: 'batismo', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'dataBatismo', label: 'data batismo', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'funcaoEspecifica', label: 'função específica', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } },
+        { k: 'observacoes', label: 'observações', cmp: function (a, b) { return normTxt(a) !== normTxt(b); } }
+    ];
+    mapaCampos.forEach(function (c) {
+        if (dadosNovos[c.k] === undefined) return;
+        if (c.cmp(dadosNovos[c.k], atual[c.k])) camposDados.push(c.label);
+    });
+    if (camposDados.length) {
+        resumoPend.push('Dados cadastrais alterados: ' + camposDados.join(', '));
+    }
+
+    // Junta com pendências anteriores ainda não vistas pela gestão
+    var ant = atual.alteracoesPendentesGestao || {};
+    var resumoAnt = Array.isArray(ant.resumo) ? ant.resumo.slice() : [];
+    resumoPend.forEach(function (linha) {
+        if (resumoAnt.indexOf(linha) === -1) resumoAnt.push(linha);
+    });
+    if (resumoAnt.length || resumoPend.length) {
+        seguros.alteracoesPendentesGestao = {
+            em: new Date().toISOString(),
+            resumo: resumoAnt.length ? resumoAnt : resumoPend,
+            camposDados: camposDados,
+            porMembro: true
+        };
     }
 
     lista[indice] = { ...atual, ...seguros };
@@ -1370,7 +1462,10 @@ function atualizarPerfil(dadosNovos) {
     try { enviarMembroParaNuvem(lista[indice]); } catch (e1) {}
     try {
         if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
-            IBNNuvem.registrarAtividade('editar_perfil', 'Atualizou dados cadastrais', lista[indice]);
+            var det = (seguros.alteracoesPendentesGestao && seguros.alteracoesPendentesGestao.resumo)
+                ? seguros.alteracoesPendentesGestao.resumo.join('; ')
+                : 'Atualizou dados cadastrais';
+            IBNNuvem.registrarAtividade('editar_perfil', det, lista[indice]);
         }
     } catch (e) {}
     return { sucesso: true };
@@ -1437,6 +1532,8 @@ function aprovarMembro(membroId, alocacao) {
         novoSt[String(nome).trim()] = 'aprovado';
     });
     m.ministeriosStatus = novoSt;
+    // Gestão conferiu a ficha → limpa aviso de alterações do formulário
+    m.alteracoesPendentesGestao = null;
 
     try { if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(m); } catch (eA) {}
     lista[idx] = m;
