@@ -47,18 +47,46 @@
 
     <main class="container mx-auto px-4 py-12 max-w-4xl">
 
-        <!-- Aviso membro -->
+        <!-- Aviso não logado: membro ou visitante -->
         <div id="avisoNaoLogado" class="hidden mb-8 bg-yellow-50 border border-yellow-300 rounded-xl p-5 text-center">
-            <p class="font-bold text-primary mb-2"><i class="fa fa-lock mr-2"></i>Inscrição apenas para membros</p>
-            <p class="text-sm text-gray-600 mb-4">Para se inscrever em eventos, faça login ou cadastre-se como membro.</p>
+            <p class="font-bold text-primary mb-2"><i class="fa fa-calendar-check-o mr-2"></i>Como deseja se inscrever?</p>
+            <p class="text-sm text-gray-600 mb-4">Membros fazem login. Visitantes informam nome, telefone e data de nascimento.</p>
             <div class="flex flex-wrap justify-center gap-3">
                 <a href="login.html?destino=eventos.html" class="bg-primary text-white px-5 py-2 rounded-lg font-bold hover:bg-accent">Entrar</a>
                 <a href="cadastro.html" class="bg-secondary text-primary px-5 py-2 rounded-lg font-bold hover:bg-yellow-400">Seja Membro</a>
+                <button type="button" id="btnModoVisitante" class="bg-white border-2 border-primary text-primary px-5 py-2 rounded-lg font-bold hover:bg-gray-50">
+                    <i class="fa fa-user"></i> Visitante
+                </button>
+            </div>
+            <!-- Ficha rápida do visitante (pré-preenche a inscrição) -->
+            <div id="boxFichaVisitante" class="hidden mt-5 max-w-md mx-auto text-left bg-white border border-yellow-200 rounded-xl p-4 shadow-sm">
+                <p class="text-sm font-bold text-primary mb-3"><i class="fa fa-edit mr-1"></i> Dados do visitante</p>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nome completo</label>
+                        <input type="text" id="visNome" class="w-full p-2.5 border rounded-md text-sm" placeholder="Seu nome">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Telefone / WhatsApp</label>
+                        <input type="tel" id="visTelefone" class="w-full p-2.5 border rounded-md text-sm" placeholder="(65) 9 9999-9999">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Data de nascimento</label>
+                        <input type="date" id="visNascimento" class="w-full p-2.5 border rounded-md text-sm">
+                    </div>
+                    <button type="button" id="btnUsarDadosVisitante" class="w-full bg-primary text-white py-2.5 rounded-lg text-sm font-bold hover:bg-accent">
+                        Usar estes dados na inscrição
+                    </button>
+                    <p id="msgVisitanteOk" class="hidden text-xs text-green-700 font-semibold text-center">Dados aplicados no formulário abaixo. Escolha o evento e conclua a inscrição.</p>
+                </div>
             </div>
         </div>
 
         <div id="avisoLogado" class="hidden mb-6 bg-green-50 border border-green-200 rounded-xl p-3 text-center text-sm text-green-800">
             <i class="fa fa-check-circle mr-1"></i> Conectado como <strong id="nomeMembro"></strong> — você pode se inscrever.
+        </div>
+        <div id="avisoVisitanteAtivo" class="hidden mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3 text-center text-sm text-blue-900">
+            <i class="fa fa-user mr-1"></i> Inscrição como <strong>visitante</strong> — <span id="nomeVisitanteAtivo"></span>
         </div>
 
         <section id="proximo" class="mb-12">
@@ -94,8 +122,12 @@
                             <input type="tel" id="telefone" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" placeholder="(65) 9 9999-9999">
                         </div>
                         <div class="mb-4">
-                            <label class="block font-semibold mb-1">E-mail</label>
+                            <label class="block font-semibold mb-1">E-mail <span class="text-gray-400 font-normal text-xs">(opcional para visitante)</span></label>
                             <input type="email" id="email" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                        </div>
+                        <div id="camposVisitante" class="mb-4 hidden">
+                            <label class="block font-semibold mb-1">Data de nascimento</label>
+                            <input type="date" id="nascimentoInsc" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
                         </div>
                     </div>
                     <div id="camposFormularioEvento" class="space-y-4 hidden"></div>
@@ -388,6 +420,14 @@
         let inscritos = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
         let inscricaoAtual = null;
         let membro = null;
+        let modoVisitante = false;
+        try {
+            var _vs = sessionStorage.getItem('ibn_evento_visitante');
+            if (_vs) {
+                modoVisitante = true;
+                window._visitanteEvento = JSON.parse(_vs);
+            }
+        } catch (eVs) {}
 
         function verificarMembro() {
             membro = null;
@@ -401,6 +441,26 @@
                 }
             } catch (e) {}
             return !!(membro && (membro.nome || membro.email || membro.id));
+        }
+
+        function aplicarDadosVisitanteNoForm() {
+            var v = window._visitanteEvento || {};
+            var elNome = document.getElementById('nome');
+            var elTel = document.getElementById('telefone');
+            var elNasc = document.getElementById('nascimentoInsc');
+            if (elNome && v.nome) elNome.value = v.nome;
+            if (elTel && v.telefone) elTel.value = v.telefone;
+            if (elNasc && v.nascimento) elNasc.value = v.nascimento;
+            if (elNome) elNome.dataset.autofill = '0';
+            var boxV = document.getElementById('camposVisitante');
+            if (boxV) boxV.classList.remove('hidden');
+            var av = document.getElementById('avisoVisitanteAtivo');
+            var nv = document.getElementById('nomeVisitanteAtivo');
+            if (av) av.classList.remove('hidden');
+            if (nv) nv.textContent = v.nome || 'visitante';
+            // rola até o formulário
+            var sec = document.getElementById('inscricao');
+            if (sec) try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
         }
 
         function quemEhParticipante() {
@@ -431,9 +491,14 @@
             } else {
                 document.getElementById('avisoNaoLogado') && document.getElementById('avisoNaoLogado').classList.remove('hidden');
                 document.getElementById('avisoLogado') && document.getElementById('avisoLogado').classList.add('hidden');
-                // sem login: sempre ficha de participante (visitante)
+                // sem login: visitante pode se inscrever
                 if (boxQuem) boxQuem.classList.add('hidden');
                 if (quemOutro) quemOutro.checked = true;
+                if (modoVisitante && window._visitanteEvento) {
+                    aplicarDadosVisitanteNoForm();
+                } else if (boxV) {
+                    boxV.classList.remove('hidden');
+                }
             }
 
             var paraMim = logado && quemEhParticipante() === 'eu';
@@ -442,17 +507,19 @@
                 document.getElementById('email').value = membro.email || '';
                 document.getElementById('telefone').value = membro.telefone || '';
                 if (boxV) boxV.classList.add('hidden');
+                var avV = document.getElementById('avisoVisitanteAtivo');
+                if (avV) avV.classList.add('hidden');
             } else {
-                // outra pessoa ou visitante: campos em branco para preencher o participante
-                if (!paraMim) {
-                    // não apaga se usuário já digitou — só limpa na primeira carga
-                    if (document.getElementById('nome').dataset.autofill === '1') {
-                        document.getElementById('nome').value = '';
-                        document.getElementById('email').value = '';
-                        document.getElementById('telefone').value = '';
-                    }
+                // outra pessoa ou visitante: não apaga se já veio do botão visitante
+                if (!modoVisitante && document.getElementById('nome').dataset.autofill === '1') {
+                    document.getElementById('nome').value = '';
+                    document.getElementById('email').value = '';
+                    document.getElementById('telefone').value = '';
                 }
                 if (boxV) boxV.classList.remove('hidden');
+                if (modoVisitante && window._visitanteEvento) {
+                    aplicarDadosVisitanteNoForm();
+                }
             }
             if (logado && quemEhParticipante() === 'eu') {
                 document.getElementById('nome').dataset.autofill = '1';
@@ -469,6 +536,51 @@
 
         function init() {
             aplicarCamposInscricao();
+            // Botão Visitante: abre ficha rápida e permite inscrição sem login
+            var btnVis = document.getElementById('btnModoVisitante');
+            if (btnVis) {
+                btnVis.addEventListener('click', function () {
+                    modoVisitante = true;
+                    var box = document.getElementById('boxFichaVisitante');
+                    if (box) box.classList.remove('hidden');
+                    var boxV = document.getElementById('camposVisitante');
+                    if (boxV) boxV.classList.remove('hidden');
+                    try {
+                        var prev = window._visitanteEvento || {};
+                        if (prev.nome) document.getElementById('visNome').value = prev.nome;
+                        if (prev.telefone) document.getElementById('visTelefone').value = prev.telefone;
+                        if (prev.nascimento) document.getElementById('visNascimento').value = prev.nascimento;
+                    } catch (e) {}
+                    var vn = document.getElementById('visNome');
+                    if (vn) try { vn.focus(); } catch (e2) {}
+                });
+            }
+            var btnUsarVis = document.getElementById('btnUsarDadosVisitante');
+            if (btnUsarVis) {
+                btnUsarVis.addEventListener('click', function () {
+                    var nome = (document.getElementById('visNome').value || '').trim();
+                    var tel = (document.getElementById('visTelefone').value || '').trim();
+                    var nasc = (document.getElementById('visNascimento').value || '').trim();
+                    if (!nome) return alert('Informe o nome do visitante.');
+                    if (!tel) return alert('Informe o telefone do visitante.');
+                    if (!nasc) return alert('Informe a data de nascimento.');
+                    modoVisitante = true;
+                    window._visitanteEvento = { nome: nome, telefone: tel, nascimento: nasc };
+                    try { sessionStorage.setItem('ibn_evento_visitante', JSON.stringify(window._visitanteEvento)); } catch (e) {}
+                    aplicarDadosVisitanteNoForm();
+                    // Se o evento tiver formulário custom (ex.: casais), tenta preencher campos de nome/telefone
+                    try {
+                        document.querySelectorAll('#camposFormularioEvento input, #camposFormularioEvento textarea').forEach(function (el) {
+                            var lab = String(el.getAttribute('data-flabel') || el.getAttribute('placeholder') || '').toLowerCase();
+                            if (/nome/.test(lab) && !el.value) el.value = nome;
+                            if (/telefone|whatsapp|celular/.test(lab) && !el.value) el.value = tel;
+                            if (/nascimento|data de nascimento|nasc/.test(lab) && !el.value) el.value = nasc;
+                        });
+                    } catch (eF) {}
+                    var msg = document.getElementById('msgVisitanteOk');
+                    if (msg) msg.classList.remove('hidden');
+                });
+            }
             document.querySelectorAll('input[name="quemInscricao"]').forEach(function(r){
                 r.addEventListener('change', function(){
                     // ao trocar para "outra pessoa", limpa campos
@@ -680,11 +792,19 @@
 
         document.getElementById('formInsc').addEventListener('submit', function(e) {
             e.preventDefault();
-            if (!verificarMembro()) {
-                alert('Você precisa estar cadastrado e logado como membro para se inscrever.');
-                // visitante pode preencher dados no formulário; login é opcional
-                // window.location.href = 'login.html?destino=eventos.html';
-                return;
+            // Membro logado OU visitante com dados — ambos podem se inscrever
+            var ehMembro = verificarMembro();
+            if (!ehMembro && !modoVisitante) {
+                // ainda pode seguir se preencheu nome+telefone no formulário
+                var nTmp = (document.getElementById('nome') || {}).value || '';
+                var tTmp = (document.getElementById('telefone') || {}).value || '';
+                if (!String(nTmp).trim() || !String(tTmp).trim()) {
+                    alert('Faça login como membro ou clique em Visitante e informe nome, telefone e data de nascimento.');
+                    var boxF = document.getElementById('boxFichaVisitante');
+                    if (boxF) boxF.classList.remove('hidden');
+                    return;
+                }
+                modoVisitante = true;
             }
 
             const eventoId = document.getElementById('eventoSelect').value;
@@ -709,13 +829,15 @@
                 if (!nome) return alert('Informe o nome.');
                 if (!telefone) return alert('Informe o telefone.');
             }
-            const nascV = (document.getElementById('nascimentoInsc') || {}).value || '';
+            const nascV = (document.getElementById('nascimentoInsc') || {}).value
+                || (window._visitanteEvento && window._visitanteEvento.nascimento)
+                || '';
             const endV = (document.getElementById('enderecoInsc') || {}).value || '';
             const munV = (document.getElementById('municipioInsc') || {}).value || '';
-            const paraOutro = !verificarMembro() || quemEhParticipante() === 'outro';
+            const paraOutro = !ehMembro || quemEhParticipante() === 'outro' || modoVisitante;
+            // Visitante: exige nome, telefone e nascimento (endereço opcional)
             if (paraOutro && !temFormCustom) {
                 if (!nascV) return alert('Informe a data de nascimento do participante.');
-                if (!endV && !munV) return alert('Informe endereço ou município do participante.');
             }
 
             // Evitar inscrição duplicada no mesmo evento
@@ -730,11 +852,11 @@
             const novaInsc = {
                 codigo, eventoId, eventoNome: evento.nome, nome, telefone, email,
                 valor: evento.valor, dataInsc: new Date().toLocaleString('pt-BR'), pago: false,
-                tipo: (verificarMembro() && quemEhParticipante() === 'eu') ? 'membro' : 'outra_pessoa',
+                tipo: (ehMembro && quemEhParticipante() === 'eu' && !modoVisitante) ? 'membro' : 'visitante',
                 nascimento: nascV || (membro && membro.nascimento) || '',
                 endereco: endV || (membro && membro.endereco) || '',
                 municipio: munV || (membro && membro.municipio) || '',
-                membroId: (membro && (membro.email || membro.nome)) || '',
+                membroId: (ehMembro && membro && (membro.email || membro.nome)) || '',
                 respostas: col.respostas || {}
             };
             inscritos.push(novaInsc);
