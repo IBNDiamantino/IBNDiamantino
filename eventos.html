@@ -47,37 +47,28 @@
 
     <main class="container mx-auto px-4 py-12 max-w-4xl">
 
-        <!-- Aviso não logado: membro ou visitante -->
+        <!-- Escolha simples: Membro ou Visitante -->
         <div id="avisoNaoLogado" class="hidden mb-8 bg-yellow-50 border border-yellow-300 rounded-xl p-5 text-center">
-            <p class="font-bold text-primary mb-2"><i class="fa fa-calendar-check-o mr-2"></i>Como deseja se inscrever?</p>
-            <p class="text-sm text-gray-600 mb-4">Membros fazem login. Visitantes informam nome, telefone e data de nascimento.</p>
-            <div class="flex flex-wrap justify-center gap-3">
-                <a href="login.html?destino=eventos.html" class="bg-primary text-white px-5 py-2 rounded-lg font-bold hover:bg-accent">Entrar</a>
-                <a href="cadastro.html" class="bg-secondary text-primary px-5 py-2 rounded-lg font-bold hover:bg-yellow-400">Seja Membro</a>
-                <button type="button" id="btnModoVisitante" class="bg-white border-2 border-primary text-primary px-5 py-2 rounded-lg font-bold hover:bg-gray-50">
-                    <i class="fa fa-user"></i> Visitante
-                </button>
+            <p class="font-bold text-primary mb-4 text-lg">Como deseja se inscrever?</p>
+            <div id="boxEscolhaInsc" class="flex flex-wrap justify-center gap-3">
+                <a href="login.html?destino=eventos.html" class="bg-primary text-white px-8 py-3 rounded-lg font-bold hover:bg-accent text-base">Membro</a>
+                <button type="button" id="btnModoVisitante" class="bg-secondary text-primary px-8 py-3 rounded-lg font-bold hover:bg-yellow-400 text-base">Visitante</button>
             </div>
-            <!-- Ficha rápida do visitante (pré-preenche a inscrição) -->
-            <div id="boxFichaVisitante" class="hidden mt-5 max-w-md mx-auto text-left bg-white border border-yellow-200 rounded-xl p-4 shadow-sm">
-                <p class="text-sm font-bold text-primary mb-3"><i class="fa fa-edit mr-1"></i> Dados do visitante</p>
+            <div id="boxFichaVisitante" class="hidden mt-5 max-w-md mx-auto text-left bg-white border border-yellow-200 rounded-xl p-5 shadow-sm">
                 <div class="space-y-3">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nome completo</label>
-                        <input type="text" id="visNome" class="w-full p-2.5 border rounded-md text-sm" placeholder="Seu nome">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nome completo</label>
+                        <input type="text" id="visNome" class="w-full p-3 border rounded-md" placeholder="Seu nome">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Telefone / WhatsApp</label>
-                        <input type="tel" id="visTelefone" class="w-full p-2.5 border rounded-md text-sm" placeholder="(65) 9 9999-9999">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Telefone / WhatsApp</label>
+                        <input type="tel" id="visTelefone" class="w-full p-3 border rounded-md" placeholder="(65) 9 9999-9999">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Data de nascimento</label>
-                        <input type="date" id="visNascimento" class="w-full p-2.5 border rounded-md text-sm">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Data de nascimento</label>
+                        <input type="date" id="visNascimento" class="w-full p-3 border rounded-md">
                     </div>
-                    <button type="button" id="btnUsarDadosVisitante" class="w-full bg-primary text-white py-2.5 rounded-lg text-sm font-bold hover:bg-accent">
-                        Usar estes dados na inscrição
-                    </button>
-                    <p id="msgVisitanteOk" class="hidden text-xs text-green-700 font-semibold text-center">Dados aplicados no formulário abaixo. Escolha o evento e conclua a inscrição.</p>
+                    <button type="button" id="btnUsarDadosVisitante" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-accent">Continuar para inscrição</button>
                 </div>
             </div>
         </div>
@@ -86,7 +77,8 @@
             <i class="fa fa-check-circle mr-1"></i> Conectado como <strong id="nomeMembro"></strong> — você pode se inscrever.
         </div>
         <div id="avisoVisitanteAtivo" class="hidden mb-6 bg-blue-50 border border-blue-200 rounded-xl p-3 text-center text-sm text-blue-900">
-            <i class="fa fa-user mr-1"></i> Inscrição como <strong>visitante</strong> — <span id="nomeVisitanteAtivo"></span>
+            Visitante: <strong id="nomeVisitanteAtivo"></strong>
+            <button type="button" id="btnTrocarVisitante" class="ml-2 underline text-blue-700 text-xs">trocar</button>
         </div>
 
         <section id="proximo" class="mb-12">
@@ -536,21 +528,14 @@
 
         function init() {
             aplicarCamposInscricao();
-            // Botão Visitante: abre ficha rápida e permite inscrição sem login
+            // Visitante: só nome, telefone, nascimento → continua inscrição
             var btnVis = document.getElementById('btnModoVisitante');
             if (btnVis) {
                 btnVis.addEventListener('click', function () {
-                    modoVisitante = true;
+                    var esc = document.getElementById('boxEscolhaInsc');
+                    if (esc) esc.classList.add('hidden');
                     var box = document.getElementById('boxFichaVisitante');
                     if (box) box.classList.remove('hidden');
-                    var boxV = document.getElementById('camposVisitante');
-                    if (boxV) boxV.classList.remove('hidden');
-                    try {
-                        var prev = window._visitanteEvento || {};
-                        if (prev.nome) document.getElementById('visNome').value = prev.nome;
-                        if (prev.telefone) document.getElementById('visTelefone').value = prev.telefone;
-                        if (prev.nascimento) document.getElementById('visNascimento').value = prev.nascimento;
-                    } catch (e) {}
                     var vn = document.getElementById('visNome');
                     if (vn) try { vn.focus(); } catch (e2) {}
                 });
@@ -561,14 +546,16 @@
                     var nome = (document.getElementById('visNome').value || '').trim();
                     var tel = (document.getElementById('visTelefone').value || '').trim();
                     var nasc = (document.getElementById('visNascimento').value || '').trim();
-                    if (!nome) return alert('Informe o nome do visitante.');
-                    if (!tel) return alert('Informe o telefone do visitante.');
+                    if (!nome) return alert('Informe o nome.');
+                    if (!tel) return alert('Informe o telefone.');
                     if (!nasc) return alert('Informe a data de nascimento.');
                     modoVisitante = true;
                     window._visitanteEvento = { nome: nome, telefone: tel, nascimento: nasc };
                     try { sessionStorage.setItem('ibn_evento_visitante', JSON.stringify(window._visitanteEvento)); } catch (e) {}
+                    // esconde escolha; mostra que é visitante e vai pro formulário
+                    var avN = document.getElementById('avisoNaoLogado');
+                    if (avN) avN.classList.add('hidden');
                     aplicarDadosVisitanteNoForm();
-                    // Se o evento tiver formulário custom (ex.: casais), tenta preencher campos de nome/telefone
                     try {
                         document.querySelectorAll('#camposFormularioEvento input, #camposFormularioEvento textarea').forEach(function (el) {
                             var lab = String(el.getAttribute('data-flabel') || el.getAttribute('placeholder') || '').toLowerCase();
@@ -577,8 +564,22 @@
                             if (/nascimento|data de nascimento|nasc/.test(lab) && !el.value) el.value = nasc;
                         });
                     } catch (eF) {}
-                    var msg = document.getElementById('msgVisitanteOk');
-                    if (msg) msg.classList.remove('hidden');
+                });
+            }
+            var btnTrocar = document.getElementById('btnTrocarVisitante');
+            if (btnTrocar) {
+                btnTrocar.addEventListener('click', function () {
+                    modoVisitante = false;
+                    window._visitanteEvento = null;
+                    try { sessionStorage.removeItem('ibn_evento_visitante'); } catch (e) {}
+                    var avV = document.getElementById('avisoVisitanteAtivo');
+                    if (avV) avV.classList.add('hidden');
+                    var avN = document.getElementById('avisoNaoLogado');
+                    if (avN) avN.classList.remove('hidden');
+                    var esc = document.getElementById('boxEscolhaInsc');
+                    if (esc) esc.classList.remove('hidden');
+                    var box = document.getElementById('boxFichaVisitante');
+                    if (box) box.classList.add('hidden');
                 });
             }
             document.querySelectorAll('input[name="quemInscricao"]').forEach(function(r){
