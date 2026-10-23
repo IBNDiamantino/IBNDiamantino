@@ -93,8 +93,10 @@ const IBNNuvem = (function () {
         return { ok: true };
     }
 
-    async function sincronizarMembros(lista) {
+    async function sincronizarMembros(lista, opcoes) {
         if (!iniciar() || !db) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
+        var force = !!(opcoes && opcoes.force);
+        var onProgress = (opcoes && opcoes.onProgress) || null;
         try {
             const col = db.collection('membros');
             const itens = (lista || []).filter(function (m) {
@@ -105,17 +107,55 @@ const IBNNuvem = (function () {
             });
             let enviados = 0;
             let ignorados = 0;
-            // Um a um com comparação de data — mais seguro que batch cego
-            for (let i = 0; i < itens.length; i++) {
+            let erros = 0;
+
+            // Envio em lote (rápido). force=true: grava sem ler um a um (evita "Enviando..." eterno)
+            if (force) {
+                var TAM = 20;
+                for (var i = 0; i < itens.length; i += TAM) {
+                    var fatia = itens.slice(i, i + TAM);
+                    var batch = db.batch();
+                    fatia.forEach(function (m) {
+                        var pub = membroPublico(m);
+                        if (!pub) return;
+                        pub.atualizadoEm = pub.atualizadoEm || new Date().toISOString();
+                        batch.set(col.doc(String(m.id)), pub, { merge: true });
+                        enviados++;
+                    });
+                    try {
+                        await batch.commit();
+                    } catch (eBatch) {
+                        console.warn('batch membros', eBatch);
+                        // fallback um a um nesta fatia
+                        for (var j = 0; j < fatia.length; j++) {
+                            try {
+                                var r1 = await _gravarMembroSeMaisNovo(col, fatia[j], true);
+                                if (!r1.ok) erros++;
+                            } catch (e1) { erros++; }
+                        }
+                    }
+                    if (onProgress) {
+                        try { onProgress(Math.min(i + TAM, itens.length), itens.length, 'membros'); } catch (eP) {}
+                    }
+                }
+                return { sucesso: true, quantidade: enviados, ignorados: 0, erros: erros };
+            }
+
+            // Modo seguro (compara data) — usado em sync silenciosa
+            for (let k = 0; k < itens.length; k++) {
                 try {
-                    var r = await _gravarMembroSeMaisNovo(col, itens[i]);
+                    var r = await _gravarMembroSeMaisNovo(col, itens[k], false);
                     if (r.ok) enviados++;
                     else ignorados++;
                 } catch (eItem) {
-                    console.warn('sync membro', itens[i] && itens[i].id, eItem);
+                    erros++;
+                    console.warn('sync membro', itens[k] && itens[k].id, eItem);
+                }
+                if (onProgress && k % 5 === 0) {
+                    try { onProgress(k + 1, itens.length, 'membros'); } catch (eP2) {}
                 }
             }
-            return { sucesso: true, quantidade: enviados, ignorados: ignorados };
+            return { sucesso: true, quantidade: enviados, ignorados: ignorados, erros: erros };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
             console.warn('IBNNuvem.sincronizarMembros:', ultimoErro);
@@ -811,38 +851,67 @@ const IBNNuvem = (function () {
     }
 
     /** Envia para a nuvem tudo que está no localStorage deste aparelho (uma vez) */
-    async function enviarTudoDoAparelho() {
+    async function enviarTudoDoAparelho(onProgress) {
         if (!iniciar()) return { sucesso: false, mensagem: ultimoErro };
+        function prog(a, b, etapa) {
+            if (typeof onProgress === 'function') {
+                try { onProgress(a, b, etapa); } catch (e) {}
+            }
+        }
         const membros = (typeof lerMembros === 'function') ? lerMembros() : [];
         const rels = (typeof lerRelatoriosCelula === 'function') ? lerRelatoriosCelula() : [];
-        const r1 = await sincronizarMembros(membros);
+        // Membros em lote forçado (rápido) — o que trava era get+set um a um + fotos pesadas
+        prog(0, membros.length, 'membros');
+        const r1 = await sincronizarMembros(membros, {
+            force: true,
+            onProgress: function (a, b) { prog(a, b, 'membros'); }
+        });
         let okRel = 0;
         for (let i = 0; i < rels.length; i++) {
-            const rr = await sincronizarRelatorio(rels[i]);
-            if (rr.sucesso) okRel++;
+            try {
+                const rr = await sincronizarRelatorio(rels[i]);
+                if (rr.sucesso) okRel++;
+            } catch (eR) {}
+            if (i % 3 === 0) prog(i + 1, rels.length, 'relatorios');
         }
+        // Fotos: no máximo 15 e pula base64 enorme (evita ficar em "Enviando..." minutos)
         let okFoto = 0;
+        let puladas = 0;
         try {
             const fotos = JSON.parse(localStorage.getItem('ibn_fotos') || '[]');
-            for (let i = 0; i < fotos.length; i++) {
-                const rf = await salvarFotoNuvem(fotos[i]);
-                if (rf.sucesso) okFoto++;
+            const maxF = Math.min(fotos.length, 15);
+            for (let i = 0; i < maxF; i++) {
+                var f = fotos[i];
+                var dataUrl = (f && (f.dataUrl || f.src || f.base64)) || '';
+                if (String(dataUrl).length > 900000) { puladas++; continue; }
+                try {
+                    const rf = await salvarFotoNuvem(f);
+                    if (rf.sucesso) okFoto++;
+                } catch (eF) {}
+                prog(i + 1, maxF, 'fotos');
             }
+            if (fotos.length > 15) puladas += (fotos.length - 15);
         } catch (e) {}
         let okFc = 0;
         try {
             const fcs = JSON.parse(localStorage.getItem('ibn_fotos_celulas') || '[]');
-            for (let i = 0; i < fcs.length; i++) {
-                const rf = await salvarFotoCelulaNuvem(fcs[i]);
-                if (rf.sucesso) okFc++;
+            const maxC = Math.min(fcs.length, 15);
+            for (let i = 0; i < maxC; i++) {
+                var fc = fcs[i];
+                var du = (fc && (fc.dataUrl || fc.src || fc.base64)) || '';
+                if (String(du).length > 900000) { puladas++; continue; }
+                try {
+                    const rf = await salvarFotoCelulaNuvem(fc);
+                    if (rf.sucesso) okFc++;
+                } catch (eC) {}
             }
         } catch (e) {}
         return {
-            sucesso: r1.sucesso,
+            sucesso: !!(r1 && r1.sucesso),
             mensagem: 'Membros enviados: ' + (r1.quantidade || 0) + '/' + membros.length +
-                (r1.ignorados ? ' (ignorados mais novos na nuvem: ' + r1.ignorados + ')' : '') +
                 ' · Relatórios: ' + okRel + '/' + rels.length +
-                ' · Fotos: ' + okFoto + ' · Fotos célula: ' + okFc,
+                ' · Fotos: ' + okFoto + ' · Célula: ' + okFc +
+                (puladas ? ' · (' + puladas + ' fotos grandes/extras puladas — sobem depois uma a uma)' : ''),
             membros: r1.quantidade || 0,
             ignorados: r1.ignorados || 0,
             relatorios: okRel

@@ -137,19 +137,28 @@ service cloud.firestore {
 
         document.getElementById('btnEnviar').addEventListener('click', async function() {
             if (!exigeGestao()) return;
+            var btn = document.getElementById('btnEnviar');
             var msg = document.getElementById('msgEnviar');
             msg.classList.remove('hidden');
             msg.className = 'text-sm mt-2 text-gray-600';
-            msg.textContent = 'Enviando...';
-            var r = await IBNNuvem.enviarTudoDoAparelho();
-            if (r.sucesso) {
-                msg.className = 'text-sm mt-2 text-green-700 font-semibold';
-                msg.textContent = '✅ ' + (r.mensagem || 'Enviado com sucesso.') +
-                    (r.ignorados ? ' (' + r.ignorados + ' já estavam mais novos na nuvem e não foram sobrescritos)' : '');
-            } else {
+            msg.textContent = 'Enviando membros...';
+            if (btn) btn.disabled = true;
+            try {
+                var r = await IBNNuvem.enviarTudoDoAparelho(function (a, b, etapa) {
+                    msg.textContent = 'Enviando ' + (etapa || '') + '... ' + a + '/' + b;
+                });
+                if (r && r.sucesso) {
+                    msg.className = 'text-sm mt-2 text-green-700 font-semibold';
+                    msg.textContent = '✅ ' + (r.mensagem || 'Enviado com sucesso.');
+                } else {
+                    msg.className = 'text-sm mt-2 text-red-600 font-semibold';
+                    msg.textContent = '❌ ' + ((r && r.mensagem) || 'Falha ao enviar. Configure a nuvem.');
+                }
+            } catch (e) {
                 msg.className = 'text-sm mt-2 text-red-600 font-semibold';
-                msg.textContent = '❌ ' + (r.mensagem || 'Falha ao enviar. Configure a nuvem.');
+                msg.textContent = '❌ ' + ((e && e.message) || String(e));
             }
+            if (btn) btn.disabled = false;
         });
 
         document.getElementById('btnBaixar').addEventListener('click', async function() {
