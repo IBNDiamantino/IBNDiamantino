@@ -528,31 +528,58 @@
         }
 
         function init() {
-            // Convite pelo WhatsApp/redes → mostra escolha Membro | Visitante
+            // Link de convite por evento: ?evento=ID&convite=CODIGO
             try {
                 var q = new URLSearchParams(location.search || '');
                 var codConv = q.get('convite') || '';
-                var porConv = q.get('por') || '';
-                if (codConv) {
+                var eventoConv = q.get('evento') || '';
+                if (codConv || eventoConv) {
                     try {
                         sessionStorage.setItem('ibn_convite', JSON.stringify({
                             codigo: codConv,
-                            por: porConv,
+                            eventoId: eventoConv,
                             quando: new Date().toISOString()
                         }));
                     } catch (eS) {}
-                    // força mostrar a caixa mesmo se houver sessão residual
-                    var avN = document.getElementById('avisoNaoLogado');
-                    if (avN) {
-                        avN.classList.remove('hidden');
-                        try { avN.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
+                    window._eventoConviteId = eventoConv || '';
+                    // Sem login → Membro | Visitante; com login → já vai à inscrição do evento
+                    if (!verificarMembro()) {
+                        var avN = document.getElementById('avisoNaoLogado');
+                        if (avN) {
+                            avN.classList.remove('hidden');
+                            try { avN.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
+                        }
+                        var esc = document.getElementById('boxEscolhaInsc');
+                        if (esc) esc.classList.remove('hidden');
                     }
-                    var esc = document.getElementById('boxEscolhaInsc');
-                    if (esc) esc.classList.remove('hidden');
                 }
             } catch (eC) {}
 
             aplicarCamposInscricao();
+            // Pré-seleciona o evento do link (depois que o select existir)
+            try {
+                if (window._eventoConviteId) {
+                    var sel = document.getElementById('eventoSelect');
+                    if (sel) {
+                        sel.value = window._eventoConviteId;
+                        if (sel.value !== window._eventoConviteId) {
+                            // tenta achar por id em options
+                            for (var oi = 0; oi < sel.options.length; oi++) {
+                                if (String(sel.options[oi].value) === String(window._eventoConviteId)) {
+                                    sel.selectedIndex = oi;
+                                    break;
+                                }
+                            }
+                        }
+                        if (typeof sel.onchange === 'function') sel.onchange();
+                        else sel.dispatchEvent(new Event('change'));
+                    }
+                    var secIns = document.getElementById('inscricao');
+                    if (verificarMembro() && secIns) {
+                        try { secIns.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e2) {}
+                    }
+                }
+            } catch (ePre) {}
             // Visitante: só nome, telefone, nascimento → continua inscrição
             var btnVis = document.getElementById('btnModoVisitante');
             if (btnVis) {
@@ -1241,17 +1268,58 @@
             alert(foiEdicao ? 'Evento atualizado.' : 'Evento adicionado.');
         });
 
+        function linkConviteDoEvento(ev) {
+            if (!ev || !ev.id) return '';
+            var base = 'https://ibndiamantino.com.br';
+            try {
+                if (location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    base = location.origin;
+                }
+            } catch (e) {}
+            var cod = 'IBN-' + String(ev.id).replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase();
+            if (cod.length < 8) cod = 'IBN-' + Date.now().toString(36).toUpperCase().slice(-6);
+            return base + '/eventos.html?evento=' + encodeURIComponent(String(ev.id)) + '&convite=' + encodeURIComponent(cod);
+        }
+
         function renderAdminEventos() {
             const box = document.getElementById('listaAdminEventos');
             box.innerHTML = eventos.map((e, idx) => `
-                <div class="flex justify-between items-center border-b py-2 gap-2">
-                    <span class="flex items-center gap-2 min-w-0">${e.foto ? '<img src="'+String(e.foto).replace(/"/g,'')+'" class="w-8 rounded object-cover shrink-0" style="aspect-ratio:4/5">' : ''}<span class="truncate">${e.nome} — ${formatarDatasDoEvento(e)} — R$ ${Number(e.valor).toFixed(2)}</span></span>
-                    <span class="flex gap-2 shrink-0">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b py-3 gap-2">
+                    <span class="flex items-center gap-2 min-w-0">${e.foto ? '<img src="'+String(e.foto).replace(/"/g,'')+'" class="w-8 rounded object-cover shrink-0" style="aspect-ratio:4/5">' : ''}<span class="truncate text-sm">${e.nome} — ${formatarDatasDoEvento(e)} — R$ ${Number(e.valor).toFixed(2)}</span></span>
+                    <span class="flex flex-wrap gap-2 shrink-0 items-center">
+                        <button type="button" data-idx="${idx}" class="btn-link-evt bg-green-600 text-white text-xs font-bold px-2 py-1 rounded hover:bg-green-700" title="Link para WhatsApp e redes">
+                            <i class="fa fa-whatsapp"></i> Link convite
+                        </button>
                         <button type="button" data-idx="${idx}" class="btn-edit-evt text-primary text-xs font-bold underline">Editar</button>
                         <button type="button" data-idx="${idx}" class="btn-rm-evt text-red-500 text-xs">Remover</button>
                     </span>
                 </div>
             `).join('') || '<p class="text-gray-400">Nenhum evento</p>';
+            box.querySelectorAll('.btn-link-evt').forEach(btn => {
+                btn.onclick = function () {
+                    var i = parseInt(btn.getAttribute('data-idx'), 10);
+                    var ev = eventos[i];
+                    if (!ev) return;
+                    var link = linkConviteDoEvento(ev);
+                    var texto = 'Inscreva-se no evento "' + (ev.nome || '') + '" — IBN Diamantino:\n\n' + link;
+                    var msg = 'Link deste evento:\n\n' + link + '\n\n[OK] = copiar\nDepois use WhatsApp ou redes para enviar.';
+                    try {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(link).then(function () {
+                                if (confirm(msg + '\n\nLink já copiado. Abrir WhatsApp agora?')) {
+                                    window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+                                }
+                            }).catch(function () {
+                                prompt('Copie o link do evento:', link);
+                            });
+                        } else {
+                            prompt('Copie o link do evento:', link);
+                        }
+                    } catch (e) {
+                        prompt('Copie o link do evento:', link);
+                    }
+                };
+            });
             box.querySelectorAll('.btn-edit-evt').forEach(btn => {
                 btn.onclick = function () {
                     carregarEventoNoForm(parseInt(btn.getAttribute('data-idx'), 10));
