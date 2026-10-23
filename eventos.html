@@ -91,7 +91,7 @@
             </div>
         </section>
 
-        <section id="inscricao" class="mb-12">
+        <section id="inscricao" class="mb-12 hidden">
             <h2 class="text-2xl font-bold mb-6 text-primary">Fazer Inscrição</h2>
             <div id="avisoSemEvento" class="hidden mb-4 bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-gray-600 text-sm">
                 Não há eventos abertos para inscrição no momento. Quando um evento for publicado, você poderá se inscrever aqui.
@@ -584,9 +584,8 @@
                         if (typeof sel.onchange === 'function') sel.onchange();
                         else sel.dispatchEvent(new Event('change'));
                     }
-                    var secIns = document.getElementById('inscricao');
-                    if (verificarMembro() && secIns) {
-                        try { secIns.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e2) {}
+                    if (verificarMembro() && window._eventoConviteId) {
+                        selecionarEventoParaInscricao(window._eventoConviteId);
                     }
                 }
             } catch (ePre) {}
@@ -614,10 +613,21 @@
                     modoVisitante = true;
                     window._visitanteEvento = { nome: nome, telefone: tel, nascimento: nasc };
                     try { sessionStorage.setItem('ibn_evento_visitante', JSON.stringify(window._visitanteEvento)); } catch (e) {}
-                    // esconde escolha; mostra que é visitante e vai pro formulário
+                    // esconde escolha; mostra que é visitante e abre o formulário de inscrição
                     var avN = document.getElementById('avisoNaoLogado');
                     if (avN) avN.classList.add('hidden');
+                    var boxFv = document.getElementById('boxFichaVisitante');
+                    if (boxFv) boxFv.classList.add('hidden');
                     aplicarDadosVisitanteNoForm();
+                    var idEv = window._eventoConviteId || (eventos[0] && eventos[0].id) || '';
+                    if (idEv) selecionarEventoParaInscricao(idEv);
+                    else {
+                        var sec = document.getElementById('inscricao');
+                        if (sec) {
+                            sec.classList.remove('hidden');
+                            try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
+                        }
+                    }
                     try {
                         document.querySelectorAll('#camposFormularioEvento input, #camposFormularioEvento textarea').forEach(function (el) {
                             var lab = String(el.getAttribute('data-flabel') || el.getAttribute('placeholder') || '').toLowerCase();
@@ -767,11 +777,11 @@
             if (eventoId) {
                 sel.value = String(eventoId);
                 // se não achou (id diferente), tenta pelo nome
-                if (!sel.value) {
+                if (!sel.value || sel.value !== String(eventoId)) {
                     var ev = eventos.find(function (e) { return String(e.id) === String(eventoId); });
                     if (ev) {
                         for (var i = 0; i < sel.options.length; i++) {
-                            if (sel.options[i].text.indexOf(ev.nome) === 0 || sel.options[i].value === String(ev.id)) {
+                            if (String(sel.options[i].value) === String(ev.id) || sel.options[i].text.indexOf(ev.nome) === 0) {
                                 sel.selectedIndex = i;
                                 break;
                             }
@@ -780,8 +790,12 @@
                 }
             }
             renderFormularioDoEvento(sel.value);
+            // formulário só aparece depois de clicar em Inscrever-se (ou equivalente)
             var sec = document.getElementById('inscricao');
-            if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (sec) {
+                sec.classList.remove('hidden');
+                try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
+            }
             try { sel.focus(); } catch (e) {}
         }
 
