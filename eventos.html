@@ -127,6 +127,16 @@
                         <i class="fa fa-check-circle mr-2"></i> Gerar Inscrição
                     </button>
                 </form>
+                <!-- Pergunta obrigatória na hora de salvar (se ainda não escolheu) -->
+                <div id="boxPerguntaTipoInsc" class="hidden mt-4 border-2 border-secondary rounded-xl p-5 bg-yellow-50 text-center">
+                    <p class="font-bold text-primary text-lg mb-1">Antes de concluir</p>
+                    <p class="text-sm text-gray-700 mb-4">Você é <strong>membro</strong> ou <strong>visitante</strong>?</p>
+                    <div class="flex flex-wrap justify-center gap-3">
+                        <button type="button" id="btnSalvarComoMembro" class="bg-primary text-white px-6 py-3 rounded-lg font-bold hover:bg-accent">Membro</button>
+                        <button type="button" id="btnSalvarComoVisitante" class="bg-secondary text-primary px-6 py-3 rounded-lg font-bold hover:bg-yellow-400">Visitante</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-3">É preciso responder para finalizar a inscrição.</p>
+                </div>
             </div>
         </section>
 
@@ -880,22 +890,76 @@
             return { respostas: respostas, nome: nome, telefone: telefone, email: email };
         }
 
+        function tipoInscricaoDefinido() {
+            return !!(verificarMembro() || modoVisitante);
+        }
+
+        function mostrarPerguntaTipoInsc() {
+            var box = document.getElementById('boxPerguntaTipoInsc');
+            if (box) {
+                box.classList.remove('hidden');
+                try { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+            }
+        }
+
+        function esconderPerguntaTipoInsc() {
+            var box = document.getElementById('boxPerguntaTipoInsc');
+            if (box) box.classList.add('hidden');
+        }
+
+        // Na hora de salvar: obriga Membro ou Visitante
+        (function () {
+            var bM = document.getElementById('btnSalvarComoMembro');
+            var bV = document.getElementById('btnSalvarComoVisitante');
+            if (bM) {
+                bM.addEventListener('click', function () {
+                    // guarda o que já preencheu e manda logar
+                    try {
+                        var rascunho = {
+                            eventoId: (document.getElementById('eventoSelect') || {}).value || '',
+                            nome: (document.getElementById('nome') || {}).value || '',
+                            telefone: (document.getElementById('telefone') || {}).value || '',
+                            email: (document.getElementById('email') || {}).value || ''
+                        };
+                        sessionStorage.setItem('ibn_rascunho_insc_evento', JSON.stringify(rascunho));
+                    } catch (e) {}
+                    var dest = 'eventos.html';
+                    if (window._eventoConviteId) dest += '?evento=' + encodeURIComponent(window._eventoConviteId);
+                    window.location.href = 'login.html?destino=' + encodeURIComponent(dest);
+                });
+            }
+            if (bV) {
+                bV.addEventListener('click', function () {
+                    modoVisitante = true;
+                    esconderPerguntaTipoInsc();
+                    var n = (document.getElementById('nome') || {}).value || '';
+                    var t = (document.getElementById('telefone') || {}).value || '';
+                    if (!String(n).trim() || !String(t).trim()) {
+                        alert('Como visitante, preencha pelo menos nome e telefone na ficha e clique de novo em Gerar Inscrição.');
+                        return;
+                    }
+                    window._visitanteEvento = {
+                        nome: String(n).trim(),
+                        telefone: String(t).trim(),
+                        nascimento: ((document.getElementById('nascimentoInsc') || {}).value || '')
+                    };
+                    try { sessionStorage.setItem('ibn_evento_visitante', JSON.stringify(window._visitanteEvento)); } catch (e) {}
+                    // reenvia o formulário já como visitante
+                    var form = document.getElementById('formInsc');
+                    if (form) form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                });
+            }
+        })();
+
         document.getElementById('formInsc').addEventListener('submit', function(e) {
             e.preventDefault();
-            // Membro logado OU visitante com dados — ambos podem se inscrever
+            // Pode preencher tudo antes; na hora de salvar exige Membro ou Visitante
             var ehMembro = verificarMembro();
             if (!ehMembro && !modoVisitante) {
-                // ainda pode seguir se preencheu nome+telefone no formulário
-                var nTmp = (document.getElementById('nome') || {}).value || '';
-                var tTmp = (document.getElementById('telefone') || {}).value || '';
-                if (!String(nTmp).trim() || !String(tTmp).trim()) {
-                    alert('Faça login como membro ou clique em Visitante e informe nome, telefone e data de nascimento.');
-                    var boxF = document.getElementById('boxFichaVisitante');
-                    if (boxF) boxF.classList.remove('hidden');
-                    return;
-                }
-                modoVisitante = true;
+                mostrarPerguntaTipoInsc();
+                return;
             }
+            esconderPerguntaTipoInsc();
 
             const eventoId = document.getElementById('eventoSelect').value;
             const evento = eventos.find(ev => ev.id === eventoId);
