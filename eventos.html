@@ -322,12 +322,22 @@
             }
         }
 
+        function garantirFirebaseEventos() {
+            try {
+                if (typeof firebase === 'undefined' || typeof FIREBASE_CONFIG === 'undefined') return false;
+                if (!firebase.apps || !firebase.apps.length) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+                return true;
+            } catch (e) { return false; }
+        }
+
         function salvarEventos(lista) {
             localStorage.setItem('ibn_eventos', JSON.stringify(lista || []));
             try { localStorage.setItem('eventos', JSON.stringify(lista || [])); } catch (e0) {}
             // Sobe para a nuvem para outros aparelhos / site verem
             try {
-                if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+                if (garantirFirebaseEventos()) {
                     firebase.firestore().collection('config').doc('eventos_site').set({
                         itens: lista || [],
                         atualizadoEm: new Date().toISOString()
@@ -339,7 +349,7 @@
         /** Baixa eventos da nuvem (se houver) e mescla com o local */
         async function puxarEventosDaNuvem() {
             try {
-                if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) return false;
+                if (!garantirFirebaseEventos()) return false;
                 var snap = await firebase.firestore().collection('config').doc('eventos_site').get();
                 if (!snap.exists) return false;
                 var data = snap.data() || {};
@@ -660,7 +670,20 @@
                         carregarCardsEventos();
                         carregarSelectEventos();
                         atualizarUISemEvento();
-                        renderAdminEventos();
+                        try { if (typeof renderAdminEventos === 'function') renderAdminEventos(); } catch (eR) {}
+                        // re-aplica evento do link de convite
+                        if (window._eventoConviteId) {
+                            var sel2 = document.getElementById('eventoSelect');
+                            if (sel2) {
+                                for (var oi = 0; oi < sel2.options.length; oi++) {
+                                    if (String(sel2.options[oi].value) === String(window._eventoConviteId)) {
+                                        sel2.selectedIndex = oi;
+                                        break;
+                                    }
+                                }
+                                try { sel2.dispatchEvent(new Event('change')); } catch (eCh) {}
+                            }
+                        }
                     } else if (tinhaLocal) {
                         // primeiro aparelho: publica o que já tem
                         salvarEventos(eventos);
@@ -1351,10 +1374,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if (b) b.addEventListener('click', function(){ window.print(); });
 });
 </script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="nuvem.js"></script>
+    
     
 </body>
 </html>

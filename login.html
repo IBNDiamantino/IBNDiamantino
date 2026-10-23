@@ -129,32 +129,51 @@
             });
         })();
 
-        document.getElementById('formLogin').addEventListener('submit', function(e) {
+        document.getElementById('formLogin').addEventListener('submit', async function(e) {
             e.preventDefault();
             const id = document.getElementById('identificador').value.trim();
             const senha = document.getElementById('senha').value;
             const msg = document.getElementById('mensagem');
+            msg.classList.add('hidden');
 
-            const r = fazerLogin(id, senha);
+            function redirecionar(u) {
+                if (u.nivel === 'gestor' || u.nivel === 'admin') {
+                    window.location.href = 'adminpainel.html';
+                } else if (u.deveTrocarSenha) {
+                    window.location.href = 'area-membro.html?trocarSenha=1';
+                } else {
+                    const params = new URLSearchParams(window.location.search);
+                    const dest = params.get('destino') || 'index.html';
+                    window.location.href = dest;
+                }
+            }
+
+            // 1) tenta com a cópia local
+            var r = fazerLogin(id, senha);
+            if (r.sucesso) {
+                redirecionar(r.usuario);
+                return;
+            }
+
+            // 2) se falhou: baixa membros da nuvem (troca de domínio / app novo / outro aparelho)
+            msg.textContent = 'Verificando cadastro na nuvem...';
+            msg.className = 'text-sm text-center text-gray-600 mt-2';
+            msg.classList.remove('hidden');
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
+                    if (typeof IBNNuvem.iniciar === 'function') IBNNuvem.iniciar();
+                    await IBNNuvem.puxarMembrosParaLocal();
+                    r = fazerLogin(id, senha);
+                }
+            } catch (eN) {}
+
             if (!r.sucesso) {
-                msg.textContent = r.mensagem;
+                msg.textContent = r.mensagem || 'E-mail/telefone ou senha incorretos.';
                 msg.className = 'text-sm text-center text-red-500 mt-2';
                 msg.classList.remove('hidden');
                 return;
             }
-
-            const u = r.usuario;
-            // Redireciona conforme nível
-            if (u.nivel === 'gestor' || u.nivel === 'admin') {
-                window.location.href = 'adminpainel.html';
-            } else if (u.deveTrocarSenha) {
-                window.location.href = 'area-membro.html?trocarSenha=1';
-            } else {
-                // Após login: volta ao site; área do membro é opcional
-                const params = new URLSearchParams(window.location.search);
-                const dest = params.get('destino') || 'index.html';
-                window.location.href = dest;
-            }
+            redirecionar(r.usuario);
         });
     </script>
 
