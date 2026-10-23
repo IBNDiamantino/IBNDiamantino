@@ -361,14 +361,15 @@ function salvarMembros(lista) {
     } catch (e) { /* silencioso */ }
 }
 
-/** Garante um membro específico na nuvem (cadastro / edição). Retorna Promise com { sucesso, mensagem }. */
-function enviarMembroParaNuvem(membro) {
+/** Garante um membro específico na nuvem (cadastro / edição). Retorna Promise com { sucesso, mensagem }.
+ *  opcoes.force = true → grava mesmo se houver versão com data igual/maior (cadastro novo / aprovação). */
+function enviarMembroParaNuvem(membro, opcoes) {
     try {
         if (typeof IBNNuvem === 'undefined' || !IBNNuvem.sincronizarUmMembro || !membro) {
             return Promise.resolve({ sucesso: false, mensagem: 'Nuvem não disponível neste aparelho', semNuvem: true });
         }
         if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(membro);
-        return IBNNuvem.sincronizarUmMembro(membro).then(function (r) {
+        return IBNNuvem.sincronizarUmMembro(membro, opcoes || {}).then(function (r) {
             if (r && !r.sucesso) {
                 console.warn('Nuvem (1 membro):', r.mensagem || r);
                 if (typeof avisarFalhaNuvem === 'function') {
@@ -779,9 +780,9 @@ function cadastrarMembro(dados) {
     salvarMembros(lista);
     iniciarSessao(novo);
     try {
-        enviarMembroParaNuvem(novo);
+        enviarMembroParaNuvem(novo, { force: true });
         if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
-            IBNNuvem.registrarAtividade('cadastro', 'Novo cadastro no site', novo);
+            IBNNuvem.registrarAtividade('cadastro', 'Novo cadastro no site: ' + (novo.nome || ''), novo);
         }
     } catch (e) {}
     return { sucesso: true, mensagem: 'Cadastro realizado!', membro: novo };
@@ -852,6 +853,13 @@ function atualizarSessaoDoCadastro() {
 function marcarMembroAtualizado(m) {
     if (!m) return m;
     m.atualizadoEm = new Date().toISOString();
+    try {
+        var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+        if (u && (u.nome || u.id)) {
+            m.atualizadoPorId = u.id || '';
+            m.atualizadoPorNome = u.nome || u.email || '';
+        }
+    } catch (e) {}
     return m;
 }
 
@@ -1509,7 +1517,8 @@ function aprovarMembro(membroId, alocacao) {
     if (!isAdmin()) return { sucesso: false, mensagem: 'Sem permissão.' };
 
     const lista = lerMembros();
-    const idx = lista.findIndex(m => m.id === membroId);
+    // Compara id como string (evita falha number vs string entre aparelhos)
+    const idx = lista.findIndex(m => String(m.id) === String(membroId));
     if (idx === -1) return { sucesso: false, mensagem: 'Membro não encontrado.' };
 
     const m = lista[idx];
@@ -1572,7 +1581,27 @@ function aprovarMembro(membroId, alocacao) {
     try { if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(m); } catch (eA) {}
     lista[idx] = m;
     salvarMembros(lista);
-    try { enviarMembroParaNuvem(m); } catch (eB) {}
+    // Força gravação na nuvem (aprovação da gestão não pode ser bloqueada por cópia antiga)
+    try {
+        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.sincronizarUmMembro) {
+            IBNNuvem.sincronizarUmMembro(m, { force: true }).then(function (r) {
+                if (r && !r.sucesso) console.warn('Aprovação não subiu:', r.mensagem);
+            }).catch(function (e) { console.warn('Aprovação nuvem:', e); });
+        } else {
+            enviarMembroParaNuvem(m);
+        }
+    } catch (eB) {}
+    try {
+        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
+            var uGest = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            var detMin = Array.isArray(m.ministerios) ? m.ministerios.join(', ') : '';
+            IBNNuvem.registrarAtividade(
+                'aprovar_alocacao',
+                'Aprovou/alocou ' + (m.nome || '') + (detMin ? ' · Ministérios: ' + detMin : ''),
+                uGest
+            );
+        }
+    } catch (eLog) {}
     return { sucesso: true, membro: m };
 }
 

@@ -105,28 +105,60 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="nuvem.js"></script>
     <script src="conta.js"></script>
+    <script src="playlist-data.js"></script>
     <script>
 (function () {
     var KEY_PL = 'playlistLouvores';
     var KEY_BN = 'ibn_banners_config';
 
-    var PADRAO = [
-        { titulo: 'A Ele a Glória', artista: 'Aline Barros', url: 'audios/a-ele-a-gloria.mp3' },
-        { titulo: 'Além do Rio Azul', artista: 'Toque no Altar', url: 'audios/alem-do-rio-azul.mp3' },
-        { titulo: 'Amor de Deus', artista: 'Fernandinho', url: 'audios/amor-de-deus.mp3' }
-    ];
+    // Repertório completo (~180 louvores da rádio) — não os 3 de exemplo
+    var PADRAO = (typeof IBN_PLAYLIST_PADRAO !== 'undefined' && Array.isArray(IBN_PLAYLIST_PADRAO) && IBN_PLAYLIST_PADRAO.length)
+        ? IBN_PLAYLIST_PADRAO.slice()
+        : [
+            { titulo: 'A Ele a Glória', artista: 'Aline Barros', url: 'audios/a-ele-a-gloria.mp3' },
+            { titulo: 'Além do Rio Azul', artista: 'Toque no Altar', url: 'audios/alem-do-rio-azul.mp3' },
+            { titulo: 'Amor de Deus', artista: 'Fernandinho', url: 'audios/amor-de-deus.mp3' }
+        ];
+
+    function pareceListaCurtaExemplo(arr) {
+        if (!Array.isArray(arr) || arr.length === 0) return true;
+        if (arr.length > 5) return false;
+        var t = arr.map(function (x) { return String((x && x.titulo) || '').toLowerCase(); }).join('|');
+        return /a ele a gl[oó]ria|al[eé]m do rio azul|amor de deus/.test(t) && arr.length <= 3;
+    }
 
     function usuarioOk() {
         var u = null;
         try {
             if (typeof getUsuarioLogado === 'function') u = getUsuarioLogado();
-            else u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+            else u = JSON.parse(localStorage.getItem('usuarioLogado') || localStorage.getItem('ibn_sessao_atual') || 'null');
         } catch (e) { u = null; }
         if (!u) return null;
         var ok = false;
-        if (typeof isAdmin === 'function') ok = isAdmin(u) || (typeof isGestor === 'function' && isGestor(u));
-        else ok = (u.nivel === 'admin' || u.nivel === 'gestor');
+        if (typeof isAdmin === 'function') ok = isAdmin(u);
+        if (!ok && typeof isGestor === 'function') ok = isGestor(u);
+        if (!ok) {
+            var n = String(u.nivel || '').toLowerCase();
+            ok = (n === 'admin' || n === 'gestor');
+        }
+        // Nomeado admin/gestor nas funções (mesmo se nivel ainda estiver "membro" na sessão antiga)
+        if (!ok && Array.isArray(u.funcoes)) {
+            ok = u.funcoes.some(function (f) {
+                f = String(f || '').toLowerCase();
+                return f === 'admin' || f === 'gestor' || f === 'master';
+            });
+        }
         return ok ? u : null;
+    }
+
+    function garantirFirebase() {
+        try {
+            if (typeof firebase === 'undefined' || typeof FIREBASE_CONFIG === 'undefined') return false;
+            if (!firebase.apps || !firebase.apps.length) {
+                firebase.initializeApp(FIREBASE_CONFIG);
+            }
+            return true;
+        } catch (e) { return false; }
     }
 
     var u = usuarioOk();
@@ -134,13 +166,19 @@
     document.getElementById('semPermissao').classList.add('hidden');
     document.getElementById('conteudoAdmin').classList.remove('hidden');
     document.getElementById('nomeAdmin').textContent = u.nome || u.email || 'Admin';
+    garantirFirebase();
 
     /* ——— Playlist ——— */
     var lista = [];
     try {
         var salvo = localStorage.getItem(KEY_PL);
-        lista = salvo ? JSON.parse(salvo) : PADRAO.slice();
-        if (!Array.isArray(lista)) lista = PADRAO.slice();
+        var local = salvo ? JSON.parse(salvo) : null;
+        if (Array.isArray(local) && local.length && !pareceListaCurtaExemplo(local)) {
+            lista = local;
+        } else {
+            lista = PADRAO.slice();
+            try { localStorage.setItem(KEY_PL, JSON.stringify(lista)); } catch (e2) {}
+        }
     } catch (e) { lista = PADRAO.slice(); }
 
     var tipoUrl = document.getElementById('tipoUrl');
@@ -331,6 +369,7 @@
 
     function nuvemOk() {
         try {
+            if (!garantirFirebase()) return false;
             return !!(typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && firebase.firestore);
         } catch (e) { return false; }
     }
@@ -339,7 +378,6 @@
         if (!nuvemOk()) return Promise.resolve();
         try {
             var db = firebase.firestore();
-            // Playlist sempre; banners só metadados de ativo se muito pesado — tenta salvar completo
             var payload = {
                 playlist: lista,
                 bannerAtivoId: banners.ativoId || null,
@@ -359,9 +397,15 @@
             return firebase.firestore().collection('config').doc('site_midia').get().then(function (snap) {
                 if (!snap.exists) return;
                 var d = snap.data() || {};
-                if (Array.isArray(d.playlist) && d.playlist.length) {
+                // Nuvem prevalece, mas só se não for a lista curta de exemplo (3 músicas)
+                if (Array.isArray(d.playlist) && d.playlist.length && !pareceListaCurtaExemplo(d.playlist)) {
                     lista = d.playlist;
                     localStorage.setItem(KEY_PL, JSON.stringify(lista));
+                } else if ((!d.playlist || !d.playlist.length || pareceListaCurtaExemplo(d.playlist)) && PADRAO.length > 5) {
+                    // Nuvem vazia ou só exemplo → usa repertório completo e sobe para a nuvem
+                    lista = PADRAO.slice();
+                    localStorage.setItem(KEY_PL, JSON.stringify(lista));
+                    try { salvarMidiaNuvem(); } catch (eUp) {}
                 }
                 if (d.banners && Array.isArray(d.banners)) {
                     banners.itens = d.banners;
@@ -372,6 +416,7 @@
         } catch (e) { return Promise.resolve(); }
     }
 
+    // Ao abrir: sempre busca a mídia da nuvem (Murian e demais adm vêem o mesmo)
     carregarMidiaNuvem().then(function () {
         renderPlaylist();
         renderBanners();

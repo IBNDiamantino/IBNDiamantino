@@ -869,6 +869,7 @@
     <script src="firebase-config.js"></script>
     <script src="nuvem.js"></script>
     <script src="conta.js"></script>
+    <script src="playlist-data.js"></script>
 
     <script>
         // ==================================================
@@ -1094,12 +1095,18 @@
         ];
 
         function carregarRepertorio() {
+            var completo = (typeof IBN_PLAYLIST_PADRAO !== 'undefined' && Array.isArray(IBN_PLAYLIST_PADRAO) && IBN_PLAYLIST_PADRAO.length > 5)
+                ? IBN_PLAYLIST_PADRAO
+                : repertorioPadrao;
             const salvo = localStorage.getItem('playlistLouvores');
             if (salvo) {
-                try { return JSON.parse(salvo); }
-                catch (e) { return repertorioPadrao; }
+                try {
+                    var arr = JSON.parse(salvo);
+                    // lista curta de exemplo (3 músicas) não sobrescreve o repertório real
+                    if (Array.isArray(arr) && arr.length > 5) return arr;
+                } catch (e) { /* usa completo */ }
             }
-            return repertorioPadrao;
+            return completo;
         }
 
         let REPERTORIO = carregarRepertorio();

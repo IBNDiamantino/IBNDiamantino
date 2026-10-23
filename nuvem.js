@@ -69,23 +69,26 @@ const IBNNuvem = (function () {
         return Date.parse((m && (m.atualizadoEm || m.criadoEm || m.dataCadastro)) || '') || 0;
     }
 
-    /** Só grava se a versão local for igual ou mais nova que a da nuvem (evita PC antigo apagar celular) */
-    async function _gravarMembroSeMaisNovo(col, m) {
+    /** Só grava se a versão local for igual ou mais nova que a da nuvem (evita PC antigo apagar celular).
+     * force=true: gestão/aprovação sempre grava (não deixa cópia antiga bloquear). */
+    async function _gravarMembroSeMaisNovo(col, m, force) {
         var pub = membroPublico(m);
         if (!pub) return { ok: false, motivo: 'invalido' };
         var ref = col.doc(String(m.id));
         var tLocal = _tsMembro(m);
-        try {
-            var snap = await ref.get();
-            if (snap.exists) {
-                var remote = snap.data() || {};
-                var tRemote = _tsMembro(remote);
-                if (tRemote > tLocal) {
-                    return { ok: false, motivo: 'nuvem_mais_nova', remoto: remote };
+        if (!force) {
+            try {
+                var snap = await ref.get();
+                if (snap.exists) {
+                    var remote = snap.data() || {};
+                    var tRemote = _tsMembro(remote);
+                    if (tRemote > tLocal) {
+                        return { ok: false, motivo: 'nuvem_mais_nova', remoto: remote };
+                    }
                 }
-            }
-        } catch (eGet) { /* se não ler, tenta gravar mesmo assim */ }
-        if (!pub.atualizadoEm) pub.atualizadoEm = new Date().toISOString();
+            } catch (eGet) { /* se não ler, tenta gravar mesmo assim */ }
+        }
+        if (!pub.atualizadoEm || force) pub.atualizadoEm = new Date().toISOString();
         await ref.set(pub, { merge: true });
         return { ok: true };
     }
@@ -120,12 +123,13 @@ const IBNNuvem = (function () {
         }
     }
 
-    async function sincronizarUmMembro(m) {
+    async function sincronizarUmMembro(m, opcoes) {
         if (!m) return { sucesso: false, mensagem: 'Membro vazio' };
         if (m.id === undefined || m.id === null || m.id === '') {
             m.id = Date.now();
         }
         if (!iniciar() || !db) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
+        var force = !!(opcoes && opcoes.force);
         try {
             if (typeof isContaSistema === 'function' && isContaSistema(m)) {
                 return { sucesso: false, mensagem: 'Conta de sistema não vai para a lista de membros' };
@@ -135,11 +139,11 @@ const IBNNuvem = (function () {
             }
             if (typeof marcarMembroAtualizado === 'function') {
                 try { marcarMembroAtualizado(m); } catch (eM) {}
-            } else if (!m.atualizadoEm) {
+            } else {
                 m.atualizadoEm = new Date().toISOString();
             }
             var col = db.collection('membros');
-            var r = await _gravarMembroSeMaisNovo(col, m);
+            var r = await _gravarMembroSeMaisNovo(col, m, force);
             if (!r.ok && r.motivo === 'nuvem_mais_nova') {
                 return { sucesso: true, ignorado: true, mensagem: 'Nuvem já tinha versão mais recente deste membro' };
             }
@@ -212,47 +216,40 @@ const IBNNuvem = (function () {
                 if (ehSistema(m) || foiExcl(m)) return;
                 porId[String(m.id)] = m;
             });
-            function incorporarMinisteriosEmAnalise(dest, origem) {
-                if (!dest || !origem) return;
-                var minsDest = Array.isArray(dest.ministerios) ? dest.ministerios.slice() : [];
-                var stDest = Object.assign({}, dest.ministeriosStatus || {});
-                var stOri = origem.ministeriosStatus || {};
-                (Array.isArray(origem.ministerios) ? origem.ministerios : []).forEach(function (n) {
-                    var nome = String(n || '').trim();
-                    if (!nome) return;
-                    var st = stOri[nome] || stOri[nome.toLowerCase()] || '';
-                    // Só incorpora pedidos em análise (não força de volta o que já foi removido como aprovado em outro lado)
-                    if (st !== 'em_analise' && st !== 'pendente' && st !== '') return;
-                    if (st === 'aprovado' || st === 'ok') return;
-                    var ja = minsDest.some(function (x) {
-                        return String(x).trim().toLowerCase() === nome.toLowerCase();
-                    });
-                    if (!ja) minsDest.push(nome);
-                    if (stDest[nome] !== 'aprovado' && stDest[nome] !== 'ok') {
-                        stDest[nome] = 'em_analise';
-                    }
+            /** Nunca rebaixa "aprovado" para "em_analise" — era o bug que desfazia a aprovação da Luana */
+            function rankStatusMin(st) {
+                st = String(st || '').toLowerCase();
+                if (st === 'aprovado' || st === 'ok') return 3;
+                if (st === 'em_analise' || st === 'pendente') return 2;
+                if (st) return 1;
+                return 0;
+            }
+            function mesclarStatusMinisterios(a, b) {
+                var out = {};
+                var keys = {};
+                Object.keys(a || {}).forEach(function (k) { keys[k] = true; });
+                Object.keys(b || {}).forEach(function (k) { keys[k] = true; });
+                Object.keys(keys).forEach(function (k) {
+                    var sa = (a && (a[k] || a[k.toLowerCase()])) || '';
+                    var sb = (b && (b[k] || b[k.toLowerCase()])) || '';
+                    out[k] = rankStatusMin(sa) >= rankStatusMin(sb) ? (sa || sb) : (sb || sa);
                 });
-                // Se origem não tem status mas tem ministério extra e dest é mais antigo, também puxa
-                if (ts(origem) >= ts(dest)) {
-                    (Array.isArray(origem.ministerios) ? origem.ministerios : []).forEach(function (n) {
+                return out;
+            }
+            function unirMinisterios(listaA, listaB) {
+                var out = [];
+                function add(arr) {
+                    (Array.isArray(arr) ? arr : []).forEach(function (n) {
                         var nome = String(n || '').trim();
                         if (!nome) return;
-                        var ja = minsDest.some(function (x) {
-                            return String(x).trim().toLowerCase() === nome.toLowerCase();
-                        });
-                        if (!ja) {
-                            minsDest.push(nome);
-                            if (!stDest[nome]) stDest[nome] = 'em_analise';
+                        if (!out.some(function (x) { return String(x).toLowerCase() === nome.toLowerCase(); })) {
+                            out.push(nome);
                         }
                     });
-                    // lista oficial da origem mais nova
-                    if (Array.isArray(origem.ministerios) && origem.ministerios.length) {
-                        minsDest = origem.ministerios.map(function (x) { return String(x).trim(); }).filter(Boolean);
-                        stDest = Object.assign({}, stDest, stOri);
-                    }
                 }
-                dest.ministerios = minsDest;
-                dest.ministeriosStatus = stDest;
+                add(listaA);
+                add(listaB);
+                return out;
             }
 
             (r.lista || []).forEach(function (m) {
@@ -267,18 +264,45 @@ const IBNNuvem = (function () {
                 const loc = porId[id];
                 const senhaLocal = loc.senha;
                 const respLocal = loc.respostaSeguranca;
-                if (ts(m) > ts(loc)) {
-                    porId[id] = Object.assign({}, loc, m);
+                // Nuvem (m) prevalece se for mais nova OU empatada; local só se for claramente mais recente
+                var base, other;
+                if (ts(loc) > ts(m)) {
+                    base = Object.assign({}, m, loc);
+                    other = m;
                 } else {
-                    porId[id] = Object.assign({}, m, loc);
+                    base = Object.assign({}, loc, m);
+                    other = loc;
                 }
+                // Status de ministério: aprovado da gestão NUNCA perde para em_analise local
+                base.ministeriosStatus = mesclarStatusMinisterios(
+                    (loc && loc.ministeriosStatus) || {},
+                    (m && m.ministeriosStatus) || {}
+                );
+                // Lista oficial: se nuvem >= local, usa lista da nuvem; senão união
+                if (ts(m) >= ts(loc) && Array.isArray(m.ministerios)) {
+                    base.ministerios = (m.ministerios || []).map(function (x) { return String(x).trim(); }).filter(Boolean);
+                    (Array.isArray(loc.ministerios) ? loc.ministerios : []).forEach(function (n) {
+                        var nome = String(n || '').trim();
+                        if (!nome) return;
+                        var stB = (base.ministeriosStatus || {})[nome] || '';
+                        if (rankStatusMin(stB) >= 3) {
+                            if (!base.ministerios.some(function (x) { return String(x).toLowerCase() === nome.toLowerCase(); })) {
+                                base.ministerios.push(nome);
+                            }
+                        }
+                    });
+                } else {
+                    base.ministerios = unirMinisterios(loc.ministerios, m.ministerios);
+                }
+                // Se o lado mais novo já limpou pendências de gestão, respeita
+                if (ts(m) >= ts(loc) && m.alteracoesPendentesGestao === null) {
+                    base.alteracoesPendentesGestao = null;
+                } else if (ts(loc) > ts(m) && loc.alteracoesPendentesGestao === null) {
+                    base.alteracoesPendentesGestao = null;
+                }
+                porId[id] = base;
                 if (!porId[id].senha && senhaLocal) porId[id].senha = senhaLocal;
                 if (!porId[id].respostaSeguranca && respLocal) porId[id].respostaSeguranca = respLocal;
-                // Garante que pedidos de ministério em análise não se percam entre aparelhos
-                try {
-                    incorporarMinisteriosEmAnalise(porId[id], loc);
-                    incorporarMinisteriosEmAnalise(porId[id], m);
-                } catch (eMin) {}
                 // Nunca rebaixar admin/gestor por causa de cópia antiga no outro aparelho
                 (function preservarNivelGestao(a, b, dest) {
                     var rank = function (n) {
