@@ -116,6 +116,33 @@
                 </div>
             </section>
 
+            <!-- Link de convite para WhatsApp / redes -->
+            <section class="bg-white p-6 rounded-xl shadow border-2 border-green-200">
+                <h2 class="text-xl font-bold text-primary mb-2"><i class="fa fa-whatsapp text-green-600"></i> Link de convite (inscrição)</h2>
+                <p class="text-sm text-gray-600 mb-3">
+                    Gere um link para enviar no <strong>WhatsApp</strong> ou nas redes. Quem clicar cai direto na página
+                    <strong>Eventos — Membro ou Visitante</strong>.
+                </p>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button type="button" id="btnGerarConvite" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-accent">
+                        <i class="fa fa-link"></i> Gerar link de convite
+                    </button>
+                    <button type="button" id="btnCopiarConvite" class="bg-gray-100 text-primary px-4 py-2 rounded-lg text-sm font-bold border hover:bg-gray-50 hidden">
+                        <i class="fa fa-copy"></i> Copiar link
+                    </button>
+                    <a id="btnWhatsAppConvite" href="#" target="_blank" rel="noopener"
+                       class="hidden bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700">
+                        <i class="fa fa-whatsapp"></i> Enviar no WhatsApp
+                    </a>
+                </div>
+                <div id="boxLinkConvite" class="hidden">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Link gerado</label>
+                    <input type="text" id="inputLinkConvite" readonly
+                           class="w-full p-3 border rounded-lg text-sm bg-gray-50 font-mono text-primary select-all">
+                    <p id="msgConvite" class="text-xs text-green-700 mt-2 hidden"></p>
+                </div>
+            </section>
+
             <!-- Gestão de Membros -->
             <section class="bg-white p-6 rounded-xl shadow">
                 <div class="flex justify-between items-center mb-4">
@@ -1420,6 +1447,72 @@
                 var dataArqI = (typeof dataArquivoBR === 'function') ? dataArquivoBR() : '';
                 baixar(csv, 'inscritos-eventos_' + (dataArqI||'lista') + '.csv');
             });
+
+            // Link de convite → Eventos (Membro ou Visitante)
+            (function setupConvite() {
+                var ultimoLink = '';
+                function baseSite() {
+                    try {
+                        if (location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                            return location.origin;
+                        }
+                    } catch (e) {}
+                    return 'https://ibndiamantino.com.br';
+                }
+                function gerarCodigo() {
+                    var t = Date.now().toString(36).toUpperCase();
+                    var r = Math.random().toString(36).slice(2, 6).toUpperCase();
+                    return 'IBN-' + t.slice(-4) + r;
+                }
+                function montarLink() {
+                    var cod = gerarCodigo();
+                    var u = null;
+                    try { u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null; } catch (e) {}
+                    var por = (u && (u.nome || u.email)) ? encodeURIComponent(String(u.nome || u.email).slice(0, 40)) : '';
+                    var link = baseSite() + '/eventos.html?convite=' + encodeURIComponent(cod);
+                    if (por) link += '&por=' + por;
+                    return link;
+                }
+                function mostrar(link) {
+                    ultimoLink = link;
+                    var box = document.getElementById('boxLinkConvite');
+                    var inp = document.getElementById('inputLinkConvite');
+                    var btnCop = document.getElementById('btnCopiarConvite');
+                    var btnWa = document.getElementById('btnWhatsAppConvite');
+                    if (box) box.classList.remove('hidden');
+                    if (inp) { inp.value = link; inp.classList.remove('hidden'); }
+                    if (btnCop) btnCop.classList.remove('hidden');
+                    if (btnWa) {
+                        btnWa.classList.remove('hidden');
+                        var texto = 'Olá! Você está convidado(a) pela Igreja Batista Nacional Diamantino. Escolha se é membro ou visitante e faça sua inscrição:\n\n' + link;
+                        btnWa.href = 'https://wa.me/?text=' + encodeURIComponent(texto);
+                    }
+                }
+                var btnG = document.getElementById('btnGerarConvite');
+                if (btnG) btnG.addEventListener('click', function () {
+                    mostrar(montarLink());
+                    var m = document.getElementById('msgConvite');
+                    if (m) { m.textContent = 'Link gerado. Copie ou envie no WhatsApp.'; m.classList.remove('hidden'); }
+                });
+                var btnC = document.getElementById('btnCopiarConvite');
+                if (btnC) btnC.addEventListener('click', function () {
+                    var inp = document.getElementById('inputLinkConvite');
+                    var link = (inp && inp.value) || ultimoLink;
+                    if (!link) return;
+                    function ok() {
+                        var m = document.getElementById('msgConvite');
+                        if (m) { m.textContent = 'Link copiado! Cole no WhatsApp ou nas redes.'; m.classList.remove('hidden'); }
+                    }
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(link).then(ok).catch(function () {
+                            if (inp) { inp.select(); try { document.execCommand('copy'); ok(); } catch (e) {} }
+                        });
+                    } else if (inp) {
+                        inp.select();
+                        try { document.execCommand('copy'); ok(); } catch (e) {}
+                    }
+                });
+            })();
         });
 
         // === UTILITÁRIO ===

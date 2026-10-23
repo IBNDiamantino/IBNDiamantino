@@ -528,6 +528,30 @@
         }
 
         function init() {
+            // Convite pelo WhatsApp/redes → mostra escolha Membro | Visitante
+            try {
+                var q = new URLSearchParams(location.search || '');
+                var codConv = q.get('convite') || '';
+                var porConv = q.get('por') || '';
+                if (codConv) {
+                    try {
+                        sessionStorage.setItem('ibn_convite', JSON.stringify({
+                            codigo: codConv,
+                            por: porConv,
+                            quando: new Date().toISOString()
+                        }));
+                    } catch (eS) {}
+                    // força mostrar a caixa mesmo se houver sessão residual
+                    var avN = document.getElementById('avisoNaoLogado');
+                    if (avN) {
+                        avN.classList.remove('hidden');
+                        try { avN.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
+                    }
+                    var esc = document.getElementById('boxEscolhaInsc');
+                    if (esc) esc.classList.remove('hidden');
+                }
+            } catch (eC) {}
+
             aplicarCamposInscricao();
             // Visitante: só nome, telefone, nascimento → continua inscrição
             var btnVis = document.getElementById('btnModoVisitante');

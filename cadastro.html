@@ -27,6 +27,13 @@
             </div>
         </div>
 
+        <div id="bannerConvite" class="hidden mb-4 bg-green-50 border border-green-200 rounded-xl p-4 text-center text-sm text-green-900">
+            <i class="fa fa-heart text-secondary"></i>
+            <strong>Você foi convidado(a)!</strong>
+            <span id="txtConvitePor"></span>
+            Complete o cadastro abaixo para fazer parte da IBN Diamantino.
+        </div>
+
         <div class="bg-white p-8 rounded-xl shadow-lg">
             <form id="formCadastro" class="space-y-4">
                 <div>
@@ -65,6 +72,25 @@
     </div>
 
     <script>
+        // Link de convite (?convite=...&por=...)
+        (function () {
+            try {
+                var q = new URLSearchParams(location.search || '');
+                var cod = q.get('convite') || '';
+                var por = q.get('por') || '';
+                if (cod) {
+                    sessionStorage.setItem('ibn_convite', JSON.stringify({ codigo: cod, por: por, quando: new Date().toISOString() }));
+                    var ban = document.getElementById('bannerConvite');
+                    var tp = document.getElementById('txtConvitePor');
+                    if (ban) ban.classList.remove('hidden');
+                    if (tp && por) {
+                        try { tp.textContent = ' (convite de ' + decodeURIComponent(por) + ').'; }
+                        catch (e) { tp.textContent = ''; }
+                    }
+                }
+            } catch (e) {}
+        })();
+
         document.getElementById('formCadastro').addEventListener('submit', function(e) {
             e.preventDefault();
             const nome = document.getElementById('nome').value.trim();
@@ -87,9 +113,14 @@
                 return;
             }
 
+            var convite = null;
+            try { convite = JSON.parse(sessionStorage.getItem('ibn_convite') || 'null'); } catch (e) {}
+
             // Guarda dados parciais para o passo 2
             sessionStorage.setItem('ibn_cadastro_parcial', JSON.stringify({
-                nome, email, telefone, senha
+                nome: nome, email: email, telefone: telefone, senha: senha,
+                conviteCodigo: convite && convite.codigo ? convite.codigo : '',
+                convitePor: convite && convite.por ? convite.por : ''
             }));
 
             window.location.href = 'completar-cadastro.html';
