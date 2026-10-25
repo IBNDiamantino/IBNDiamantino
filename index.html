@@ -3504,16 +3504,8 @@
             banner.classList.remove('hidden');
             if (hoje.length === 1) txt.textContent = '🎂 Hoje é aniversário de ' + hoje[0].nome.split(' ')[0] + '!';
             else txt.textContent = '🎂 Hoje temos ' + hoje.length + ' aniversariantes na família IBN!';
-        } else {
-            var prox = listarProximosAniversariantes(8).filter(function(d){ return d.diasAte > 0; });
-            if (prox.length) {
-                banner.classList.remove('hidden');
-                banner.classList.remove('from-pink-500', 'to-rose-500');
-                banner.classList.add('from-primary', 'to-primary');
-                var n = 0; prox.forEach(function(d){ n += d.aniversariantes.length; });
-                txt.textContent = '📅 ' + n + ' aniversariante(s) nos próximos 8 dias';
-            }
         }
+        // aviso só no dia do aniversário — não mostra banner dos próximos dias
         document.getElementById('btnAbrirAniv') && document.getElementById('btnAbrirAniv').addEventListener('click', function(e){ e.stopPropagation(); abrirModalAniv(); });
         banner && banner.addEventListener('click', abrirModalAniv);
         document.getElementById('btnFecharAniv') && document.getElementById('btnFecharAniv').addEventListener('click', fecharModalAniv);
