@@ -288,6 +288,10 @@
                 <a href="#mais" class="hover:text-secondary transition-colors">Mais</a>
             </nav>
             <div class="hidden md:flex items-center gap-3">
+                <a href="eventos.html" id="sinoEventosHome" class="relative hidden w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center" title="Notificações de eventos">
+                    <i class="fa fa-bell text-secondary"></i>
+                    <span id="badgeSinoEventosHome" class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">0</span>
+                </a>
                 <div id="areaVisitante" class="flex gap-3">
                     <a href="cadastro.html" class="bg-secondary text-primary px-4 py-2 rounded-md font-bold text-sm hover:bg-yellow-400 transition-colors">
                         <i class="fa fa-user-plus mr-1"></i> Seja Membro
@@ -3579,5 +3583,81 @@
     else setTimeout(initAniv, 400);
 })();
 </script>
+
+<script>
+(function sinoEventosHome() {
+    function podeVer() {
+        try {
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (!u) return false;
+            if (u.nivel === 'admin' || u.nivel === 'gestor') return true;
+            if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+            if (typeof isGestor === 'function' && isGestor(u)) return true;
+            // líder de algum evento (lista local)
+            var evs = [];
+            try { evs = JSON.parse(localStorage.getItem('ibn_eventos') || '[]'); } catch (e) {}
+            var id = String(u.id || ''), email = String(u.email || '').toLowerCase(), tel = String(u.telefone || '').replace(/\D/g, '');
+            return (evs || []).some(function (ev) {
+                var L = (ev && (ev.lideres || ev.lideresEvento)) || [];
+                return (L || []).some(function (x) {
+                    if (!x) return false;
+                    if (id && String(x.id) === id) return true;
+                    if (email && String(x.email || '').toLowerCase() === email) return true;
+                    var lt = String(x.telefone || '').replace(/\D/g, '');
+                    return tel && lt && (tel === lt || tel.slice(-8) === lt.slice(-8));
+                });
+            });
+        } catch (e) { return false; }
+    }
+    function contar() {
+        try {
+            var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+            if (!u) return 0;
+            var lista = JSON.parse(localStorage.getItem('ibn_notifs_eventos') || '[]');
+            if (!Array.isArray(lista)) return 0;
+            var gestao = u.nivel === 'admin' || u.nivel === 'gestor' || (typeof isAdmin === 'function' && isAdmin(u)) || (typeof isGestor === 'function' && isGestor(u));
+            var idsL = {};
+            if (!gestao) {
+                var evs = [];
+                try { evs = JSON.parse(localStorage.getItem('ibn_eventos') || '[]'); } catch (e) {}
+                var id = String(u.id || ''), email = String(u.email || '').toLowerCase(), tel = String(u.telefone || '').replace(/\D/g, '');
+                (evs || []).forEach(function (ev) {
+                    var L = (ev && (ev.lideres || [])) || [];
+                    var ok = L.some(function (x) {
+                        if (!x) return false;
+                        if (id && String(x.id) === id) return true;
+                        if (email && String(x.email || '').toLowerCase() === email) return true;
+                        var lt = String(x.telefone || '').replace(/\D/g, '');
+                        return tel && lt && tel.slice(-8) === lt.slice(-8);
+                    });
+                    if (ok && ev.id) idsL[String(ev.id)] = true;
+                });
+            }
+            var lidas = {};
+            try { lidas = JSON.parse(localStorage.getItem('ibn_notifs_eventos_lidas_' + (u.id || u.email || 'anon')) || '{}'); } catch (e) {}
+            return lista.filter(function (n) {
+                if (!n || !n.id || lidas[n.id]) return false;
+                if (gestao) return true;
+                return !!idsL[String(n.eventoId || '')];
+            }).length;
+        } catch (e) { return 0; }
+    }
+    function paint() {
+        var a = document.getElementById('sinoEventosHome');
+        var b = document.getElementById('badgeSinoEventosHome');
+        if (!a) return;
+        if (!podeVer()) { a.classList.add('hidden'); a.classList.remove('flex'); return; }
+        a.classList.remove('hidden'); a.classList.add('flex');
+        var n = contar();
+        if (b) {
+            if (n > 0) { b.classList.remove('hidden'); b.textContent = n > 99 ? '99+' : String(n); }
+            else b.classList.add('hidden');
+        }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(paint, 400); });
+    else setTimeout(paint, 400);
+})();
+</script>
+
 </body>
 </html>

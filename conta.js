@@ -1824,7 +1824,7 @@ function recuperarSenhaPorDados(nome, telefone, nascimento) {
     if (!membro) {
         return {
             sucesso: false,
-            mensagem: 'Não encontramos seu cadastro. Confira nome, telefone e data de nascimento (iguais ao cadastro) e tente de novo.',
+            mensagem: 'Algum dado não confere. Verifique e tente de novo.',
             precisaSecretaria: true
         };
     }

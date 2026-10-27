@@ -41,7 +41,23 @@
                 <a href="index.html#doacao" class="hover:text-secondary">Doação</a>
                 <a href="adminlogin.html" class="hover:text-secondary">Gestão</a>
             </nav>
-            <a href="javascript:history.back()" class="md:hidden text-xl"><i class="fa fa-arrow-left"></i></a>
+            <div class="flex items-center gap-3">
+                <div id="boxSinoEventos" class="relative hidden">
+                    <button type="button" id="btnSinoEventos" class="relative w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center" title="Notificações do evento">
+                        <i class="fa fa-bell text-secondary text-lg"></i>
+                        <span id="badgeSinoEventos" class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">0</span>
+                    </button>
+                    <div id="painelSinoEventos" class="hidden absolute right-0 mt-2 w-80 max-w-[90vw] bg-white text-gray-800 rounded-xl shadow-xl border z-[80] overflow-hidden">
+                        <div class="bg-primary text-white px-3 py-2 text-sm font-bold flex justify-between items-center">
+                            <span><i class="fa fa-calendar mr-1"></i> Eventos</span>
+                            <button type="button" id="btnMarcarLidasEventos" class="text-[10px] font-normal underline opacity-90">Marcar lidas</button>
+                        </div>
+                        <div id="listaSinoEventos" class="max-h-72 overflow-y-auto text-sm divide-y"></div>
+                        <a href="eventos.html#listaPublica" class="block text-center text-xs text-primary font-bold py-2 hover:bg-gray-50">Ver inscritos</a>
+                    </div>
+                </div>
+                <a href="javascript:history.back()" class="md:hidden text-xl"><i class="fa fa-arrow-left"></i></a>
+            </div>
         </div>
     </header>
 
@@ -242,6 +258,17 @@
                             <input type="hidden" id="admFotoData" value="">
                         </div>
                     </div>
+                </div>
+                <div class="border rounded-lg p-3 bg-indigo-50/50 space-y-2">
+                    <p class="text-xs font-bold text-primary">Líderes do evento (acesso total a este evento)</p>
+                    <p class="text-[11px] text-gray-500">Gestor/adm indicam 2 ou mais pessoas (ex.: líderes de ministério). Elas veem inscritos e podem gerir este evento.</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="admBuscaLider" placeholder="Buscar membro por nome..." class="flex-1 p-2 border rounded text-sm">
+                        <button type="button" id="admBtnBuscaLider" class="bg-primary text-white px-3 py-2 rounded text-xs font-bold">Buscar</button>
+                    </div>
+                    <div id="admResultLider" class="text-xs space-y-1 max-h-28 overflow-y-auto"></div>
+                    <div id="admListaLideres" class="flex flex-wrap gap-2 text-xs"></div>
+                    <input type="hidden" id="admLideresJson" value="[]">
                 </div>
                 <div class="flex flex-wrap gap-2 items-center">
                     <button type="submit" id="admBtnSalvarEvento" class="bg-secondary text-primary px-4 py-2 rounded font-bold">+ Adicionar Evento</button>
@@ -495,11 +522,20 @@
                 var nm = document.getElementById('nomeMembro');
                 if (nm) nm.textContent = membro.nome || 'Membro';
                 if (boxQuem) boxQuem.classList.remove('hidden');
-                if (membro.nivel === 'admin' || membro.nivel === 'gestor' ||
+                var ehGestao = membro.nivel === 'admin' || membro.nivel === 'gestor' ||
                     (typeof isAdmin === 'function' && isAdmin(membro)) ||
-                    (typeof isGestor === 'function' && isGestor(membro))) {
+                    (typeof isGestor === 'function' && isGestor(membro));
+                var ehLiderEv = !ehGestao && typeof eventosQueLidero === 'function' && eventosQueLidero(membro).length > 0;
+                if (ehGestao || ehLiderEv) {
                     var area = document.getElementById('areaAdmin');
-                    if (area) { area.classList.remove('hidden'); if (typeof renderAdminEventos === 'function') renderAdminEventos(); }
+                    if (area) {
+                        area.classList.remove('hidden');
+                        var formAdm = document.getElementById('formAdminEvento');
+                        if (formAdm) formAdm.style.display = ehGestao ? '' : 'none';
+                        var tit = area.querySelector('h2');
+                        if (tit && ehLiderEv && !ehGestao) tit.innerHTML = '<i class="fa fa-cog mr-2"></i> Meus eventos (líder)';
+                        if (typeof renderAdminEventos === 'function') renderAdminEventos();
+                    }
                 }
             } else {
                 document.getElementById('avisoNaoLogado') && document.getElementById('avisoNaoLogado').classList.remove('hidden');
@@ -1015,6 +1051,12 @@
             };
             inscritos.push(novaInsc);
             salvarInscritos();
+            try {
+                registrarNotifEvento('inscrito', evento,
+                    'Nova inscrição: ' + (nome || '—') +
+                    (telefone ? ' · ' + telefone : '') +
+                    ' · R$ ' + Number(evento.valor || 0).toFixed(2));
+            } catch (eN) {}
 
             inscricaoAtual = novaInsc;
             document.getElementById('fatura').classList.remove('hidden');
@@ -1086,6 +1128,13 @@
                 inscritos[idx].dataPagamento = new Date().toLocaleString('pt-BR');
                 inscritos[idx].meioPagamento = (document.querySelector('input[name="meioPag"]:checked') || {}).value || 'PIX';
                 inscritos[idx].statusPagamento = valor <= 0 ? 'confirmado' : 'aguardando_conferencia';
+                try {
+                    var evP = eventos.find(function(e){ return String(e.id) === String(inscritos[idx].eventoId); });
+                    registrarNotifEvento('pagamento', evP || { id: inscritos[idx].eventoId, nome: inscritos[idx].eventoNome },
+                        (valor <= 0 ? 'Inscrição gratuita confirmada: ' : 'Comprovante/pagamento enviado: ') +
+                        (inscritos[idx].nome || '—') + ' · R$ ' + Number(inscritos[idx].valor||0).toFixed(2));
+                } catch (eP) {}
+
                 salvarInscritos();
                 document.getElementById('msgConfirmacao').classList.remove('hidden');
                 document.getElementById('btnConfirmar').disabled = true;
@@ -1114,16 +1163,233 @@
             }
         });
 
+
+        // ——— Sino de eventos (inscritos / pagamentos) — só gestão e líderes do evento ———
+        var CHAVE_NOTIF_EV = 'ibn_notifs_eventos';
+        function lerNotifsEventos() {
+            try {
+                var a = JSON.parse(localStorage.getItem(CHAVE_NOTIF_EV) || '[]');
+                return Array.isArray(a) ? a : [];
+            } catch (e) { return []; }
+        }
+        function salvarNotifsEventos(lista) {
+            try { localStorage.setItem(CHAVE_NOTIF_EV, JSON.stringify((lista || []).slice(0, 100))); } catch (e) {}
+            try {
+                if (typeof garantirFirebaseEventos === 'function' && garantirFirebaseEventos()) {
+                    firebase.firestore().collection('config').doc('eventos_notifs').set({
+                        itens: (lista || []).slice(0, 100),
+                        atualizadoEm: new Date().toISOString()
+                    }, { merge: true }).catch(function () {});
+                }
+            } catch (e2) {}
+        }
+        async function puxarNotifsEventosNuvem() {
+            try {
+                if (typeof garantirFirebaseEventos !== 'function' || !garantirFirebaseEventos()) return;
+                var snap = await firebase.firestore().collection('config').doc('eventos_notifs').get();
+                if (!snap.exists) return;
+                var nuvem = (snap.data() || {}).itens || [];
+                if (!Array.isArray(nuvem) || !nuvem.length) return;
+                var local = lerNotifsEventos();
+                var map = {};
+                local.forEach(function (n) { if (n && n.id) map[n.id] = n; });
+                nuvem.forEach(function (n) { if (n && n.id && !map[n.id]) map[n.id] = n; });
+                var mesclada = Object.keys(map).map(function (k) { return map[k]; });
+                mesclada.sort(function (a, b) { return String(b.quando || '').localeCompare(String(a.quando || '')); });
+                localStorage.setItem(CHAVE_NOTIF_EV, JSON.stringify(mesclada.slice(0, 100)));
+            } catch (e) {}
+        }
+        function chaveLidasNotif() {
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                return 'ibn_notifs_eventos_lidas_' + (u && (u.id || u.email) ? String(u.id || u.email) : 'anon');
+            } catch (e) { return 'ibn_notifs_eventos_lidas_anon'; }
+        }
+        function lerLidasNotif() {
+            try {
+                var o = JSON.parse(localStorage.getItem(chaveLidasNotif()) || '{}');
+                return o && typeof o === 'object' ? o : {};
+            } catch (e) { return {}; }
+        }
+        function marcarNotifLida(id) {
+            var o = lerLidasNotif();
+            o[id] = true;
+            try { localStorage.setItem(chaveLidasNotif(), JSON.stringify(o)); } catch (e) {}
+        }
+        function marcarTodasNotifsLidas() {
+            var o = lerLidasNotif();
+            notifsVisiveisParaUsuario().forEach(function (n) { if (n && n.id) o[n.id] = true; });
+            try { localStorage.setItem(chaveLidasNotif(), JSON.stringify(o)); } catch (e) {}
+            renderSinoEventos();
+        }
+        function registrarNotifEvento(tipo, evento, textoExtra) {
+            if (!evento) return;
+            var n = {
+                id: 'ne-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+                tipo: tipo || 'inscrito',
+                eventoId: String(evento.id || ''),
+                eventoNome: evento.nome || 'Evento',
+                texto: textoExtra || '',
+                quando: new Date().toISOString()
+            };
+            var lista = lerNotifsEventos();
+            lista.unshift(n);
+            salvarNotifsEventos(lista);
+            try { renderSinoEventos(); } catch (e) {}
+        }
+        function notifsVisiveisParaUsuario() {
+            var u = null;
+            try { u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null; } catch (e) {}
+            if (!u) return [];
+            var gestao = false;
+            try {
+                gestao = (typeof podeCriarEventos === 'function' && podeCriarEventos()) ||
+                    u.nivel === 'admin' || u.nivel === 'gestor' ||
+                    (typeof isAdmin === 'function' && isAdmin(u)) ||
+                    (typeof isGestor === 'function' && isGestor(u));
+            } catch (e2) {}
+            var idsLider = {};
+            try {
+                (typeof eventosQueLidero === 'function' ? eventosQueLidero(u) : []).forEach(function (ev) {
+                    if (ev && ev.id) idsLider[String(ev.id)] = true;
+                });
+            } catch (e3) {}
+            return lerNotifsEventos().filter(function (n) {
+                if (!n) return false;
+                if (gestao) return true;
+                return !!idsLider[String(n.eventoId || '')];
+            });
+        }
+        function renderSinoEventos() {
+            var box = document.getElementById('boxSinoEventos');
+            var badge = document.getElementById('badgeSinoEventos');
+            var listaEl = document.getElementById('listaSinoEventos');
+            if (!box) return;
+            var lista = notifsVisiveisParaUsuario();
+            if (!lista.length && !(typeof podeCriarEventos === 'function' && podeCriarEventos()) && !(typeof eventosQueLidero === 'function' && eventosQueLidero().length)) {
+                box.classList.add('hidden');
+                return;
+            }
+            // mostra sino se for gestão ou líder (mesmo sem notif ainda)
+            var mostrar = false;
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (u && (typeof podeCriarEventos === 'function' && podeCriarEventos())) mostrar = true;
+                if (u && typeof eventosQueLidero === 'function' && eventosQueLidero(u).length) mostrar = true;
+            } catch (e) {}
+            if (!mostrar) { box.classList.add('hidden'); return; }
+            box.classList.remove('hidden');
+            var lidas = lerLidasNotif();
+            var naoLidas = lista.filter(function (n) { return n && n.id && !lidas[n.id]; });
+            if (badge) {
+                if (naoLidas.length) {
+                    badge.classList.remove('hidden');
+                    badge.textContent = naoLidas.length > 99 ? '99+' : String(naoLidas.length);
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+            if (listaEl) {
+                if (!lista.length) {
+                    listaEl.innerHTML = '<p class="p-3 text-gray-400 text-center text-xs">Nenhuma movimentação recente.</p>';
+                } else {
+                    listaEl.innerHTML = lista.slice(0, 30).map(function (n) {
+                        var lida = lidas[n.id];
+                        var icon = n.tipo === 'pagamento' ? 'fa-money' : 'fa-user-plus';
+                        var cor = n.tipo === 'pagamento' ? 'text-green-600' : 'text-primary';
+                        var quando = '';
+                        try {
+                            var d = new Date(n.quando);
+                            quando = isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                        } catch (e) {}
+                        return '<button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 flex gap-2 items-start ' + (lida ? 'opacity-60' : 'bg-amber-50/40') + '" data-nid="' + String(n.id).replace(/"/g,'') + '">' +
+                            '<i class="fa ' + icon + ' ' + cor + ' mt-0.5"></i>' +
+                            '<span class="flex-1 min-w-0"><span class="font-semibold text-primary text-xs block">' + (n.eventoNome || 'Evento') + '</span>' +
+                            '<span class="text-xs text-gray-700 block">' + (n.texto || '') + '</span>' +
+                            '<span class="text-[10px] text-gray-400">' + quando + '</span></span></button>';
+                    }).join('');
+                    listaEl.querySelectorAll('button[data-nid]').forEach(function (b) {
+                        b.onclick = function () {
+                            marcarNotifLida(b.getAttribute('data-nid'));
+                            renderSinoEventos();
+                            var sec = document.getElementById('listaPublica');
+                            if (sec) { sec.classList.remove('hidden'); try { sec.scrollIntoView({ behavior: 'smooth' }); } catch (e) {} }
+                        };
+                    });
+                }
+            }
+        }
+        function initSinoEventos() {
+            var btn = document.getElementById('btnSinoEventos');
+            var painel = document.getElementById('painelSinoEventos');
+            var btnLidas = document.getElementById('btnMarcarLidasEventos');
+            if (btn && painel) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    painel.classList.toggle('hidden');
+                    renderSinoEventos();
+                });
+                document.addEventListener('click', function () {
+                    if (painel) painel.classList.add('hidden');
+                });
+                painel.addEventListener('click', function (e) { e.stopPropagation(); });
+            }
+            if (btnLidas) btnLidas.addEventListener('click', function () { marcarTodasNotifsLidas(); });
+            (async function () {
+                try { await puxarNotifsEventosNuvem(); } catch (e) {}
+                renderSinoEventos();
+            })();
+        }
+
+
         function salvarInscritos() {
             localStorage.setItem('inscritosIBN', JSON.stringify(inscritos));
         }
 
+        function listaLideresDoEvento(ev) {
+            if (!ev) return [];
+            var L = ev.lideres || ev.lideresEvento || [];
+            return Array.isArray(L) ? L : [];
+        }
+        function ehLiderDoEvento(ev, u) {
+            u = u || ((typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null);
+            if (!u || !ev) return false;
+            var id = String(u.id || '');
+            var email = String(u.email || '').toLowerCase();
+            var tel = String(u.telefone || '').replace(/\D/g, '');
+            return listaLideresDoEvento(ev).some(function (L) {
+                if (!L) return false;
+                if (id && String(L.id || '') === id) return true;
+                if (email && String(L.email || '').toLowerCase() === email) return true;
+                var lt = String(L.telefone || '').replace(/\D/g, '');
+                if (tel && lt && (tel === lt || tel.slice(-8) === lt.slice(-8))) return true;
+                return false;
+            });
+        }
+        function eventosQueLidero(u) {
+            u = u || ((typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null);
+            return (eventos || []).filter(function (ev) { return ehLiderDoEvento(ev, u); });
+        }
+        function podeCriarEventos() {
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (!u) return false;
+                if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+                if (typeof isGestor === 'function' && isGestor(u)) return true;
+                if (u.nivel === 'admin' || u.nivel === 'gestor') return true;
+            } catch (e) {}
+            return false;
+        }
+        function podeEditarEvento(ev) {
+            try {
+                if (podeCriarEventos()) return true;
+                return ehLiderDoEvento(ev);
+            } catch (e) { return false; }
+        }
         function podeVerInscritosGestao() {
             try {
-                if (typeof isAdmin === 'function' && isAdmin()) return true;
-                if (typeof isGestor === 'function' && isGestor()) return true;
-                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
-                if (u && (u.nivel === 'admin' || u.nivel === 'gestor')) return true;
+                if (podeCriarEventos()) return true;
+                if (eventosQueLidero().length) return true;
             } catch (e) {}
             return false;
         }
@@ -1138,15 +1404,24 @@
             }
             if (sec) sec.classList.remove('hidden');
             if (!container) return;
-            if (inscritos.length === 0) {
+            var lista = inscritos.slice();
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                var soLider = u && !(u.nivel === 'admin' || u.nivel === 'gestor' || (typeof isAdmin === 'function' && isAdmin(u)) || (typeof isGestor === 'function' && isGestor(u)));
+                if (soLider) {
+                    var ids = eventosQueLidero(u).map(function (e) { return String(e.id); });
+                    lista = lista.filter(function (i) { return ids.indexOf(String(i.eventoId)) !== -1; });
+                }
+            } catch (eF) {}
+            if (lista.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 text-center">Nenhum inscrito ainda.</p>';
                 return;
             }
-            const pagos = inscritos.filter(i => i.pago).length;
+            const pagos = lista.filter(i => i.pago).length;
             container.innerHTML = `
-                <p class="text-sm text-gray-500 mb-4">Total: ${inscritos.length} · Pagos: ${pagos} · Pendentes: ${inscritos.length - pagos}</p>
+                <p class="text-sm text-gray-500 mb-4">Total: ${lista.length} · Pagos: ${pagos} · Pendentes: ${lista.length - pagos}</p>
                 <div class="space-y-2">
-                    ${inscritos.map(i => `
+                    ${lista.map(i => `
                         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 p-3 bg-gray-50 rounded-lg">
                             <div>
                                 <span class="font-semibold">${i.nome}</span>
@@ -1221,6 +1496,7 @@
 
         function limparFormAdminEvento() {
             editandoEventoIdx = -1;
+            try { if (typeof setLideresForm === "function") setLideresForm([]); } catch (eLf) {}
             var form = document.getElementById('formAdminEvento');
             if (form) form.reset();
             document.getElementById('admPix').value = '36.158.983/0001-36';
@@ -1241,6 +1517,7 @@
             var e = eventos[idx];
             if (!e) return;
             editandoEventoIdx = idx;
+            try { setLideresForm(listaLideresDoEvento(e)); } catch (eL) { try { setLideresForm([]); } catch (e2) {} }
             document.getElementById('admNome').value = e.nome || '';
             document.getElementById('admValor').value = e.valor != null ? e.valor : 0;
             document.getElementById('admPix').value = e.pix || e.pixDestino || '36.158.983/0001-36';
@@ -1348,7 +1625,14 @@
                 forma: forma,
                 formaPagamento: forma,
                 linkPagamento: linkPag,
-                foto: fotoData || fotoUrl
+                foto: fotoData || fotoUrl,
+                lideres: (function () {
+                    try {
+                        var j = document.getElementById('admLideresJson');
+                        var arr = j ? JSON.parse(j.value || '[]') : [];
+                        return Array.isArray(arr) ? arr : [];
+                    } catch (e) { return []; }
+                })()
             };
             var foiEdicao = editandoEventoIdx >= 0 && !!eventos[editandoEventoIdx];
             if (foiEdicao) {
@@ -1369,6 +1653,100 @@
             alert(foiEdicao ? 'Evento atualizado.' : 'Evento adicionado.');
         });
 
+
+        // ——— Líderes do evento (gestor/adm indicam) ———
+        function getLideresForm() {
+            try {
+                var j = document.getElementById('admLideresJson');
+                var arr = j ? JSON.parse(j.value || '[]') : [];
+                return Array.isArray(arr) ? arr : [];
+            } catch (e) { return []; }
+        }
+        function setLideresForm(arr) {
+            var j = document.getElementById('admLideresJson');
+            if (j) j.value = JSON.stringify(arr || []);
+            renderChipsLideres();
+        }
+        function renderChipsLideres() {
+            var box = document.getElementById('admListaLideres');
+            if (!box) return;
+            var arr = getLideresForm();
+            if (!arr.length) {
+                box.innerHTML = '<span class="text-gray-400">Nenhum líder indicado ainda.</span>';
+                return;
+            }
+            box.innerHTML = arr.map(function (L, i) {
+                return '<span class="inline-flex items-center gap-1 bg-primary text-white px-2 py-1 rounded-full">' +
+                    (L.nome || 'Líder') +
+                    ' <button type="button" data-i="' + i + '" class="btn-rm-lider text-yellow-300 font-bold leading-none" title="Remover">&times;</button></span>';
+            }).join('');
+            box.querySelectorAll('.btn-rm-lider').forEach(function (btn) {
+                btn.onclick = function () {
+                    var arr = getLideresForm();
+                    arr.splice(parseInt(btn.getAttribute('data-i'), 10), 1);
+                    setLideresForm(arr);
+                };
+            });
+        }
+        function buscarMembrosParaLider(q) {
+            q = String(q || '').toLowerCase().trim();
+            if (!q || q.length < 2) return [];
+            var lista = [];
+            try {
+                if (typeof lerMembros === 'function') lista = lerMembros() || [];
+                else lista = JSON.parse(localStorage.getItem('ibn_membros') || '[]');
+            } catch (e) { lista = []; }
+            return lista.filter(function (m) {
+                if (!m || m.bloqueado || m.removido) return false;
+                var n = String(m.nome || '').toLowerCase();
+                var e = String(m.email || '').toLowerCase();
+                var t = String(m.telefone || '');
+                return n.indexOf(q) !== -1 || e.indexOf(q) !== -1 || t.indexOf(q) !== -1;
+            }).slice(0, 12);
+        }
+        (function setupLideresUI() {
+            var btn = document.getElementById('admBtnBuscaLider');
+            var inp = document.getElementById('admBuscaLider');
+            var res = document.getElementById('admResultLider');
+            if (!btn || !inp || !res) return;
+            function rodar() {
+                var hits = buscarMembrosParaLider(inp.value);
+                if (!hits.length) {
+                    res.innerHTML = '<p class="text-gray-400">Nenhum membro encontrado.</p>';
+                    return;
+                }
+                res.innerHTML = hits.map(function (m) {
+                    return '<button type="button" class="btn-add-lider w-full text-left px-2 py-1 rounded hover:bg-white border border-transparent hover:border-primary/20" data-id="' +
+                        String(m.id || '').replace(/"/g, '') + '" data-nome="' + String(m.nome || '').replace(/"/g, '') +
+                        '" data-email="' + String(m.email || '').replace(/"/g, '') +
+                        '" data-tel="' + String(m.telefone || '').replace(/"/g, '') + '">' +
+                        (m.nome || '') + (m.telefone ? ' · ' + m.telefone : '') + '</button>';
+                }).join('');
+                res.querySelectorAll('.btn-add-lider').forEach(function (b) {
+                    b.onclick = function () {
+                        var arr = getLideresForm();
+                        var id = b.getAttribute('data-id');
+                        if (arr.some(function (x) { return String(x.id) === String(id); })) return;
+                        arr.push({
+                            id: id,
+                            nome: b.getAttribute('data-nome') || '',
+                            email: b.getAttribute('data-email') || '',
+                            telefone: b.getAttribute('data-tel') || ''
+                        });
+                        setLideresForm(arr);
+                        res.innerHTML = '';
+                        inp.value = '';
+                    };
+                });
+            }
+            btn.onclick = rodar;
+            inp.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); rodar(); }
+            });
+            renderChipsLideres();
+        })();
+
+
         function linkConviteDoEvento(ev) {
             if (!ev || !ev.id) return '';
             var base = 'https://ibndiamantino.com.br';
@@ -1384,18 +1762,28 @@
 
         function renderAdminEventos() {
             const box = document.getElementById('listaAdminEventos');
-            box.innerHTML = eventos.map((e, idx) => `
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b py-3 gap-2">
-                    <span class="flex items-center gap-2 min-w-0">${e.foto ? '<img src="'+String(e.foto).replace(/"/g,'')+'" class="w-8 rounded object-cover shrink-0" style="aspect-ratio:4/5">' : ''}<span class="truncate text-sm">${e.nome} — ${formatarDatasDoEvento(e)} — R$ ${Number(e.valor).toFixed(2)}</span></span>
-                    <span class="flex flex-wrap gap-2 shrink-0 items-center">
-                        <button type="button" data-idx="${idx}" class="btn-link-evt bg-green-600 text-white text-xs font-bold px-2 py-1 rounded hover:bg-green-700" title="Link para WhatsApp e redes">
-                            <i class="fa fa-whatsapp"></i> Link convite
-                        </button>
-                        <button type="button" data-idx="${idx}" class="btn-edit-evt text-primary text-xs font-bold underline">Editar</button>
-                        <button type="button" data-idx="${idx}" class="btn-rm-evt text-red-500 text-xs">Remover</button>
-                    </span>
-                </div>
-            `).join('') || '<p class="text-gray-400">Nenhum evento</p>';
+            var u = null;
+            try { u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null; } catch (e) {}
+            var gestao = podeCriarEventos();
+            var listaIdx = [];
+            eventos.forEach(function (e, idx) {
+                if (gestao || podeEditarEvento(e)) listaIdx.push(idx);
+            });
+            box.innerHTML = listaIdx.map(function (idx) {
+                var e = eventos[idx];
+                var lids = listaLideresDoEvento(e).map(function (L) { return L.nome || ''; }).filter(Boolean).join(', ');
+                return '<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b py-3 gap-2">' +
+                    '<span class="flex items-center gap-2 min-w-0">' +
+                    (e.foto ? '<img src="'+String(e.foto).replace(/"/g,'')+'" class="w-8 rounded object-cover shrink-0" style="aspect-ratio:4/5">' : '') +
+                    '<span class="min-w-0"><span class="truncate text-sm block">' + (e.nome||'') + ' — ' + formatarDatasDoEvento(e) + ' — R$ ' + Number(e.valor).toFixed(2) + '</span>' +
+                    (lids ? '<span class="text-[10px] text-indigo-700">Líderes: ' + lids + '</span>' : '') +
+                    '</span></span>' +
+                    '<span class="flex flex-wrap gap-2 shrink-0 items-center">' +
+                    '<button type="button" data-idx="'+idx+'" class="btn-link-evt bg-green-600 text-white text-xs font-bold px-2 py-1 rounded hover:bg-green-700" title="Link para WhatsApp e redes"><i class="fa fa-whatsapp"></i> Link convite</button>' +
+                    '<button type="button" data-idx="'+idx+'" class="btn-edit-evt text-primary text-xs font-bold underline">Editar</button>' +
+                    (gestao ? '<button type="button" data-idx="'+idx+'" class="btn-rm-evt text-red-500 text-xs">Remover</button>' : '') +
+                    '</span></div>';
+            }).join('') || '<p class="text-gray-400">Nenhum evento</p>';
             box.querySelectorAll('.btn-link-evt').forEach(btn => {
                 btn.onclick = function () {
                     var i = parseInt(btn.getAttribute('data-idx'), 10);

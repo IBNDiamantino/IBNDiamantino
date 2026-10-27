@@ -222,7 +222,7 @@
                 if (mc) mc.classList.add('hidden');
                 mostrar('passoD');
             } else {
-                elMsg.textContent = r.mensagem || 'Dados não conferem com nenhum cadastro. Confira nome, telefone e data de nascimento.';
+                elMsg.textContent = r.mensagem || 'Algum dado não confere. Verifique e tente de novo.';
                 elMsg.className = 'text-sm text-center mt-4 text-red-500';
                 elMsg.classList.remove('hidden');
             }
