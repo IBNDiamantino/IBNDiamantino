@@ -211,17 +211,18 @@ service cloud.firestore {
             }
         });
 
-        document.getElementById('btnAtividades').addEventListener('click', async function() {
+        async function carregarAtividadesNuvem() {
             if (!exigeGestao()) return;
             var box = document.getElementById('listaAtividades');
+            if (!box) return;
             box.innerHTML = '<p class="text-gray-500">Carregando...</p>';
-            var r = await IBNNuvem.buscarAtividades(150);
+            var r = await IBNNuvem.buscarAtividades(200);
             if (!r.sucesso) {
-                box.innerHTML = '<p class="text-red-600">' + (r.mensagem || 'Erro') + '</p>';
+                box.innerHTML = '<p class="text-red-600">' + (r.mensagem || 'Erro ao carregar. Verifique a conexão com a nuvem.') + '</p>';
                 return;
             }
             if (!r.lista.length) {
-                box.innerHTML = '<p class="text-gray-400">Nenhuma atividade registrada ainda.</p>';
+                box.innerHTML = '<p class="text-gray-400">Nenhuma atividade registrada ainda. Novos logins, cadastros e alterações passam a aparecer aqui.</p>';
                 return;
             }
             box.innerHTML = r.lista.map(function(a) {
@@ -231,11 +232,13 @@ service cloud.firestore {
                     '<br><span class="text-xs text-gray-600">' + (a.detalhe || '') +
                     '</span><br><span class="text-xs text-gray-400">' + quando + '</span></div>';
             }).join('');
-        });
+        }
+        document.getElementById('btnAtividades').addEventListener('click', carregarAtividadesNuvem);
         atualizarStatus();
-        // Firebase pode carregar um pouco depois
         setTimeout(atualizarStatus, 800);
         setTimeout(atualizarStatus, 2000);
+        // carrega o log automaticamente ao abrir a página
+        setTimeout(function () { try { carregarAtividadesNuvem(); } catch (e) {} }, 1200);
     </script>
 </body>
 </html>

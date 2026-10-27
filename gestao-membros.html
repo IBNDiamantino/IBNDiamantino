@@ -380,71 +380,96 @@
                 aviso.classList.add('hidden');
             }
 
-            // Pendentes primeiro
-            lista.sort((a, b) => {
-                if (a.status === 'pendente' && b.status !== 'pendente') return -1;
-                if (b.status === 'pendente' && a.status !== 'pendente') return 1;
-                return (b.dataCadastro || '').localeCompare(a.dataCadastro || '');
+            // Ordem alfabética pelo nome
+            lista.sort(function (a, b) {
+                return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' });
             });
 
             const container = document.getElementById('lista');
             document.getElementById('vazio').classList.toggle('hidden', lista.length > 0);
 
-            container.innerHTML = lista.map(m => {
-                const celulasTxt = (m.celulas || []).map(c => c.nome).join(', ') || '—';
-                const minsTxt = (m.ministerios || []).join(', ') || '—';
-                return `
-                <div class="bg-white rounded-xl shadow p-4 border-l-4 ${m.status === 'pendente' ? 'border-yellow-400' : m.status === 'aprovado' ? 'border-green-500' : 'border-gray-300'}">
-                    <div class="flex flex-wrap justify-between gap-2 mb-2">
-                        <div>
-                            <h3 class="font-bold text-primary text-lg">${m.nome}</h3>
-                            <p class="text-sm text-gray-500">${m.email || ''} · ${m.telefone || ''}</p>
-                        </div>
-                        ${badgeStatus(m.status)}
-                    </div>
-                    <div class="text-sm text-gray-600 grid sm:grid-cols-2 gap-1 mb-3">
-                        <p><strong>Cargo:</strong> ${m.cargo || 'Membro'}</p>
-                        <p><strong>Nível:</strong> ${m.nivel || 'membro'}</p>
-                        <p><strong>Nascimento:</strong> ${m.nascimento || m.dataNascimento || '—'}</p>
-                        <p><strong>Telefone:</strong> ${m.telefone || '—'}</p>
-                        <p><strong>Células:</strong> ${celulasTxt}</p>
-                        <p><strong>Ministérios:</strong> ${minsTxt}</p>
-                        ${m.funcaoEspecifica ? `<p class="sm:col-span-2"><strong>Função:</strong> ${m.funcaoEspecifica}</p>` : ''}
-                        <p class="sm:col-span-2"><strong>Endereço:</strong> ${m.endereco || '—'} ${m.municipio ? ' · ' + m.municipio : ''}</p>
-                    </div>
-                    ${(() => {
-                        const pends = listarPendenciasMembro(m);
-                        if (!pends.length) {
-                            return '<div class="mb-3 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800"><strong>✓ Sem pendências</strong> — cadastro em ordem para a gestão.</div>';
-                        }
-                        return '<div class="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm">' +
-                            '<p class="font-bold text-amber-900 mb-1">Pendências da gestão (' + pends.length + ')</p>' +
-                            '<ul class="list-disc pl-5 text-amber-900 space-y-0.5">' +
-                            pends.map(function(x) { return '<li>' + x + '</li>'; }).join('') +
-                            '</ul></div>';
-                    })()}
-                    <div class="flex flex-wrap gap-2">
-                        ${m.status === 'pendente' ? `
-                            <button onclick="abrirAprovar(${m.id})" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold">
-                                <i class="fa fa-check"></i> Aprovar / Alocar
-                            </button>
-                            <button onclick="fazerRejeitar(${m.id})" class="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-sm font-bold">
-                                Rejeitar
-                            </button>
-                        ` : `
-                            <button onclick="abrirAprovar(${m.id})" class="bg-primary text-white px-3 py-1.5 rounded-lg text-sm font-bold">
-                                Editar alocação
-                            </button>
-                        `}
-                        <button onclick="bloquearMembro(${m.id})" class="border border-amber-500 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-amber-50">
-                            <i class="fa fa-ban"></i> Bloquear
-                        </button>
-                        ${typeof isGestor === 'function' && isGestor() ? `<button onclick="removerMembroDef(${m.id})" class="border border-red-500 text-red-600 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-red-50">
-                            <i class="fa fa-trash"></i> Remover
-                        </button>` : ''}
-                    </div>
-                </div>`;
+            function corPendencia(m) {
+                if (m.status === 'rejeitado' || m.bloqueado || m.removido) return { bg: 'bg-black', title: 'Bloqueado / excluído' };
+                var n = 0;
+                try { n = (listarPendenciasMembro(m) || []).length; } catch (e) { n = 0; }
+                if (m.status === 'pendente') n = Math.max(n, 1);
+                if (n >= 3) return { bg: 'bg-red-600', title: n + ' pendências' };
+                if (n === 2) return { bg: 'bg-orange-500', title: '2 pendências' };
+                if (n === 1) return { bg: 'bg-yellow-400', title: '1 pendência' };
+                return { bg: 'bg-white border border-gray-300', title: 'Sem pendências' };
+            }
+
+            container.innerHTML = lista.map(function (m) {
+                var idJs = JSON.stringify(String(m.id));
+                var pends = [];
+                try { pends = listarPendenciasMembro(m) || []; } catch (e) {}
+                var cor = corPendencia(m);
+                var nasc = m.nascimento || m.dataNascimento || '—';
+                var tel = m.telefone || '—';
+                var btnAloc = m.status === 'pendente'
+                    ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-aloc bg-green-600 text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Aprovar / Alocar</button>'
+                    : '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-aloc bg-primary text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Editar alocação</button>';
+                var btnRem = (typeof isGestor === 'function' && isGestor())
+                    ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-rem border border-red-500 text-red-600 px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Remover</button>'
+                    : '';
+                return '<div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden" data-membro-row="' + String(m.id).replace(/"/g,'') + '">' +
+                    '<div class="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 cursor-pointer row-membro-toggle">' +
+                    '<div class="flex-1 min-w-0">' +
+                    '<p class="font-bold text-primary text-sm truncate">' + (m.nome || '—') + '</p>' +
+                    '<p class="text-[11px] text-gray-500 truncate">' + nasc + ' · ' + tel + '</p>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">' +
+                    btnAloc + btnRem +
+                    '<span class="w-3.5 h-3.5 rounded-full shrink-0 ' + cor.bg + '" title="' + cor.title + '"></span>' +
+                    '</div></div>' +
+                    '<div class="hidden px-3 pb-3 border-t border-gray-100 text-sm detalhe-membro">' +
+                    '<div class="grid sm:grid-cols-2 gap-1 text-gray-600 pt-2 mb-2">' +
+                    '<p><strong>E-mail:</strong> ' + (m.email || '—') + '</p>' +
+                    '<p><strong>Status:</strong> ' + (m.status || '—') + '</p>' +
+                    '<p><strong>Células:</strong> ' + ((m.celulas || []).map(function(c){ return c.nome; }).join(', ') || '—') + '</p>' +
+                    '<p><strong>Ministérios:</strong> ' + ((m.ministerios || []).join(', ') || '—') + '</p>' +
+                    '<p class="sm:col-span-2"><strong>Endereço:</strong> ' + (m.endereco || '—') + (m.municipio ? ' · ' + m.municipio : '') + '</p>' +
+                    '</div>' +
+                    (pends.length
+                        ? '<div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-amber-900 mb-2"><p class="font-bold mb-1">Pendências (' + pends.length + ')</p><ul class="list-disc pl-5 text-xs">' + pends.map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ul></div>'
+                        : '<div class="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-xs mb-2">✓ Sem pendências</div>') +
+                    '<div class="flex flex-wrap gap-2">' +
+                    (m.status === 'pendente' ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-rej bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-bold">Rejeitar</button>' : '') +
+                    '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-block border border-amber-500 text-amber-700 px-3 py-1 rounded text-xs font-bold">Bloquear</button>' +
+                    '</div></div></div>';
             }).join('');
+
+            // handlers da lista compacta
+            container.querySelectorAll('.row-membro-toggle').forEach(function (row) {
+                row.addEventListener('click', function () {
+                    var det = row.parentElement.querySelector('.detalhe-membro');
+                    if (det) det.classList.toggle('hidden');
+                });
+            });
+            container.querySelectorAll('.btn-aloc').forEach(function (b) {
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    abrirAprovar(b.getAttribute('data-id'));
+                });
+            });
+            container.querySelectorAll('.btn-rem').forEach(function (b) {
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    removerMembroDef(b.getAttribute('data-id'));
+                });
+            });
+            container.querySelectorAll('.btn-rej').forEach(function (b) {
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    fazerRejeitar(b.getAttribute('data-id'));
+                });
+            });
+            container.querySelectorAll('.btn-block').forEach(function (b) {
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    bloquearMembro(b.getAttribute('data-id'));
+                });
+            });
         }
 
         function abrirAprovar(id) {

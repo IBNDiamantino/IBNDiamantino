@@ -696,42 +696,81 @@ const IBNNuvem = (function () {
     }
 
     // ---------- LOG DE ATIVIDADES (gestão) ----------
-    async function registrarAtividade(tipo, detalhe, usuario) {
-        if (!iniciar() || !db) return { sucesso: false };
+    function lerAtividadesLocal() {
         try {
-            const u = usuario || (typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null) || {};
-            const id = 'act-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
-            const doc = {
-                id: id,
-                tipo: tipo || 'outro',
-                detalhe: detalhe || '',
-                usuarioId: u.id || '',
-                usuarioNome: u.nome || '',
-                quando: new Date().toISOString()
-            };
+            var a = JSON.parse(localStorage.getItem('ibn_atividades_log') || '[]');
+            return Array.isArray(a) ? a : [];
+        } catch (e) { return []; }
+    }
+    function salvarAtividadeLocal(doc) {
+        try {
+            var lista = lerAtividadesLocal();
+            lista.unshift(doc);
+            localStorage.setItem('ibn_atividades_log', JSON.stringify(lista.slice(0, 300)));
+        } catch (e) {}
+    }
+
+    async function registrarAtividade(tipo, detalhe, usuario) {
+        const u = usuario || (typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null) || {};
+        const id = 'act-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+        const doc = {
+            id: id,
+            tipo: tipo || 'outro',
+            detalhe: detalhe || '',
+            usuarioId: u.id || '',
+            usuarioNome: u.nome || u.usuario || '',
+            quando: new Date().toISOString()
+        };
+        // sempre grava local (fallback se a nuvem falhar)
+        salvarAtividadeLocal(doc);
+        if (!iniciar() || !db) return { sucesso: true, local: true };
+        try {
             await db.collection('atividades').doc(id).set(doc);
             return { sucesso: true };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
-            return { sucesso: false, mensagem: ultimoErro };
+            // local já salvou
+            return { sucesso: true, aviso: ultimoErro };
         }
     }
 
     async function buscarAtividades(limite) {
-        if (!iniciar() || !db) return { sucesso: false, lista: [], mensagem: ultimoErro };
-        try {
-            const snap = await db.collection('atividades').get();
-            const lista = [];
-            snap.forEach(function (doc) { lista.push(doc.data()); });
-            lista.sort(function (a, b) {
-                return String(b.quando || '').localeCompare(String(a.quando || ''));
-            });
-            const n = limite || 200;
-            return { sucesso: true, lista: lista.slice(0, n) };
-        } catch (e) {
-            ultimoErro = (e && e.message) || String(e);
-            return { sucesso: false, lista: [], mensagem: ultimoErro };
+        const n = limite || 200;
+        var local = lerAtividadesLocal();
+        var nuvem = [];
+        if (iniciar() && db) {
+            try {
+                // tenta ordenado (mais recentes primeiro)
+                var snap;
+                try {
+                    snap = await db.collection('atividades').orderBy('quando', 'desc').limit(n).get();
+                } catch (eOrd) {
+                    // sem índice / regra: busca tudo e ordena no cliente
+                    snap = await db.collection('atividades').get();
+                }
+                snap.forEach(function (doc) {
+                    var d = doc.data() || {};
+                    if (!d.id) d.id = doc.id;
+                    nuvem.push(d);
+                });
+            } catch (e) {
+                ultimoErro = (e && e.message) || String(e);
+            }
         }
+        // mescla local + nuvem por id
+        var map = {};
+        local.forEach(function (a) { if (a && a.id) map[a.id] = a; });
+        nuvem.forEach(function (a) { if (a && a.id) map[a.id] = a; });
+        var lista = Object.keys(map).map(function (k) { return map[k]; });
+        lista.sort(function (a, b) {
+            return String(b.quando || '').localeCompare(String(a.quando || ''));
+        });
+        // atualiza cache local com a mescla
+        try { localStorage.setItem('ibn_atividades_log', JSON.stringify(lista.slice(0, 300))); } catch (e2) {}
+        if (!lista.length && ultimoErro) {
+            return { sucesso: false, lista: [], mensagem: ultimoErro || 'Não foi possível carregar atividades.' };
+        }
+        return { sucesso: true, lista: lista.slice(0, n) };
     }
 
     /** Mescla lista da nuvem no localStorage (fotos ministérios) */

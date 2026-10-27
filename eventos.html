@@ -261,9 +261,9 @@
                 </div>
                 <div class="border rounded-lg p-3 bg-indigo-50/50 space-y-2">
                     <p class="text-xs font-bold text-primary">Líderes do evento (acesso total a este evento)</p>
-                    <p class="text-[11px] text-gray-500">Gestor/adm indicam 2 ou mais pessoas (ex.: líderes de ministério). Elas veem inscritos e podem gerir este evento.</p>
+                    <p class="text-[11px] text-gray-500">Clique no campo para ver gestores, adm e líderes. Digite um nome para buscar qualquer membro cadastrado.</p>
                     <div class="flex gap-2">
-                        <input type="text" id="admBuscaLider" placeholder="Buscar membro por nome..." class="flex-1 p-2 border rounded text-sm">
+                        <input type="text" id="admBuscaLider" placeholder="Clique para ver líderes · ou digite o nome (ex: Ana)" class="flex-1 p-2 border rounded text-sm">
                         <button type="button" id="admBtnBuscaLider" class="bg-primary text-white px-3 py-2 rounded text-xs font-bold">Buscar</button>
                     </div>
                     <div id="admResultLider" class="text-xs space-y-1 max-h-28 overflow-y-auto"></div>
@@ -1688,39 +1688,111 @@
                 };
             });
         }
+        function listaMembrosBruta() {
+            try {
+                if (typeof lerMembros === 'function') return lerMembros() || [];
+                return JSON.parse(localStorage.getItem('ibn_membros') || '[]');
+            } catch (e) { return []; }
+        }
+        function rotuloPapelMembro(m) {
+            if (!m) return 'Membro';
+            var tags = [];
+            var niv = String(m.nivel || '').toLowerCase();
+            if (niv === 'gestor' || (typeof isGestor === 'function' && isGestor(m))) tags.push('Gestor');
+            if (niv === 'admin' || (typeof isAdmin === 'function' && isAdmin(m))) tags.push('Adm');
+            try {
+                if (typeof isLiderMinisterio === 'function' && isLiderMinisterio(m)) tags.push('Líder ministério');
+                else if (Array.isArray(m.funcoes) && m.funcoes.indexOf('lider_ministerio') !== -1) tags.push('Líder ministério');
+                else if (Array.isArray(m.lideraMinisterios) && m.lideraMinisterios.length) tags.push('Líder ministério');
+            } catch (e1) {}
+            try {
+                if (typeof isLiderCelula === 'function' && isLiderCelula(m)) tags.push('Líder célula');
+                else if (niv === 'lider_celula' || (Array.isArray(m.funcoes) && m.funcoes.indexOf('lider_celula') !== -1)) tags.push('Líder célula');
+            } catch (e2) {}
+            // anfitrião / líder em treinamento
+            try {
+                if (Array.isArray(m.celulas)) {
+                    m.celulas.forEach(function (c) {
+                        var p = String(c.papel || c.funcao || '').toLowerCase();
+                        var pa = Array.isArray(c.papeis) ? c.papeis.map(function (x) { return String(x).toLowerCase(); }) : [];
+                        if (p.indexOf('anfitri') !== -1 || pa.indexOf('anfitriao') !== -1 || pa.indexOf('anfitrião') !== -1) tags.push('Anfitrião');
+                        if (p.indexOf('trein') !== -1 || pa.indexOf('lider_treino') !== -1) tags.push('Líder em treinamento');
+                    });
+                }
+            } catch (e3) {}
+            // unique
+            var seen = {}, out = [];
+            tags.forEach(function (t) { if (!seen[t]) { seen[t] = 1; out.push(t); } });
+            return out.length ? out.join(' · ') : 'Membro';
+        }
+        function ehCandidatoLiderRapido(m) {
+            if (!m || m.bloqueado || m.removido) return false;
+            if (typeof ehContaMasterSistema === 'function' && ehContaMasterSistema(m)) return false;
+            var niv = String(m.nivel || '').toLowerCase();
+            if (niv === 'gestor' || niv === 'admin') return true;
+            try {
+                if (typeof isGestor === 'function' && isGestor(m)) return true;
+                if (typeof isAdmin === 'function' && isAdmin(m)) return true;
+                if (typeof isLiderMinisterio === 'function' && isLiderMinisterio(m)) return true;
+                if (typeof isLiderCelula === 'function' && isLiderCelula(m)) return true;
+            } catch (e) {}
+            if (Array.isArray(m.funcoes) && (m.funcoes.indexOf('lider_ministerio') !== -1 || m.funcoes.indexOf('lider_celula') !== -1)) return true;
+            if (Array.isArray(m.lideraMinisterios) && m.lideraMinisterios.length) return true;
+            if (m.lideraCelulaId || m.lideraMinisterio) return true;
+            if (Array.isArray(m.celulas)) {
+                for (var i = 0; i < m.celulas.length; i++) {
+                    var c = m.celulas[i];
+                    var p = String(c.papel || c.funcao || '').toLowerCase();
+                    var pa = Array.isArray(c.papeis) ? c.papeis.map(function (x) { return String(x).toLowerCase(); }) : [];
+                    if (p.indexOf('lider') !== -1 || pa.indexOf('lider') !== -1 || pa.indexOf('lider_treino') !== -1) return true;
+                }
+            }
+            return false;
+        }
         function buscarMembrosParaLider(q) {
             q = String(q || '').toLowerCase().trim();
-            if (!q || q.length < 2) return [];
-            var lista = [];
-            try {
-                if (typeof lerMembros === 'function') lista = lerMembros() || [];
-                else lista = JSON.parse(localStorage.getItem('ibn_membros') || '[]');
-            } catch (e) { lista = []; }
+            var lista = listaMembrosBruta().filter(function (m) {
+                return m && !m.bloqueado && !m.removido && !(typeof ehContaMasterSistema === 'function' && ehContaMasterSistema(m));
+            });
+            // Sem texto: lista rápida gestores / adm / líderes
+            if (!q) {
+                return lista.filter(ehCandidatoLiderRapido)
+                    .sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'); })
+                    .slice(0, 40);
+            }
+            // Com nome (ex: ana): todas as Anas membros
             return lista.filter(function (m) {
-                if (!m || m.bloqueado || m.removido) return false;
                 var n = String(m.nome || '').toLowerCase();
                 var e = String(m.email || '').toLowerCase();
                 var t = String(m.telefone || '');
                 return n.indexOf(q) !== -1 || e.indexOf(q) !== -1 || t.indexOf(q) !== -1;
-            }).slice(0, 12);
+            }).sort(function (a, b) {
+                // prioriza quem já é líder/gestão
+                var pa = ehCandidatoLiderRapido(a) ? 0 : 1;
+                var pb = ehCandidatoLiderRapido(b) ? 0 : 1;
+                if (pa !== pb) return pa - pb;
+                return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+            }).slice(0, 25);
         }
         (function setupLideresUI() {
             var btn = document.getElementById('admBtnBuscaLider');
             var inp = document.getElementById('admBuscaLider');
             var res = document.getElementById('admResultLider');
             if (!btn || !inp || !res) return;
-            function rodar() {
-                var hits = buscarMembrosParaLider(inp.value);
+            function pintar(hits, titulo) {
                 if (!hits.length) {
-                    res.innerHTML = '<p class="text-gray-400">Nenhum membro encontrado.</p>';
+                    res.innerHTML = '<p class="text-gray-400 px-1">Nenhum membro encontrado.</p>';
                     return;
                 }
-                res.innerHTML = hits.map(function (m) {
-                    return '<button type="button" class="btn-add-lider w-full text-left px-2 py-1 rounded hover:bg-white border border-transparent hover:border-primary/20" data-id="' +
+                var head = titulo ? '<p class="text-[10px] font-bold text-primary uppercase tracking-wide px-1 mb-1">' + titulo + '</p>' : '';
+                res.innerHTML = head + hits.map(function (m) {
+                    var papel = rotuloPapelMembro(m);
+                    return '<button type="button" class="btn-add-lider w-full text-left px-2 py-1.5 rounded hover:bg-white border border-transparent hover:border-primary/20" data-id="' +
                         String(m.id || '').replace(/"/g, '') + '" data-nome="' + String(m.nome || '').replace(/"/g, '') +
                         '" data-email="' + String(m.email || '').replace(/"/g, '') +
                         '" data-tel="' + String(m.telefone || '').replace(/"/g, '') + '">' +
-                        (m.nome || '') + (m.telefone ? ' · ' + m.telefone : '') + '</button>';
+                        '<span class="font-semibold text-primary">' + (m.nome || '') + '</span>' +
+                        '<span class="block text-[10px] text-indigo-700">' + papel + (m.telefone ? ' · ' + m.telefone : '') + '</span></button>';
                 }).join('');
                 res.querySelectorAll('.btn-add-lider').forEach(function (b) {
                     b.onclick = function () {
@@ -1739,7 +1811,18 @@
                     };
                 });
             }
+            function rodar() {
+                var q = (inp.value || '').trim();
+                var hits = buscarMembrosParaLider(q);
+                pintar(hits, q ? 'Resultado da busca' : 'Gestores, adm e líderes (clique para escolher)');
+            }
             btn.onclick = rodar;
+            inp.addEventListener('focus', function () { rodar(); });
+            inp.addEventListener('click', function () { rodar(); });
+            inp.addEventListener('input', function () {
+                // a partir de 1 letra já filtra por nome
+                rodar();
+            });
             inp.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') { e.preventDefault(); rodar(); }
             });
