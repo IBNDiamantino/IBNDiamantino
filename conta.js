@@ -1824,7 +1824,7 @@ function recuperarSenhaPorDados(nome, telefone, nascimento) {
     if (!membro) {
         return {
             sucesso: false,
-            mensagem: 'Não encontramos seu cadastro neste aparelho. Tente de novo após sincronizar, ou peça senha temporária à secretaria (WhatsApp).',
+            mensagem: 'Não encontramos seu cadastro. Confira nome, telefone e data de nascimento (iguais ao cadastro) e tente de novo.',
             precisaSecretaria: true
         };
     }

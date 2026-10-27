@@ -26,42 +26,11 @@
 
         <div class="bg-white p-8 rounded-2xl shadow-lg">
 
-            <!-- PASSO A: tentativa com e-mail/telefone + pergunta (opcional rápido) -->
-            <div id="passoA" class="space-y-4">
-                <p class="text-sm text-gray-600">Informe o e-mail ou telefone cadastrado e a resposta da pergunta de segurança.</p>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">E-mail ou Telefone</label>
-                    <input type="text" id="identificador" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none" placeholder="seu@email.com ou telefone">
-                </div>
-                <button type="button" id="btnBuscarPergunta" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:opacity-90">
-                    Continuar
-                </button>
-                <p class="text-center text-sm text-gray-500">
-                    Não lembra a pergunta?
-                    <button type="button" id="btnIrDados" class="text-secondary font-bold hover:underline">Recuperar com dados pessoais</button>
+            <!-- Principal: dados pessoais (nome + telefone + nascimento) -->
+            <div id="passoC" class="space-y-4">
+                <p class="text-sm text-gray-600">
+                    Preencha os dados <strong>exatamente como no cadastro</strong>. O site gera uma senha temporária na hora — sem precisar da secretaria.
                 </p>
-            </div>
-
-            <!-- PASSO B: pergunta de segurança -->
-            <div id="passoB" class="space-y-4 hidden">
-                <p class="text-sm text-gray-600">Responda a pergunta de segurança:</p>
-                <p id="textoPergunta" class="font-bold text-primary bg-gray-50 p-3 rounded-lg"></p>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Sua resposta</label>
-                    <input type="text" id="resposta" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none">
-                </div>
-                <p id="tentativasInfo" class="text-xs text-gray-500"></p>
-                <button type="button" id="btnConfirmarPergunta" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:opacity-90">
-                    Confirmar
-                </button>
-                <button type="button" id="btnVoltarA" class="w-full text-gray-500 text-sm hover:underline">Voltar</button>
-            </div>
-
-            <!-- PASSO C: formulário nome + telefone + nascimento (após 3 erros ou atalho) -->
-            <div id="passoC" class="space-y-4 hidden">
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                    Preencha os dados exatamente como no cadastro para gerar uma senha temporária.
-                </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Nome completo</label>
                     <input type="text" id="recNome" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none" placeholder="Como está no cadastro">
@@ -77,10 +46,40 @@
                 <button type="button" id="btnConfirmarDados" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:opacity-90">
                     Gerar senha temporária
                 </button>
-                <button type="button" id="btnVoltarInicio" class="w-full text-gray-500 text-sm hover:underline">Voltar ao início</button>
+                <p class="text-center text-xs text-gray-400 pt-1">
+                    Tem pergunta de segurança cadastrada?
+                    <button type="button" id="btnIrPergunta" class="text-secondary font-bold hover:underline">Usar pergunta</button>
+                </p>
             </div>
 
-            <!-- PASSO D: senha gerada -->
+            <!-- Opcional: e-mail/telefone + pergunta de segurança -->
+            <div id="passoA" class="space-y-4 hidden">
+                <p class="text-sm text-gray-600">Informe o e-mail ou telefone cadastrado e a resposta da pergunta de segurança.</p>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">E-mail ou Telefone</label>
+                    <input type="text" id="identificador" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none" placeholder="seu@email.com ou telefone">
+                </div>
+                <button type="button" id="btnBuscarPergunta" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:opacity-90">
+                    Continuar
+                </button>
+                <button type="button" id="btnVoltarDados" class="w-full text-gray-500 text-sm hover:underline">← Voltar aos dados pessoais</button>
+            </div>
+
+            <div id="passoB" class="space-y-4 hidden">
+                <p class="text-sm text-gray-600">Responda a pergunta de segurança:</p>
+                <p id="textoPergunta" class="font-bold text-primary bg-gray-50 p-3 rounded-lg"></p>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Sua resposta</label>
+                    <input type="text" id="resposta" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-secondary outline-none">
+                </div>
+                <p id="tentativasInfo" class="text-xs text-gray-500"></p>
+                <button type="button" id="btnConfirmarPergunta" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:opacity-90">
+                    Confirmar
+                </button>
+                <button type="button" id="btnVoltarA" class="w-full text-gray-500 text-sm hover:underline">Voltar</button>
+            </div>
+
+            <!-- Senha gerada -->
             <div id="passoD" class="space-y-4 hidden text-center">
                 <div class="bg-green-50 border border-green-200 rounded-xl p-4">
                     <p class="text-green-800 font-semibold mb-2">Senha temporária gerada!</p>
@@ -99,12 +98,6 @@
             </div>
 
             <p id="mensagem" class="text-sm text-center mt-4 hidden"></p>
-            <div id="boxSecretaria" class="hidden mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-center">
-                <p class="text-amber-900 mb-2">A secretaria pode gerar uma <strong>senha temporária</strong> no painel de membros. Essa senha vale até você entrar e trocar.</p>
-                <a id="linkWhatsSecretaria" href="https://wa.me/5565996292021?text=Ol%C3%A1%2C%20preciso%20de%20senha%20tempor%C3%A1ria%20do%20site%20IBN%20Diamantino." target="_blank" class="inline-block bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700">
-                    <i class="fa fa-whatsapp"></i> Falar com a secretaria no WhatsApp
-                </a>
-            </div>
 
             <div class="mt-6 text-center">
                 <a href="login.html" class="text-primary text-sm hover:underline">← Voltar ao login</a>
@@ -123,11 +116,14 @@
         const MAX_ERROS = 3;
 
         function mostrar(id) {
-            ['passoA', 'passoB', 'passoC', 'passoD'].forEach(function(p) {
-                document.getElementById(p).classList.add('hidden');
+            ['passoA', 'passoB', 'passoC', 'passoD'].forEach(function (p) {
+                var el = document.getElementById(p);
+                if (el) el.classList.add('hidden');
             });
-            document.getElementById(id).classList.remove('hidden');
-            document.getElementById('mensagem').classList.add('hidden');
+            var alvo = document.getElementById(id);
+            if (alvo) alvo.classList.remove('hidden');
+            var m = document.getElementById('mensagem');
+            if (m) m.classList.add('hidden');
         }
 
         function msg(texto, ok) {
@@ -142,16 +138,24 @@
             mostrar('passoD');
         }
 
-        // Máscara data
-        document.getElementById('recNascimento').addEventListener('input', function() {
+        document.getElementById('recNascimento').addEventListener('input', function () {
             var v = this.value.replace(/\D/g, '').slice(0, 8);
-            if (v.length >= 5) v = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4);
-            else if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
+            if (v.length >= 5) v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+            else if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
             this.value = v;
         });
 
-        // A → buscar pergunta
-        document.getElementById('btnBuscarPergunta').addEventListener('click', function() {
+        document.getElementById('btnIrPergunta').addEventListener('click', function () {
+            mostrar('passoA');
+        });
+        document.getElementById('btnVoltarDados').addEventListener('click', function () {
+            mostrar('passoC');
+        });
+        document.getElementById('btnVoltarA').addEventListener('click', function () {
+            mostrar('passoA');
+        });
+
+        document.getElementById('btnBuscarPergunta').addEventListener('click', function () {
             identificadorAtual = document.getElementById('identificador').value.trim();
             if (!identificadorAtual) {
                 msg('Informe e-mail ou telefone.');
@@ -159,7 +163,7 @@
             }
             var r = obterPerguntaSeguranca(identificadorAtual);
             if (!r.sucesso) {
-                msg(r.mensagem + ' Você pode recuperar com dados pessoais.');
+                msg((r.mensagem || 'Não encontrado.') + ' Use a recuperação com dados pessoais.');
                 return;
             }
             errosPergunta = 0;
@@ -168,8 +172,7 @@
             mostrar('passoB');
         });
 
-        // B → confirmar pergunta (conta erros)
-        document.getElementById('btnConfirmarPergunta').addEventListener('click', function() {
+        document.getElementById('btnConfirmarPergunta').addEventListener('click', function () {
             var resposta = document.getElementById('resposta').value.trim();
             if (!resposta) {
                 msg('Digite a resposta.');
@@ -177,15 +180,13 @@
             }
             var r = resetarSenhaPorSeguranca(identificadorAtual, resposta);
             if (r.sucesso) {
-                // Se recuperou por pergunta, ainda usamos senha aleatória da função antiga.
-                // Opcional: trocar para ibn+5 dígitos também — mantemos a gerada.
                 mostrarSenha(r.senhaTemporaria);
                 return;
             }
             errosPergunta++;
             if (errosPergunta >= MAX_ERROS) {
                 msg('3 tentativas incorretas. Use a recuperação com dados pessoais.');
-                setTimeout(function() { mostrar('passoC'); }, 1200);
+                setTimeout(function () { mostrar('passoC'); }, 1200);
             } else {
                 document.getElementById('tentativasInfo').textContent =
                     'Resposta incorreta. Tentativa ' + errosPergunta + ' de ' + MAX_ERROS + '.';
@@ -193,28 +194,16 @@
             }
         });
 
-        // Atalho direto para dados pessoais
-        document.getElementById('btnIrDados').addEventListener('click', function() {
-            mostrar('passoC');
-        });
-
-        document.getElementById('btnVoltarA').addEventListener('click', function() {
-            mostrar('passoA');
-        });
-        document.getElementById('btnVoltarInicio').addEventListener('click', function() {
-            mostrar('passoA');
-        });
-
-        // C → nome + telefone + nascimento → ibn + 5 últimos dígitos
         document.getElementById('btnConfirmarDados').addEventListener('click', async function () {
-            const msg = document.getElementById('mensagem');
-            const boxSec = document.getElementById('boxSecretaria');
-            if (boxSec) boxSec.classList.add('hidden');
-            msg.classList.add('hidden');
-            // Sincroniza membros da nuvem (importante se limpou dados locais)
+            const elMsg = document.getElementById('mensagem');
+            elMsg.classList.add('hidden');
+            elMsg.textContent = 'Buscando cadastro...';
+            elMsg.className = 'text-sm text-center mt-4 text-gray-600';
+            elMsg.classList.remove('hidden');
             try {
-                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarMembrosParaLocal) {
-                    await IBNNuvem.puxarMembrosParaLocal();
+                if (typeof IBNNuvem !== 'undefined') {
+                    if (typeof IBNNuvem.iniciar === 'function') IBNNuvem.iniciar();
+                    if (IBNNuvem.puxarMembrosParaLocal) await IBNNuvem.puxarMembrosParaLocal();
                 }
             } catch (e) {}
             const nome = document.getElementById('recNome').value;
@@ -227,28 +216,22 @@
                 if (dica) {
                     dica.innerHTML = 'No login use <strong>' +
                         (r.emailCadastro || r.telefoneCadastro || 'seu e-mail/telefone') +
-                        '</strong> e esta senha. Depois troque a senha.';
+                        '</strong> e esta senha. Depois troque a senha na área do membro.';
                 }
                 var mc = document.getElementById('msgCopiouTemp');
                 if (mc) mc.classList.add('hidden');
                 mostrar('passoD');
             } else {
-                msg.textContent = r.mensagem || 'Não foi possível recuperar.';
-                msg.className = 'text-sm text-center mt-4 text-red-500';
-                msg.classList.remove('hidden');
-                if (boxSec) {
-                    var txt = encodeURIComponent('Olá, preciso de senha temporária do site IBN Diamantino.\nNome: ' + (nome||'') + '\nTelefone: ' + (tel||'') + '\nNascimento: ' + (nasc||''));
-                    var a = document.getElementById('linkWhatsSecretaria');
-                    if (a) a.href = 'https://wa.me/5565996292021?text=' + txt;
-                    boxSec.classList.remove('hidden');
-                }
+                elMsg.textContent = r.mensagem || 'Dados não conferem com nenhum cadastro. Confira nome, telefone e data de nascimento.';
+                elMsg.className = 'text-sm text-center mt-4 text-red-500';
+                elMsg.classList.remove('hidden');
             }
         });
-    
+
         document.getElementById('btnCopiarSenhaTemp').addEventListener('click', async function () {
             var inp = document.getElementById('senhaTemp');
             var senha = inp.value || '';
-            var msg = document.getElementById('msgCopiouTemp');
+            var mc = document.getElementById('msgCopiouTemp');
             try {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     await navigator.clipboard.writeText(senha);
@@ -257,16 +240,15 @@
                     inp.select();
                     document.execCommand('copy');
                 }
-                msg.textContent = 'Copiado! Agora cole no login.';
-                msg.classList.remove('hidden');
+                mc.textContent = 'Copiado! Agora cole no login.';
+                mc.classList.remove('hidden');
             } catch (e) {
                 inp.focus();
                 inp.select();
-                msg.textContent = 'Toque na senha e use Copiar do celular.';
-                msg.classList.remove('hidden');
+                mc.textContent = 'Toque na senha e use Copiar do celular.';
+                mc.classList.remove('hidden');
             }
         });
-
     </script>
 </body>
 </html>
