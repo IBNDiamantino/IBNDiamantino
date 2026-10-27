@@ -393,6 +393,86 @@ function enviarMembroParaNuvem(membro, opcoes) {
     }
 }
 
+/** Marca que este membro ainda precisa subir para a nuvem (celular do membro). */
+function marcarPendenteNuvem(membroId, pendente) {
+    try {
+        if (pendente) {
+            localStorage.setItem('ibn_pendente_nuvem_id', String(membroId));
+            localStorage.setItem('ibn_pendente_nuvem_em', new Date().toISOString());
+        } else {
+            localStorage.removeItem('ibn_pendente_nuvem_id');
+            localStorage.removeItem('ibn_pendente_nuvem_em');
+            if (membroId !== undefined && membroId !== null) {
+                localStorage.removeItem('ibn_sync_sessao_' + String(membroId));
+            }
+        }
+    } catch (e) {}
+}
+
+function temPendenteNuvem(membroId) {
+    try {
+        var id = localStorage.getItem('ibn_pendente_nuvem_id');
+        if (!id) return false;
+        if (membroId === undefined || membroId === null) return true;
+        return String(id) === String(membroId);
+    } catch (e) { return false; }
+}
+
+/**
+ * Garante envio do cadastro do MEMBRO para a nuvem (force + várias tentativas).
+ * Essencial no celular de quem se cadastrou — sem isso a gestão não vê o pendente.
+ */
+function garantirCadastroNaNuvem(membro, opcoes) {
+    opcoes = opcoes || {};
+    var tentativas = opcoes.tentativas != null ? opcoes.tentativas : 5;
+    var intervalo = opcoes.intervaloMs != null ? opcoes.intervaloMs : 2000;
+    var onProgress = opcoes.onProgress || null;
+
+    if (!membro || membro.id === undefined || membro.id === null) {
+        return Promise.resolve({ sucesso: false, mensagem: 'Membro inválido' });
+    }
+
+    marcarPendenteNuvem(membro.id, true);
+
+    function umaTentativa(n) {
+        if (typeof onProgress === 'function') {
+            try { onProgress(n, tentativas); } catch (eP) {}
+        }
+        return enviarMembroParaNuvem(membro, { force: true }).then(function (r) {
+            if (r && r.sucesso && !r.semNuvem) {
+                marcarPendenteNuvem(membro.id, false);
+                return { sucesso: true, tentativa: n, mensagem: r.mensagem || 'Enviado para a nuvem' };
+            }
+            // semNuvem: Firebase não configurado neste build — não adianta insistir
+            if (r && r.semNuvem) {
+                return { sucesso: false, semNuvem: true, mensagem: r.mensagem || 'Nuvem não configurada', tentativa: n };
+            }
+            if (n >= tentativas) {
+                return {
+                    sucesso: false,
+                    mensagem: (r && r.mensagem) || 'Não foi possível enviar após várias tentativas',
+                    tentativa: n
+                };
+            }
+            return new Promise(function (resolve) {
+                setTimeout(function () {
+                    resolve(umaTentativa(n + 1));
+                }, intervalo);
+            });
+        }).catch(function (e) {
+            if (n >= tentativas) {
+                return { sucesso: false, mensagem: (e && e.message) || String(e), tentativa: n };
+            }
+            return new Promise(function (resolve) {
+                setTimeout(function () {
+                    resolve(umaTentativa(n + 1));
+                }, intervalo);
+            });
+        });
+    }
+
+    return umaTentativa(1);
+}
 
 function lerBloqueios() {
     try { return JSON.parse(localStorage.getItem(CHAVE_BLOQUEIOS) || '[]'); } catch (e) { return []; }
@@ -776,16 +856,32 @@ function cadastrarMembro(dados) {
         novo.status = 'pendente';
     }
 
+    // Carimba data antes do primeiro save local (evita ts=0 na mescla da nuvem)
+    if (typeof marcarMembroAtualizado === 'function') {
+        marcarMembroAtualizado(novo);
+    } else {
+        novo.atualizadoEm = new Date().toISOString();
+        if (!novo.criadoEm) novo.criadoEm = novo.atualizadoEm;
+    }
+    if (!novo.criadoEm) novo.criadoEm = novo.atualizadoEm || novo.dataCadastro;
+
     lista.push(novo);
     salvarMembros(lista);
     iniciarSessao(novo);
+    marcarPendenteNuvem(novo.id, true);
     try {
-        enviarMembroParaNuvem(novo, { force: true });
         if (typeof IBNNuvem !== 'undefined' && IBNNuvem.registrarAtividade) {
             IBNNuvem.registrarAtividade('cadastro', 'Novo cadastro no site: ' + (novo.nome || ''), novo);
         }
     } catch (e) {}
-    return { sucesso: true, mensagem: 'Cadastro realizado!', membro: novo };
+    // NÃO dispara só fire-and-forget: a página deve chamar garantirCadastroNaNuvem
+    // e aguardar. Ainda assim inicia um envio imediato em paralelo.
+    try {
+        garantirCadastroNaNuvem(novo, { tentativas: 5, intervaloMs: 2500 });
+    } catch (e2) {
+        try { enviarMembroParaNuvem(novo, { force: true }); } catch (e3) {}
+    }
+    return { sucesso: true, mensagem: 'Cadastro realizado!', membro: novo, aguardarNuvem: true };
 }
 
 function iniciarSessao(membro) {
@@ -1608,12 +1704,13 @@ function aprovarMembro(membroId, alocacao) {
 function rejeitarMembro(membroId) {
     if (!isAdmin()) return { sucesso: false, mensagem: 'Sem permissão.' };
     const lista = lerMembros();
-    const idx = lista.findIndex(m => m.id === membroId);
+    const idx = lista.findIndex(m => String(m.id) === String(membroId));
     if (idx === -1) return { sucesso: false, mensagem: 'Membro não encontrado.' };
     lista[idx].status = 'rejeitado';
     if (typeof marcarMembroAtualizado === 'function') marcarMembroAtualizado(lista[idx]);
     salvarMembros(lista);
-    try { enviarMembroParaNuvem(lista[idx]); } catch (e) {}
+    // Gestão: sempre force (não pode ser bloqueada por cópia antiga / relógio)
+    try { enviarMembroParaNuvem(lista[idx], { force: true }); } catch (e) {}
     return { sucesso: true };
 }
 

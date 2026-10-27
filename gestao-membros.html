@@ -32,14 +32,27 @@
 
     <main class="container mx-auto px-4 py-8 max-w-5xl">
         <!-- Espelho da nuvem: master/adm/gestor vê o mesmo que Luana e demais -->
-        <div id="bannerNuvemGestao" class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <p class="font-bold"><i class="fa fa-cloud"></i> Espelho da igreja (nuvem)</p>
-                <p id="txtSyncGestao" class="text-xs mt-0.5 text-blue-800">Carregando dados da nuvem…</p>
+        <div id="bannerNuvemGestao" class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="font-bold"><i class="fa fa-cloud"></i> Espelho da igreja (nuvem)</p>
+                    <p id="txtSyncGestao" class="text-xs mt-0.5 text-blue-800">Carregando dados da nuvem…</p>
+                    <p id="txtUltimoEnvioGestao" class="text-xs mt-1 text-blue-700"></p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="btnAtualizarNuvemGestao" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-accent whitespace-nowrap">
+                        <i class="fa fa-refresh"></i> Atualizar da nuvem agora
+                    </button>
+                    <button type="button" id="btnForcarEnvioCadastros" class="bg-secondary text-primary px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 whitespace-nowrap border border-yellow-600">
+                        <i class="fa fa-cloud-upload"></i> Forçar envio de cadastros
+                    </button>
+                </div>
             </div>
-            <button type="button" id="btnAtualizarNuvemGestao" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-accent whitespace-nowrap">
-                <i class="fa fa-refresh"></i> Atualizar da nuvem agora
-            </button>
+            <p id="avisoForce24h" class="hidden mt-2 text-xs text-amber-900 bg-amber-100 border border-amber-300 rounded-lg px-3 py-2">
+                <i class="fa fa-exclamation-triangle"></i>
+                Faz mais de 24h sem envio confirmado para a nuvem. Cadastros feitos só neste aparelho podem não ter subido.
+                Use <strong>Forçar envio de cadastros</strong> (de preferência no celular/PC onde a pessoa se cadastrou).
+            </p>
         </div>
         <!-- Filtros -->
         <div class="bg-white rounded-xl shadow p-4 mb-6 flex flex-wrap gap-3 items-end">
@@ -626,11 +639,7 @@
                 alert(r.mensagem);
                 return;
             }
-            try {
-                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.sincronizarUmMembro && r.membro) {
-                    IBNNuvem.sincronizarUmMembro(r.membro);
-                }
-            } catch (e) {}
+            // aprovarMembro já sobe com force:true — não repetir sync sem force
             document.getElementById('modalAprovar').classList.add('hidden');
             document.getElementById('modalAprovar').classList.remove('flex');
             renderizar();
@@ -797,7 +806,21 @@
             try {
                 var r = null;
                 if (typeof IBNNuvem !== 'undefined') {
+                    // Prioridade da gestão no clique manual: sobe alterações locais com force
+                    // antes de puxar, para não perder aprovação/edição deste aparelho
+                    // e para garantir que novos cadastros deste aparelho cheguem à nuvem.
+                    if (manual) {
+                        try {
+                            if (typeof lerMembros === 'function' && IBNNuvem.sincronizarMembros) {
+                                if (txt) txt.textContent = 'Enviando alterações da gestão…';
+                                await IBNNuvem.sincronizarMembros(lerMembros(), { force: true });
+                            }
+                        } catch (ePush) {
+                            console.warn('Push gestão → nuvem:', ePush);
+                        }
+                    }
                     if (IBNNuvem.sincronizarTudoDaNuvem) {
+                        if (txt) txt.textContent = manual ? 'Baixando da nuvem…' : 'Sincronizando com a nuvem…';
                         await IBNNuvem.sincronizarTudoDaNuvem(manual ? 'gestao-manual' : 'gestao-auto');
                     }
                     if (IBNNuvem.puxarMembrosParaLocal) {
@@ -812,6 +835,7 @@
                     txt.textContent = 'Última sincronização ' + hh + ':' + mm + ' — ' + qtd + ' membro(s). Alterações da Luana, Murian e demais entram aqui automaticamente.';
                 }
                 try { renderizar(); } catch (eR) {}
+                try { formatarUltimoEnvio(); } catch (eU) {}
                 return true;
             } catch (e) {
                 if (txt) txt.textContent = 'Falha ao ler a nuvem: ' + ((e && e.message) || String(e)) + '. Verifique a internet.';
@@ -819,6 +843,88 @@
                 return false;
             } finally {
                 if (btn) btn.disabled = false;
+                try { formatarUltimoEnvio(); } catch (eU2) {}
+            }
+        }
+
+        function formatarUltimoEnvio() {
+            var el = document.getElementById('txtUltimoEnvioGestao');
+            var aviso = document.getElementById('avisoForce24h');
+            if (!el) return;
+            try {
+                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.lerUltimoEnvioMembros) {
+                    el.textContent = '';
+                    if (aviso) aviso.classList.add('hidden');
+                    return;
+                }
+                var u = IBNNuvem.lerUltimoEnvioMembros();
+                var precisa = IBNNuvem.precisaForceEnvio24h && IBNNuvem.precisaForceEnvio24h();
+                if (aviso) {
+                    if (precisa) aviso.classList.remove('hidden');
+                    else aviso.classList.add('hidden');
+                }
+                if (!u || !u.em) {
+                    el.textContent = 'Último envio de cadastros para a nuvem: ainda não registrado neste aparelho.';
+                    return;
+                }
+                var d = new Date(u.em);
+                var hh = String(d.getHours()).padStart(2, '0');
+                var mm = String(d.getMinutes()).padStart(2, '0');
+                var dd = String(d.getDate()).padStart(2, '0');
+                var mo = String(d.getMonth() + 1).padStart(2, '0');
+                var ms = (IBNNuvem.msDesdeUltimoEnvioMembros && IBNNuvem.msDesdeUltimoEnvioMembros()) || 0;
+                var horas = Math.floor(ms / 3600000);
+                el.textContent = 'Último envio ok: ' + dd + '/' + mo + ' ' + hh + ':' + mm +
+                    (horas >= 1 ? ' (há ~' + horas + 'h)' : ' (há pouco)') +
+                    (u.force ? ' · forçado' : '') +
+                    (u.quantidade ? ' · ' + u.quantidade + ' reg.' : '');
+            } catch (e) {
+                el.textContent = '';
+            }
+        }
+
+        async function forcarEnvioCadastrosLocais() {
+            var txt = document.getElementById('txtSyncGestao');
+            var btn = document.getElementById('btnForcarEnvioCadastros');
+            var btn2 = document.getElementById('btnAtualizarNuvemGestao');
+            if (!confirm('Forçar envio de TODOS os cadastros deste aparelho para a nuvem?\n\nUse no aparelho onde as pessoas se cadastraram (os dados precisam existir neste localStorage).\nIsso grava na nuvem mesmo se a cópia antiga tentasse bloquear.')) {
+                return;
+            }
+            if (btn) btn.disabled = true;
+            if (btn2) btn2.disabled = true;
+            if (txt) txt.textContent = 'Forçando envio dos cadastros…';
+            try {
+                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.forcarEnvioMembrosLocais) {
+                    alert('Nuvem não disponível neste aparelho.');
+                    return;
+                }
+                var r = await IBNNuvem.forcarEnvioMembrosLocais(function (a, b) {
+                    if (txt) txt.textContent = 'Enviando cadastros… ' + a + '/' + b;
+                });
+                // Depois do force, baixa o espelho atualizado
+                if (IBNNuvem.puxarMembrosParaLocal) {
+                    if (txt) txt.textContent = 'Baixando espelho da nuvem…';
+                    await IBNNuvem.puxarMembrosParaLocal();
+                }
+                formatarUltimoEnvio();
+                if (txt) {
+                    txt.textContent = r && r.sucesso
+                        ? ('Envio forçado ok: ' + (r.quantidade || 0) + ' de ' + (r.totalLocal || 0) + ' membros deste aparelho.')
+                        : ('Falha no envio forçado: ' + ((r && r.mensagem) || 'erro'));
+                }
+                try { renderizar(); } catch (eR) {}
+                if (r && r.sucesso) {
+                    alert('Cadastros enviados para a nuvem.\n' + (r.mensagem || '') + '\n\nPeça aos outros gestores para clicar em "Atualizar da nuvem agora".');
+                } else {
+                    alert('Não foi possível forçar o envio.\n' + ((r && r.mensagem) || ''));
+                }
+            } catch (e) {
+                if (txt) txt.textContent = 'Erro: ' + ((e && e.message) || String(e));
+                alert('Erro ao forçar envio: ' + ((e && e.message) || String(e)));
+            } finally {
+                if (btn) btn.disabled = false;
+                if (btn2) btn2.disabled = false;
+                formatarUltimoEnvio();
             }
         }
 
@@ -826,12 +932,28 @@
         if (btnNuvem) {
             btnNuvem.addEventListener('click', function () { atualizarEspelhoNuvem(true); });
         }
+        var btnForce = document.getElementById('btnForcarEnvioCadastros');
+        if (btnForce) {
+            btnForce.addEventListener('click', function () { forcarEnvioCadastrosLocais(); });
+        }
 
         // Master/adm/gestor: sempre o mesmo espelho da nuvem ao abrir
         (async function iniciarGestaoMembros() {
+            formatarUltimoEnvio();
             await atualizarEspelhoNuvem(false);
+            formatarUltimoEnvio();
+            // Se >24h sem envio, tenta force automático (cadastros presos neste aparelho)
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.verificarEForcarEnvioSe24h) {
+                    var rf = await IBNNuvem.verificarEForcarEnvioSe24h('gestao-abrir');
+                    if (rf && rf.sucesso && !rf.pulou) {
+                        await atualizarEspelhoNuvem(false);
+                    }
+                }
+            } catch (e24) {}
+            formatarUltimoEnvio();
             // Re-puxa a cada 30s enquanto a página estiver aberta
-            setInterval(function () { atualizarEspelhoNuvem(false); }, 30000);
+            setInterval(function () { atualizarEspelhoNuvem(false); formatarUltimoEnvio(); }, 30000);
         })();
     </script>
 </body>

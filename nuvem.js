@@ -53,6 +53,123 @@ const IBNNuvem = (function () {
         };
     }
 
+    // ---- Controle de último envio de membros (detecta cadastros presos no aparelho) ----
+    var CHAVE_ULTIMO_ENVIO_MEMBROS = 'ibn_nuvem_ultimo_envio_membros';
+    var CHAVE_ULTIMO_ENVIO_FORCE = 'ibn_nuvem_ultimo_force_membros';
+    var MS_24H = 24 * 60 * 60 * 1000;
+    var _forceEnvioBusy = false;
+
+    function registrarEnvioMembrosOk(extra) {
+        try {
+            var info = {
+                em: new Date().toISOString(),
+                quantidade: (extra && extra.quantidade) || 0,
+                force: !!(extra && extra.force)
+            };
+            localStorage.setItem(CHAVE_ULTIMO_ENVIO_MEMBROS, JSON.stringify(info));
+            if (info.force) {
+                localStorage.setItem(CHAVE_ULTIMO_ENVIO_FORCE, info.em);
+            }
+        } catch (e) {}
+    }
+
+    function lerUltimoEnvioMembros() {
+        try {
+            var raw = localStorage.getItem(CHAVE_ULTIMO_ENVIO_MEMBROS);
+            if (!raw) return null;
+            var o = JSON.parse(raw);
+            if (!o || !o.em) return null;
+            return o;
+        } catch (e) { return null; }
+    }
+
+    function msDesdeUltimoEnvioMembros() {
+        var u = lerUltimoEnvioMembros();
+        if (!u || !u.em) return Infinity;
+        var t = Date.parse(u.em);
+        if (!t) return Infinity;
+        return Math.max(0, Date.now() - t);
+    }
+
+    function precisaForceEnvio24h() {
+        return msDesdeUltimoEnvioMembros() >= MS_24H;
+    }
+
+    /** Envia TODOS os membros do aparelho com force=true (recupera cadastros que não subiram). */
+    async function forcarEnvioMembrosLocais(onProgress) {
+        if (_forceEnvioBusy) return { sucesso: false, ocupado: true, mensagem: 'Já há um envio em andamento' };
+        if (!iniciar() || !db) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
+        _forceEnvioBusy = true;
+        try {
+            var membros = (typeof lerMembros === 'function') ? lerMembros() : [];
+            // Garante atualizadoEm em quem ainda não tem (cadastros antigos presos)
+            try {
+                membros.forEach(function (m) {
+                    if (!m) return;
+                    if (!m.atualizadoEm && !m.criadoEm) {
+                        m.atualizadoEm = m.dataCadastro || new Date().toISOString();
+                        if (!m.criadoEm && m.dataCadastro) m.criadoEm = m.dataCadastro;
+                    }
+                });
+                if (typeof salvarMembros === 'function') {
+                    // grava só storage sem cascade: setItem direto se possível
+                    try {
+                        localStorage.setItem(
+                            (typeof CHAVE_MEMBROS !== 'undefined' ? CHAVE_MEMBROS : 'ibn_membros'),
+                            JSON.stringify(membros.filter(function (m) {
+                                if (!m) return false;
+                                try { if (typeof isContaSistema === 'function' && isContaSistema(m)) return false; } catch (e) {}
+                                return true;
+                            }))
+                        );
+                    } catch (eS) {}
+                }
+            } catch (ePrep) {}
+
+            var r = await sincronizarMembros(membros, {
+                force: true,
+                onProgress: onProgress || null
+            });
+            if (r && r.sucesso) {
+                registrarEnvioMembrosOk({ quantidade: r.quantidade || membros.length, force: true });
+            }
+            return {
+                sucesso: !!(r && r.sucesso),
+                quantidade: (r && r.quantidade) || 0,
+                erros: (r && r.erros) || 0,
+                totalLocal: membros.length,
+                mensagem: r && r.sucesso
+                    ? ('Forçado: ' + ((r && r.quantidade) || 0) + ' membro(s) enviados de ' + membros.length + ' no aparelho')
+                    : ((r && r.mensagem) || ultimoErro || 'Falha no envio forçado')
+            };
+        } catch (e) {
+            ultimoErro = (e && e.message) || String(e);
+            return { sucesso: false, mensagem: ultimoErro };
+        } finally {
+            _forceEnvioBusy = false;
+        }
+    }
+
+    /** Se passou 24h sem envio bem-sucedido, força upload silencioso dos membros locais. */
+    async function verificarEForcarEnvioSe24h(motivo) {
+        if (!configValida()) return { sucesso: false, pulou: true, motivo: 'nuvem_inativa' };
+        if (!precisaForceEnvio24h()) {
+            return { sucesso: true, pulou: true, motivo: 'ainda_no_prazo', ms: msDesdeUltimoEnvioMembros() };
+        }
+        // Evita vários aparelhos/abas martelando ao mesmo tempo: no máximo 1 force auto a cada 2h
+        try {
+            var lastForce = localStorage.getItem(CHAVE_ULTIMO_ENVIO_FORCE);
+            if (lastForce) {
+                var tF = Date.parse(lastForce);
+                if (tF && (Date.now() - tF) < (2 * 60 * 60 * 1000)) {
+                    return { sucesso: true, pulou: true, motivo: 'force_recente' };
+                }
+            }
+        } catch (eF) {}
+        console.info('IBNNuvem: >24h sem envio de membros — forçando upload (' + (motivo || '') + ')');
+        return await forcarEnvioMembrosLocais(null);
+    }
+
     // Envia dados do membro para a nuvem (inclui senha para login em vários aparelhos).
     // Resposta de segurança continua só no aparelho por privacidade extra.
     function membroPublico(m) {
@@ -138,6 +255,7 @@ const IBNNuvem = (function () {
                         try { onProgress(Math.min(i + TAM, itens.length), itens.length, 'membros'); } catch (eP) {}
                     }
                 }
+                if (enviados > 0 || force) registrarEnvioMembrosOk({ quantidade: enviados, force: true });
                 return { sucesso: true, quantidade: enviados, ignorados: 0, erros: erros };
             }
 
@@ -155,6 +273,7 @@ const IBNNuvem = (function () {
                     try { onProgress(k + 1, itens.length, 'membros'); } catch (eP2) {}
                 }
             }
+            if (enviados > 0) registrarEnvioMembrosOk({ quantidade: enviados, force: false });
             return { sucesso: true, quantidade: enviados, ignorados: ignorados, erros: erros };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
@@ -188,6 +307,24 @@ const IBNNuvem = (function () {
                 return { sucesso: true, ignorado: true, mensagem: 'Nuvem já tinha versão mais recente deste membro' };
             }
             if (!r.ok) return { sucesso: false, mensagem: r.motivo || 'Falha ao gravar' };
+            // Regrava no localStorage o membro já com atualizadoEm (evita cópia local “sem data”)
+            try {
+                if (typeof lerMembros === 'function' && typeof salvarMembros === 'function' && m && m.id !== undefined) {
+                    var listaLoc = lerMembros();
+                    var ixLoc = listaLoc.findIndex(function (x) { return String(x.id) === String(m.id); });
+                    if (ixLoc >= 0) {
+                        listaLoc[ixLoc].atualizadoEm = m.atualizadoEm || listaLoc[ixLoc].atualizadoEm;
+                        if (m.atualizadoPorId) listaLoc[ixLoc].atualizadoPorId = m.atualizadoPorId;
+                        if (m.atualizadoPorNome) listaLoc[ixLoc].atualizadoPorNome = m.atualizadoPorNome;
+                        // Grava só no storage, sem re-disparar sync em cascata
+                        localStorage.setItem(
+                            (typeof CHAVE_MEMBROS !== 'undefined' ? CHAVE_MEMBROS : 'ibn_membros'),
+                            JSON.stringify(listaLoc)
+                        );
+                    }
+                }
+            } catch (eLoc) {}
+            registrarEnvioMembrosOk({ quantidade: 1, force: force });
             return { sucesso: true };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
@@ -246,7 +383,8 @@ const IBNNuvem = (function () {
                 try { return typeof membroFoiExcluido === 'function' && membroFoiExcluido(m); } catch (e) { return false; }
             }
             function ts(m) {
-                var t = Date.parse((m && (m.atualizadoEm || m.criadoEm)) || '') || 0;
+                // Alinhado a _tsMembro: inclui dataCadastro (cadastros novos sem atualizadoEm)
+                var t = Date.parse((m && (m.atualizadoEm || m.criadoEm || m.dataCadastro)) || '') || 0;
                 return t;
             }
             const local = (typeof lerMembros === 'function') ? lerMembros() : [];
@@ -1020,14 +1158,23 @@ const IBNNuvem = (function () {
         if (!usuario || !usuario.id) return { sucesso: false, mensagem: 'Sem sessão' };
         if (!iniciar()) return { sucesso: false, mensagem: ultimoErro || 'Nuvem offline' };
 
-        // Evita spam: no máximo 1x a cada 3 minutos por membro neste aparelho
+        // Cadastro ainda pendente de subir? Nunca pular por throttle
+        var pendenteNuvem = false;
         try {
-            var chave = 'ibn_sync_sessao_' + String(usuario.id);
-            var ultima = parseInt(localStorage.getItem(chave) || '0', 10);
-            if (ultima && (Date.now() - ultima) < 3 * 60 * 1000) {
-                return { sucesso: true, mensagem: 'Já sincronizado há pouco', pulado: true };
-            }
-        } catch (e) {}
+            pendenteNuvem = (typeof temPendenteNuvem === 'function' && temPendenteNuvem(usuario.id)) ||
+                (String(usuario.status || '').toLowerCase() === 'pendente');
+        } catch (ePend) {}
+
+        // Evita spam: no máximo 1x a cada 3 minutos — EXCETO se cadastro ainda não subiu
+        if (!pendenteNuvem) {
+            try {
+                var chave = 'ibn_sync_sessao_' + String(usuario.id);
+                var ultima = parseInt(localStorage.getItem(chave) || '0', 10);
+                if (ultima && (Date.now() - ultima) < 3 * 60 * 1000) {
+                    return { sucesso: true, mensagem: 'Já sincronizado há pouco', pulado: true };
+                }
+            } catch (e) {}
+        }
 
         var resultados = { membro: false, fotos: 0, fotosCelula: 0, fotosPuxadas: false };
 
@@ -1042,7 +1189,7 @@ const IBNNuvem = (function () {
             console.warn('sync sessão puxar fotos:', e);
         }
 
-        // 2) Membro completo da lista local (tem senha e todos os campos)
+        // 2) Membro completo da lista local — SEMPRE com force (celular do membro precisa subir)
         try {
             var completo = usuario;
             if (typeof lerMembros === 'function') {
@@ -1050,8 +1197,11 @@ const IBNNuvem = (function () {
                 var achado = lista.find(function (m) { return String(m.id) === String(usuario.id); });
                 if (achado) completo = achado;
             }
-            var rm = await sincronizarUmMembro(completo);
-            resultados.membro = !!(rm && rm.sucesso);
+            var rm = await sincronizarUmMembro(completo, { force: true });
+            resultados.membro = !!(rm && rm.sucesso && !rm.ignorado);
+            if (resultados.membro && typeof marcarPendenteNuvem === 'function') {
+                try { marcarPendenteNuvem(completo.id, false); } catch (eM) {}
+            }
         } catch (e) {
             console.warn('sync sessão membro:', e);
         }
@@ -1299,13 +1449,30 @@ const IBNNuvem = (function () {
         }
     }
     function agendarSincronizacaoPeriodica() {
-        setTimeout(function () { sincronizarTudoDaNuvem('inicio'); }, 1500);
+        setTimeout(function () {
+            sincronizarTudoDaNuvem('inicio');
+            // Se faz mais de 24h sem envio ok, força subir cadastros locais (recupera presos)
+            setTimeout(function () {
+                try { verificarEForcarEnvioSe24h('inicio'); } catch (e24) {}
+            }, 4000);
+        }, 1500);
         if (_syncTimer) clearInterval(_syncTimer);
-        _syncTimer = setInterval(function () { sincronizarTudoDaNuvem('periodico'); }, 30000);
+        _syncTimer = setInterval(function () {
+            sincronizarTudoDaNuvem('periodico');
+        }, 30000);
+        // A cada ~2h verifica se precisa force 24h (além do intervalo de pull)
+        setInterval(function () {
+            try { verificarEForcarEnvioSe24h('periodico-24h'); } catch (e24b) {}
+        }, 2 * 60 * 60 * 1000);
         document.addEventListener('visibilitychange', function () {
-            if (document.visibilityState === 'visible') sincronizarTudoDaNuvem('foco');
+            if (document.visibilityState === 'visible') {
+                sincronizarTudoDaNuvem('foco');
+                try { verificarEForcarEnvioSe24h('foco'); } catch (e24c) {}
+            }
         });
-        window.addEventListener('focus', function () { sincronizarTudoDaNuvem('focus'); });
+        window.addEventListener('focus', function () {
+            sincronizarTudoDaNuvem('focus');
+        });
     }
     if (typeof document !== 'undefined') {
         if (document.readyState === 'loading') {
@@ -1338,6 +1505,11 @@ const IBNNuvem = (function () {
         exportarMembrosCSV: exportarMembrosCSV,
         exportarRelatoriosCSV: exportarRelatoriosCSV,
         enviarTudoDoAparelho: enviarTudoDoAparelho,
+        forcarEnvioMembrosLocais: forcarEnvioMembrosLocais,
+        verificarEForcarEnvioSe24h: verificarEForcarEnvioSe24h,
+        precisaForceEnvio24h: precisaForceEnvio24h,
+        lerUltimoEnvioMembros: lerUltimoEnvioMembros,
+        msDesdeUltimoEnvioMembros: msDesdeUltimoEnvioMembros,
         sincronizarSessaoMembro: sincronizarSessaoMembro,
         agendarSyncSessao: agendarSyncSessao,
         csvMembros: csvMembros,

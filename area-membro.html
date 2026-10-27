@@ -53,6 +53,14 @@
     <main class="container mx-auto px-4 py-8">
         <h1 class="text-2xl font-bold text-primary mb-6">👋 Bem-vindo, <span id="tituloNome"></span>!</h1>
 
+        <div id="bannerEnvioNuvem" class="hidden mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p class="font-bold"><i class="fa fa-cloud-upload"></i> Enviar meu cadastro para a igreja</p>
+            <p id="txtEnvioNuvem" class="text-xs mt-1">Seu cadastro precisa chegar na nuvem para a gestão aprovar. Toque no botão com a internet ligada.</p>
+            <button type="button" id="btnEnviarMeuCadastro" class="mt-3 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-accent">
+                <i class="fa fa-cloud-upload"></i> Enviar meu cadastro agora
+            </button>
+        </div>
+
         <div class="grid md:grid-cols-3 gap-6">
             <!-- Perfil -->
             <div class="md:col-span-1">
@@ -198,6 +206,116 @@
         }
 
         carregarPerfil();
+
+        // ---- Envio do cadastro deste celular para a nuvem (gestão enxergar) ----
+        function membroCompletoLocal() {
+            var u = getUsuarioLogado();
+            if (!u) return null;
+            try {
+                if (typeof lerMembros === 'function') {
+                    var lista = lerMembros() || [];
+                    var achado = lista.find(function (m) { return String(m.id) === String(u.id); });
+                    if (achado) return achado;
+                }
+            } catch (e) {}
+            return u;
+        }
+
+        function atualizarBannerNuvem(estado, texto) {
+            var ban = document.getElementById('bannerEnvioNuvem');
+            var txt = document.getElementById('txtEnvioNuvem');
+            var btn = document.getElementById('btnEnviarMeuCadastro');
+            if (!ban) return;
+            if (estado === 'ok') {
+                ban.classList.add('hidden');
+                return;
+            }
+            ban.classList.remove('hidden');
+            if (txt && texto) txt.textContent = texto;
+            if (btn) {
+                if (estado === 'enviando') {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Enviando…';
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa fa-cloud-upload"></i> Enviar meu cadastro agora';
+                }
+            }
+        }
+
+        function enviarMeuCadastroAgora(manual) {
+            var m = membroCompletoLocal();
+            if (!m) return Promise.resolve({ sucesso: false });
+            atualizarBannerNuvem('enviando', 'Enviando seu cadastro para a igreja… mantenha a internet ligada.');
+            var envio;
+            if (typeof garantirCadastroNaNuvem === 'function') {
+                envio = garantirCadastroNaNuvem(m, {
+                    tentativas: manual ? 6 : 4,
+                    intervaloMs: 2000,
+                    onProgress: function (n, total) {
+                        atualizarBannerNuvem('enviando', 'Enviando… tentativa ' + n + '/' + total);
+                    }
+                });
+            } else if (typeof enviarMembroParaNuvem === 'function') {
+                envio = enviarMembroParaNuvem(m, { force: true });
+            } else {
+                return Promise.resolve({ sucesso: false, mensagem: 'Nuvem indisponível' });
+            }
+            return envio.then(function (r) {
+                if (r && r.sucesso && !r.semNuvem) {
+                    atualizarBannerNuvem('ok');
+                    if (manual) alert('Cadastro enviado para a igreja! A gestão já pode ver e aprovar.');
+                    return r;
+                }
+                var msg = (r && r.semNuvem)
+                    ? 'A nuvem ainda não está ativa neste site. Avise a secretaria.'
+                    : 'Não confirmou o envio. Verifique a internet e toque em Enviar de novo.';
+                atualizarBannerNuvem('erro', msg);
+                if (manual) alert(msg);
+                return r;
+            }).catch(function (e) {
+                atualizarBannerNuvem('erro', 'Falha de rede. Tente de novo com internet.');
+                if (manual) alert('Falha: ' + ((e && e.message) || String(e)));
+                return { sucesso: false };
+            });
+        }
+
+        // Mostra banner se ainda está pendente ou status pendente
+        (function checarPendenciaNuvem() {
+            var u = getUsuarioLogado();
+            var precisa = false;
+            try {
+                if (typeof temPendenteNuvem === 'function' && temPendenteNuvem(u && u.id)) precisa = true;
+            } catch (e) {}
+            try {
+                if (u && String(u.status || '').toLowerCase() === 'pendente') precisa = true;
+            } catch (e2) {}
+            // Sempre tenta enviar ao abrir a área (celular do membro)
+            if (precisa) {
+                atualizarBannerNuvem('pendente', 'Seu cadastro ainda precisa chegar na nuvem para a gestão aprovar.');
+            }
+            setTimeout(function () {
+                enviarMeuCadastroAgora(false).then(function (r) {
+                    // Se status pendente e enviou ok, some o banner; se ainda pendente de aprovação, mostra msg positiva
+                    if (r && r.sucesso) {
+                        var st = (getUsuarioLogado() || {}).status;
+                        if (String(st || '').toLowerCase() === 'pendente') {
+                            // já está na nuvem; banner pode sumir
+                            atualizarBannerNuvem('ok');
+                        }
+                    } else if (precisa) {
+                        atualizarBannerNuvem('erro', 'Toque no botão abaixo para enviar seu cadastro com a internet ligada.');
+                    }
+                });
+            }, 800);
+        })();
+
+        var btnEnviarCad = document.getElementById('btnEnviarMeuCadastro');
+        if (btnEnviarCad) {
+            btnEnviarCad.addEventListener('click', function () {
+                enviarMeuCadastroAgora(true);
+            });
+        }
 
         // Sair
         document.getElementById('btnSair').addEventListener('click', sair);
