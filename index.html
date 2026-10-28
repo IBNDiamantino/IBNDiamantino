@@ -913,6 +913,21 @@
         };
     </script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB_R2E9E6b9PLXnh8nLVtPknLSn0QstRy8&language=pt-BR&region=BR&callback=onGoogleMapsReady"></script>
+    <!-- Aviso fixo: cadastro ainda não está na nuvem (só logado + faltando) -->
+    <div id="fabCadastroNuvem" class="hidden fixed bottom-20 right-4 z-[90] max-w-[min(92vw,320px)]">
+        <button type="button" id="btnFabCadastroNuvem" class="w-full flex items-center gap-3 bg-amber-500 hover:bg-amber-400 text-primary font-bold rounded-2xl shadow-2xl px-4 py-3 border-2 border-amber-300 animate-pulse">
+            <span class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-amber-600 text-xl">
+                <i class="fa fa-bell"></i>
+                <span class="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-white"></span>
+            </span>
+            <span class="text-left leading-tight">
+                <span class="block text-sm">Atualizar cadastro na igreja</span>
+                <span id="txtFabCadastroNuvem" class="block text-[11px] font-semibold opacity-90">Toque para enviar seus dados</span>
+            </span>
+        </button>
+    </div>
+    <div id="toastCadastroNuvem" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-[95] bg-emerald-600 text-white text-sm font-bold px-4 py-3 rounded-xl shadow-lg max-w-[90vw] text-center"></div>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
@@ -921,6 +936,119 @@
     <script src="playlist-data.js"></script>
 
     <script>
+
+        // ==================================================
+        // 🔔 Cadastro na nuvem — aviso na HOME (logado)
+        // ==================================================
+        function checarCadastroNuvemNaHome() {
+            var u = null;
+            try { u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null; } catch (e) {}
+            if (!u || u.id === undefined || u.id === null) return;
+
+            var fab = document.getElementById('fabCadastroNuvem');
+            var txt = document.getElementById('txtFabCadastroNuvem');
+            var btn = document.getElementById('btnFabCadastroNuvem');
+            var toast = document.getElementById('toastCadastroNuvem');
+            if (!fab || !btn) return;
+
+            function mostrarFab(msg) {
+                fab.classList.remove('hidden');
+                if (txt) txt.textContent = msg || 'Toque para enviar seus dados';
+                btn.classList.add('animate-pulse');
+            }
+            function esconderFab() {
+                fab.classList.add('hidden');
+                btn.classList.remove('animate-pulse');
+            }
+            function mostrarToast(msg, ok) {
+                if (!toast) { try { alert(msg); } catch (e) {} return; }
+                toast.textContent = msg;
+                toast.classList.remove('hidden', 'bg-emerald-600', 'bg-amber-600', 'bg-red-600');
+                toast.classList.add(ok ? 'bg-emerald-600' : 'bg-amber-600');
+                toast.classList.remove('hidden');
+                setTimeout(function () { toast.classList.add('hidden'); }, 4500);
+            }
+
+            function enviarAgora() {
+                var m = u;
+                try {
+                    if (typeof lerMembros === 'function') {
+                        var lista = lerMembros() || [];
+                        var ach = lista.find(function (x) { return String(x.id) === String(u.id); });
+                        if (ach) m = ach;
+                    }
+                } catch (e1) {}
+                if (txt) txt.textContent = 'Enviando…';
+                btn.disabled = true;
+                btn.classList.remove('animate-pulse');
+                var prom;
+                if (typeof garantirCadastroNaNuvem === 'function') {
+                    prom = garantirCadastroNaNuvem(m, { tentativas: 3, intervaloMs: 700, timeoutMs: 10000 });
+                } else if (typeof enviarMembroParaNuvem === 'function') {
+                    prom = enviarMembroParaNuvem(m, { force: true });
+                } else {
+                    prom = Promise.resolve({ sucesso: false, mensagem: 'Nuvem indisponível' });
+                }
+                prom.then(function (r) {
+                    btn.disabled = false;
+                    if (r && r.sucesso && !r.semNuvem) {
+                        esconderFab();
+                        mostrarToast('Seus dados estão atualizados na nuvem da igreja.', true);
+                        return;
+                    }
+                    var raw = ((r && r.mensagem) || '') + ' ' + ((r && r.motivo) || '');
+                    var msg;
+                    if (/quota|limite diário|resource-exhausted|429|exced/i.test(raw) || (r && r.possivelQuota)) {
+                        msg = 'A nuvem está no limite diário. Tente de novo amanhã de manhã (depois das 4h–5h).';
+                    } else if (/timeout|não respondeu|demorou/i.test(raw)) {
+                        msg = 'Não confirmou agora. Tente mais tarde ou amanhã de manhã.';
+                    } else {
+                        msg = (r && r.mensagem) || 'Não enviou. Verifique a internet e toque de novo.';
+                    }
+                    if (txt) txt.textContent = 'Toque para tentar de novo';
+                    btn.classList.add('animate-pulse');
+                    mostrarToast(msg, false);
+                }).catch(function () {
+                    btn.disabled = false;
+                    if (txt) txt.textContent = 'Toque para tentar de novo';
+                    btn.classList.add('animate-pulse');
+                    mostrarToast('Falha de rede. Tente de novo.', false);
+                });
+            }
+
+            btn.onclick = function () { enviarAgora(); };
+
+            // 1 leitura: já está na nuvem?
+            if (typeof IBNNuvem === 'undefined' || !IBNNuvem.membroExisteNaNuvem) {
+                try {
+                    if (typeof temPendenteNuvem === 'function' && temPendenteNuvem(u.id)) {
+                        mostrarFab('Cadastro pendente — toque para enviar');
+                    }
+                } catch (e2) {}
+                return;
+            }
+            IBNNuvem.membroExisteNaNuvem(u.id).then(function (r) {
+                if (r && r.sucesso && r.existe) {
+                    try {
+                        if (typeof marcarPendenteNuvem === 'function') marcarPendenteNuvem(u.id, false);
+                    } catch (e3) {}
+                    esconderFab();
+                    return;
+                }
+                mostrarFab(
+                    (r && r.timeout)
+                        ? 'Toque para enviar seu cadastro'
+                        : 'Seus dados ainda não estão na nuvem — toque aqui'
+                );
+            }).catch(function () {
+                try {
+                    if (typeof temPendenteNuvem === 'function' && temPendenteNuvem(u.id)) {
+                        mostrarFab('Toque para enviar seu cadastro');
+                    }
+                } catch (e4) {}
+            });
+        }
+
         // ==================================================
         // 🔐 VERIFICAR SESSÃO DO USUÁRIO (usa conta.js)
         // ==================================================
@@ -2083,29 +2211,13 @@
                 return;
             }
 
-            try {
-                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.iniciar) IBNNuvem.iniciar();
-                if (typeof IBNNuvem !== 'undefined') {
-                    if (IBNNuvem.puxarFotosCelulasParaLocal) await IBNNuvem.puxarFotosCelulasParaLocal();
-                    if (IBNNuvem.puxarFotosParaLocal) await IBNNuvem.puxarFotosParaLocal();
-                }
-            } catch (e) { console.warn('preview nuvem', e); }
+            // Fotos: só localStorage na home (não puxar nuvem — economiza dezenas de milhares de leituras)
+            try { if (typeof IBNNuvem !== 'undefined' && IBNNuvem.iniciar) IBNNuvem.iniciar(); } catch (e) {}
 
             var cel = [];
             var min = [];
             try { cel = JSON.parse(localStorage.getItem('ibn_fotos_celulas') || '[]'); } catch (e) {}
             try { min = JSON.parse(localStorage.getItem('ibn_fotos') || '[]'); } catch (e) {}
-
-            try {
-                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.buscarFotos) {
-                    var rM = await IBNNuvem.buscarFotos();
-                    if (rM && rM.sucesso && rM.lista && rM.lista.length) min = rM.lista;
-                }
-                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.buscarFotosCelulas) {
-                    var rC = await IBNNuvem.buscarFotosCelulas();
-                    if (rC && rC.sucesso && rC.lista && rC.lista.length) cel = rC.lista;
-                }
-            } catch (e2) { console.warn(e2); }
 
             var htmlC = thumbs(cel, 'fotos-celulas.html');
             var htmlM = thumbs(min, 'fotos.html');
@@ -2516,6 +2628,7 @@
             // 2) Resto do site (protegido para não quebrar o YouTube)
             try {
                 verificarSessao();
+        setTimeout(function () { try { checarCadastroNuvemNaHome(); } catch (eN) {} }, 1200);
                 mostrarAlertaDoDia();
                 try { Promise.resolve(destacarEventosInscricao()).catch(function () {}); } catch (eEv) { console.warn(eEv); }
 

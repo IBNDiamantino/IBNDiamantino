@@ -160,6 +160,25 @@
 
     </main>
 
+    <!-- Popup: cadastro ainda não está na nuvem -->
+    <div id="modalEnviarCadastroNuvem" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl text-center">
+            <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-amber-100 flex items-center justify-center">
+                <i class="fa fa-cloud-upload text-2xl text-amber-700"></i>
+            </div>
+            <h2 class="text-lg font-bold text-primary mb-2">Envie seu cadastro</h2>
+            <p id="txtModalEnviarNuvem" class="text-sm text-gray-600 mb-4">
+                Seu cadastro ainda não chegou na nuvem da igreja. A secretaria só consegue ver depois que você enviar.
+            </p>
+            <button type="button" id="btnModalEnviarNuvem" class="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm mb-2">
+                <i class="fa fa-cloud-upload"></i> Enviar agora
+            </button>
+            <button type="button" id="btnModalEnviarDepois" class="w-full text-gray-500 text-sm py-2">
+                Depois
+            </button>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
@@ -293,54 +312,76 @@
             });
         }
 
-        // Banner SÓ se este membro AINDA NÃO tem documento na nuvem (1 leitura).
-        // Se já está na nuvem → some o aviso (mesmo que status seja pendente de aprovação).
+        function abrirPopupEnviarNuvem(txt) {
+            var modal = document.getElementById('modalEnviarCadastroNuvem');
+            var p = document.getElementById('txtModalEnviarNuvem');
+            if (p && txt) p.textContent = txt;
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+        function fecharPopupEnviarNuvem() {
+            var modal = document.getElementById('modalEnviarCadastroNuvem');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        // Banner + POPUP só se este membro AINDA NÃO tem documento na nuvem (1 leitura).
         (function checarSeFaltaNaNuvem() {
             var u = getUsuarioLogado();
             if (!u || u.id === undefined) return;
-            atualizarBannerNuvem('ok'); // esconde até confirmar
+            atualizarBannerNuvem('ok');
 
-            function mostrarPrecisaEnviar(txt) {
-                atualizarBannerNuvem(
-                    'pendente',
-                    txt || 'Seu cadastro ainda não está na nuvem da igreja. Toque em enviar com a internet ligada.'
-                );
+            function mostrarPrecisaEnviar(txt, comPopup) {
+                var msg = txt || 'Seu cadastro ainda não está na nuvem da igreja. Toque em enviar com a internet ligada.';
+                atualizarBannerNuvem('pendente', msg);
+                if (comPopup !== false) {
+                    // Evita popup toda hora no mesmo dia se a pessoa clicou "Depois"
+                    try {
+                        var k = 'ibn_popup_envio_nuvem_' + String(u.id);
+                        var ultima = parseInt(sessionStorage.getItem(k) || '0', 10);
+                        if (ultima && (Date.now() - ultima) < 30 * 60 * 1000) {
+                            // já mostrou nesta sessão há menos de 30 min
+                        } else {
+                            sessionStorage.setItem(k, String(Date.now()));
+                            abrirPopupEnviarNuvem(msg);
+                        }
+                    } catch (eP) {
+                        abrirPopupEnviarNuvem(msg);
+                    }
+                }
             }
 
-            // Flag local de pendência → já mostra, depois confirma na nuvem
             var flagLocal = false;
             try {
                 if (typeof temPendenteNuvem === 'function' && temPendenteNuvem(u.id)) flagLocal = true;
             } catch (e) {}
 
             if (typeof IBNNuvem === 'undefined' || !IBNNuvem.membroExisteNaNuvem) {
-                if (flagLocal) mostrarPrecisaEnviar();
+                if (flagLocal) mostrarPrecisaEnviar(null, true);
                 return;
             }
 
             IBNNuvem.membroExisteNaNuvem(u.id).then(function (r) {
                 if (r && r.sucesso && r.existe) {
-                    // Já está na nuvem: não pede envio de novo
                     try {
                         if (typeof marcarPendenteNuvem === 'function') marcarPendenteNuvem(u.id, false);
                     } catch (eM) {}
                     atualizarBannerNuvem('ok');
+                    fecharPopupEnviarNuvem();
                     return;
                 }
-                // Não existe (ou não conseguiu ler) → mostrar e tentar 1 envio silencioso
                 mostrarPrecisaEnviar(
                     (r && r.timeout)
-                        ? 'Não foi possível confirmar a nuvem agora. Se seu cadastro é novo, toque em enviar.'
-                        : 'Seu cadastro ainda não está na nuvem. Toque em enviar para a gestão poder ver.'
+                        ? 'Não foi possível confirmar a nuvem agora. Se seu cadastro é novo, envie quando a internet estiver boa.'
+                        : 'Seu cadastro ainda não chegou na nuvem da igreja. A secretaria só vê depois que você enviar.',
+                    true
                 );
-                // Uma tentativa automática só se realmente parecer faltar
-                if (r && r.sucesso && r.existe === false) {
-                    setTimeout(function () {
-                        enviarMeuCadastroAgora(false);
-                    }, 600);
-                }
             }).catch(function () {
-                if (flagLocal) mostrarPrecisaEnviar();
+                if (flagLocal) mostrarPrecisaEnviar(null, true);
             });
         })();
 
@@ -349,6 +390,22 @@
             btnEnviarCad.addEventListener('click', function () {
                 enviarMeuCadastroAgora(true);
             });
+        }
+        var btnModalEnviar = document.getElementById('btnModalEnviarNuvem');
+        if (btnModalEnviar) {
+            btnModalEnviar.addEventListener('click', function () {
+                btnModalEnviar.disabled = true;
+                btnModalEnviar.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Enviando…';
+                enviarMeuCadastroAgora(true).then(function (r) {
+                    btnModalEnviar.disabled = false;
+                    btnModalEnviar.innerHTML = '<i class="fa fa-cloud-upload"></i> Enviar agora';
+                    if (r && r.sucesso && !r.semNuvem) fecharPopupEnviarNuvem();
+                });
+            });
+        }
+        var btnModalDepois = document.getElementById('btnModalEnviarDepois');
+        if (btnModalDepois) {
+            btnModalDepois.addEventListener('click', fecharPopupEnviarNuvem);
         }
 
         // Sair
