@@ -1165,7 +1165,7 @@ const IBNNuvem = (function () {
         }
     }
 
-    async function buscarFotosCelulas    async function buscarFotosCelulas() {
+    async function buscarFotosCelulas() {
         if (!iniciar() || !db) return { sucesso: false, lista: [], mensagem: ultimoErro };
         try {
             const snap = await db.collection('fotos_celulas').get();
