@@ -44,14 +44,14 @@
                         <i class="fa fa-refresh"></i> Atualizar da nuvem agora
                     </button>
                     <button type="button" id="btnForcarEnvioCadastros" class="bg-secondary text-primary px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 whitespace-nowrap border border-yellow-600">
-                        <i class="fa fa-cloud-upload"></i> Forçar envio de cadastros
+                        <i class="fa fa-cloud-upload"></i> Subir cadastros que faltam
                     </button>
                 </div>
             </div>
             <p id="avisoForce24h" class="hidden mt-2 text-xs text-amber-900 bg-amber-100 border border-amber-300 rounded-lg px-3 py-2">
                 <i class="fa fa-exclamation-triangle"></i>
                 Faz mais de 24h sem envio confirmado para a nuvem. Cadastros feitos só neste aparelho podem não ter subido.
-                Use <strong>Forçar envio de cadastros</strong> (de preferência no celular/PC onde a pessoa se cadastrou).
+                Use <strong>Subir cadastros que faltam</strong> (de preferência no celular/PC onde a pessoa se cadastrou).
             </p>
         </div>
         <!-- Filtros -->
@@ -887,40 +887,38 @@
             var txt = document.getElementById('txtSyncGestao');
             var btn = document.getElementById('btnForcarEnvioCadastros');
             var btn2 = document.getElementById('btnAtualizarNuvemGestao');
-            if (!confirm('Forçar envio de TODOS os cadastros deste aparelho para a nuvem?\n\nUse no aparelho onde as pessoas se cadastraram (os dados precisam existir neste localStorage).\nIsso grava na nuvem mesmo se a cópia antiga tentasse bloquear.')) {
+            if (!confirm('Subir para a nuvem os cadastros que existem NESTE aparelho e ainda não estão na nuvem?\n\nIMPORTANTE: use o celular/PC onde a pessoa se cadastrou.\nSe der timeout, publique as Regras do Firestore (arquivo firestore.rules).')) {
                 return;
             }
             if (btn) btn.disabled = true;
             if (btn2) btn2.disabled = true;
-            if (txt) txt.textContent = 'Forçando envio dos cadastros…';
+            if (txt) txt.textContent = 'Comparando aparelho × nuvem…';
             try {
-                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.forcarEnvioMembrosLocais) {
+                if (typeof IBNNuvem === 'undefined') {
                     alert('Nuvem não disponível neste aparelho.');
                     return;
                 }
-                var r = await IBNNuvem.forcarEnvioMembrosLocais(function (a, b) {
-                    if (txt) txt.textContent = 'Enviando cadastros… ' + a + '/' + b;
-                });
-                // Depois do force, baixa o espelho atualizado
+                var r;
+                if (IBNNuvem.enviarCadastrosAusentesNaNuvem) {
+                    r = await IBNNuvem.enviarCadastrosAusentesNaNuvem(function (a, b, etapa) {
+                        if (txt) txt.textContent = (etapa === 'comparando' ? 'Comparando… ' : 'Enviando faltantes… ') + a + '/' + b;
+                    });
+                } else {
+                    r = await IBNNuvem.forcarEnvioMembrosLocais(function (a, b) {
+                        if (txt) txt.textContent = 'Enviando… ' + a + '/' + b;
+                    });
+                }
                 if (IBNNuvem.puxarMembrosParaLocal) {
-                    if (txt) txt.textContent = 'Baixando espelho da nuvem…';
+                    if (txt) txt.textContent = 'Atualizando lista…';
                     await IBNNuvem.puxarMembrosParaLocal();
                 }
                 formatarUltimoEnvio();
-                if (txt) {
-                    txt.textContent = r && r.sucesso
-                        ? ('Envio forçado ok: ' + (r.quantidade || 0) + ' de ' + (r.totalLocal || 0) + ' membros deste aparelho.')
-                        : ('Falha no envio forçado: ' + ((r && r.mensagem) || 'erro'));
-                }
+                if (txt) txt.textContent = (r && r.mensagem) || 'Concluído';
                 try { renderizar(); } catch (eR) {}
-                if (r && r.sucesso) {
-                    alert('Cadastros enviados para a nuvem.\n' + (r.mensagem || '') + '\n\nPeça aos outros gestores para clicar em "Atualizar da nuvem agora".');
-                } else {
-                    alert('Não foi possível forçar o envio.\n' + ((r && r.mensagem) || ''));
-                }
+                alert((r && r.mensagem) || 'Concluído');
             } catch (e) {
                 if (txt) txt.textContent = 'Erro: ' + ((e && e.message) || String(e));
-                alert('Erro ao forçar envio: ' + ((e && e.message) || String(e)));
+                alert('Erro: ' + ((e && e.message) || String(e)));
             } finally {
                 if (btn) btn.disabled = false;
                 if (btn2) btn2.disabled = false;

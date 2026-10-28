@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Site usa login LOCAL (não Firebase Auth).
+    // Por isso as regras precisam permitir leitura/escrita sem request.auth.
+    // Se preferir mais seguro depois, dá para restringir por App Check.
+
+    match /membros/{id} {
+      allow read, write: if true;
+    }
+
+    match /config/{doc} {
+      allow read, write: if true;
+    }
+
+    match /relatorios_celula/{id} {
+      allow read, write: if true;
+    }
+
+    match /visitantes/{id} {
+      allow read, write: if true;
+    }
+
+    match /fotos/{id} {
+      allow read, write: if true;
+    }
+
+    match /fotos_celulas/{id} {
+      allow read, write: if true;
+    }
+
+    match /escalas_ministerio/{id} {
+      allow read, write: if true;
+    }
+
+    match /escalas_celula/{id} {
+      allow read, write: if true;
+    }
+
+    match /atividades/{id} {
+      allow read, write: if true;
+    }
+
+    // demais coleções: bloqueado por padrão
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

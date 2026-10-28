@@ -28,6 +28,15 @@
                 Enquanto a nuvem não estiver configurada no arquivo <code>firebase-config.js</code>,
                 o site continua funcionando só no aparelho (como hoje).
             </p>
+            <button type="button" id="btnTestarNuvem" class="mt-3 bg-secondary text-primary px-4 py-2 rounded-lg text-sm font-bold">
+                <i class="fa fa-plug"></i> Testar gravação na nuvem
+            </button>
+            <p id="msgTesteNuvem" class="text-sm mt-2 hidden"></p>
+            <p class="text-xs text-amber-800 mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Se o celular mostra <strong>timeout</strong> ao enviar cadastro, quase sempre as
+                <strong>Regras do Firestore</strong> estão bloqueando escrita (o site não usa login Firebase).
+                No Firebase Console → Firestore → Regras, use o arquivo <code>firestore.rules</code> deste projeto e publique.
+            </p>
         </div>
 
         <div class="bg-white rounded-xl shadow p-5 border">
@@ -40,6 +49,9 @@
             <div class="flex flex-wrap gap-3">
                 <button type="button" id="btnEnviar" class="bg-primary text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-accent">
                     <i class="fa fa-upload"></i> Enviar tudo deste aparelho
+                </button>
+                <button type="button" id="btnSubirAusentes" class="bg-secondary text-primary px-5 py-2.5 rounded-lg font-bold text-sm border border-yellow-600">
+                    <i class="fa fa-cloud-upload"></i> Só os que faltam na nuvem
                 </button>
                 <button type="button" id="btnBaixar" class="bg-white border-2 border-primary text-primary px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-50">
                     <i class="fa fa-cloud-download"></i> Baixar tudo da nuvem
@@ -162,6 +174,32 @@ service cloud.firestore {
             if (btn) btn.disabled = false;
         });
 
+        var btnAus = document.getElementById('btnSubirAusentes');
+        if (btnAus) {
+            btnAus.addEventListener('click', async function () {
+                if (!exigeGestao()) return;
+                var msg = document.getElementById('msgEnviar');
+                msg.classList.remove('hidden');
+                msg.className = 'text-sm mt-2 text-gray-600';
+                msg.textContent = 'Procurando cadastros deste aparelho que faltam na nuvem…';
+                btnAus.disabled = true;
+                try {
+                    var r = await IBNNuvem.enviarCadastrosAusentesNaNuvem(function (a, b, etapa) {
+                        msg.textContent = (etapa || 'enviando') + ' ' + a + '/' + b;
+                    });
+                    msg.className = 'text-sm mt-2 font-semibold ' + (r && r.sucesso ? 'text-green-700' : 'text-red-600');
+                    msg.textContent = (r && r.mensagem) || 'Fim';
+                    if (r && r.nomes && r.nomes.length) {
+                        msg.textContent += ' · Ex.: ' + r.nomes.join(', ');
+                    }
+                    alert((r && r.mensagem) || 'Concluído');
+                } catch (e) {
+                    msg.className = 'text-sm mt-2 text-red-600 font-semibold';
+                    msg.textContent = (e && e.message) || String(e);
+                }
+                btnAus.disabled = false;
+            });
+        }
         document.getElementById('btnBaixar').addEventListener('click', async function() {
             if (!exigeGestao()) return;
             var msg = document.getElementById('msgEnviar');
@@ -235,6 +273,32 @@ service cloud.firestore {
             }).join('');
         }
         document.getElementById('btnAtividades').addEventListener('click', carregarAtividadesNuvem);
+        var btnTest = document.getElementById('btnTestarNuvem');
+        if (btnTest) {
+            btnTest.addEventListener('click', async function () {
+                var msg = document.getElementById('msgTesteNuvem');
+                if (msg) {
+                    msg.classList.remove('hidden');
+                    msg.className = 'text-sm mt-2 text-gray-600';
+                    msg.textContent = 'Testando gravação em membros…';
+                }
+                btnTest.disabled = true;
+                try {
+                    var r = await IBNNuvem.testarConexaoNuvem();
+                    if (msg) {
+                        msg.className = 'text-sm mt-2 font-semibold ' + (r.sucesso ? 'text-green-700' : 'text-red-600');
+                        msg.textContent = (r.sucesso ? '✅ ' : '❌ ') + (r.mensagem || '');
+                    }
+                    alert((r.sucesso ? 'OK: ' : 'FALHA: ') + (r.mensagem || ''));
+                } catch (e) {
+                    if (msg) {
+                        msg.className = 'text-sm mt-2 text-red-600 font-semibold';
+                        msg.textContent = (e && e.message) || String(e);
+                    }
+                }
+                btnTest.disabled = false;
+            });
+        }
         atualizarStatus();
         setTimeout(atualizarStatus, 800);
         setTimeout(atualizarStatus, 2000);

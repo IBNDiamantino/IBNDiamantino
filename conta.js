@@ -953,14 +953,19 @@ function marcarMembroAtualizado(m) {
 
 /** Alerta amigável quando algo não sobe para a nuvem */
 function avisarFalhaNuvem(tipo, detalhe) {
+    var d = String(detalhe || '');
+    // Timeout/rede: não enche de alert no iPhone — só console (retry em background)
+    if (/timeout/i.test(d) || /não respondeu/i.test(d)) {
+        console.warn('Nuvem (silencioso):', tipo, d);
+        return;
+    }
     var msg = String(tipo || 'Dados') + ' não carregou na nuvem.';
-    if (detalhe) msg += '\n' + detalhe;
-    msg += '\n\nNo celular/outro aparelho pode continuar a versão antiga.\nContate a secretaria se repetir.';
-    try {
-        localStorage.setItem('ibn_ultima_falha_nuvem', JSON.stringify({
-            tipo: tipo, detalhe: detalhe || '', quando: new Date().toISOString()
-        }));
-    } catch (e) {}
+    if (d) msg += '\n' + d;
+    if (/permission/i.test(d) || /regras/i.test(d)) {
+        msg += '\n\nCausa provável: Regras do Firestore bloqueando escrita.\nFirebase Console → Firestore → Regras.';
+    } else {
+        msg += '\n\nNo celular/outro aparelho pode continuar a versão antiga.\nContate a secretaria se repetir.';
+    }
     try { alert(msg); } catch (e) { console.warn(msg); }
 }
 

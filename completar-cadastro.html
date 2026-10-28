@@ -294,69 +294,36 @@
             }
 
             sessionStorage.removeItem('ibn_cadastro_parcial');
-            msg.textContent = 'Cadastro salvo neste celular. Enviando para a igreja (nuvem)…';
-            msg.className = 'text-blue-700 text-sm font-semibold';
+            // PRIORIDADE: não trava a tela esperando Firebase (no iPhone isso ficava minutos).
+            // Salva local, dispara envio em segundo plano, entra na área do membro já.
+            msg.textContent = jaMembro
+                ? 'Cadastro salvo! Enviando para a gestão em segundo plano…'
+                : 'Cadastro concluído! Sincronizando em segundo plano…';
+            msg.className = 'text-green-600 text-sm font-semibold';
             msg.classList.remove('hidden');
 
             var btn = e.target.querySelector('button[type="submit"]') || document.querySelector('#formCompletar button[type="submit"]');
             if (btn) btn.disabled = true;
 
-            function irArea(avisoExtra) {
-                msg.textContent = (jaMembro
-                    ? 'Cadastro enviado! Aguarde a aprovação do gestor.'
-                    : 'Cadastro concluído!') + (avisoExtra ? ' ' + avisoExtra : '');
-                msg.className = 'text-green-600 text-sm font-semibold';
-                setTimeout(function () {
-                    window.location.href = 'area-membro.html';
-                }, 1200);
-            }
-
-            // Aguarda o envio real para a nuvem no CELULAR DO MEMBRO (várias tentativas)
-            if (typeof garantirCadastroNaNuvem === 'function' && resultado.membro) {
-                // Rápido no iPhone: 3 tentativas, timeout 8s cada, no máximo ~25s
-                var acabou = false;
-                var limiteTotal = setTimeout(function () {
-                    if (acabou) return;
-                    acabou = true;
-                    msg.textContent = 'Ainda enviando em segundo plano… entrando na sua área.';
-                    msg.className = 'text-amber-700 text-sm font-semibold';
-                    // Continua tentando em background
+            if (resultado.membro && typeof garantirCadastroNaNuvem === 'function') {
+                try {
+                    garantirCadastroNaNuvem(resultado.membro, {
+                        tentativas: 4,
+                        intervaloMs: 800,
+                        timeoutMs: 8000
+                    });
+                } catch (eBg) {
                     try {
-                        garantirCadastroNaNuvem(resultado.membro, { tentativas: 4, intervaloMs: 1500, timeoutMs: 10000 });
-                    } catch (eBg) {}
-                    setTimeout(function () { window.location.href = 'area-membro.html'; }, 800);
-                }, 18000);
-
-                garantirCadastroNaNuvem(resultado.membro, {
-                    tentativas: 3,
-                    intervaloMs: 600,
-                    timeoutMs: 8000,
-                    onProgress: function (n, total) {
-                        if (acabou) return;
-                        msg.textContent = 'Enviando cadastro… ' + n + '/' + total + ' (pode levar alguns segundos no celular)';
-                    }
-                }).then(function (rNuvem) {
-                    if (acabou) return;
-                    acabou = true;
-                    clearTimeout(limiteTotal);
-                    if (rNuvem && rNuvem.sucesso) {
-                        irArea('');
-                    } else if (rNuvem && rNuvem.semNuvem) {
-                        irArea('(nuvem ainda não configurada neste site)');
-                    } else {
-                        msg.textContent = 'Cadastro salvo no celular. Se a gestão não ver, abra Área do Membro e toque em Enviar.';
-                        msg.className = 'text-amber-700 text-sm font-semibold';
-                        setTimeout(function () { window.location.href = 'area-membro.html'; }, 1500);
-                    }
-                }).catch(function () {
-                    if (acabou) return;
-                    acabou = true;
-                    clearTimeout(limiteTotal);
-                    setTimeout(function () { window.location.href = 'area-membro.html'; }, 800);
-                });
-            } else {
-                irArea('');
+                        if (typeof enviarMembroParaNuvem === 'function') {
+                            enviarMembroParaNuvem(resultado.membro, { force: true });
+                        }
+                    } catch (e2) {}
+                }
             }
+
+            setTimeout(function () {
+                window.location.href = 'area-membro.html';
+            }, 600);
         });
     </script>
 </body>

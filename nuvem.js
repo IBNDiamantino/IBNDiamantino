@@ -150,6 +150,126 @@ const IBNNuvem = (function () {
         }
     }
 
+    /**
+     * Sobe só os cadastros que existem NESTE aparelho e ainda NÃO estão na nuvem.
+     * Use no celular onde a pessoa se cadastrou (é lá que o localStorage tem o registro).
+     */
+    async function enviarCadastrosAusentesNaNuvem(onProgress) {
+        if (!iniciar() || !db) {
+            return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível. Confira as Regras do Firestore.' };
+        }
+        try {
+            var locais = (typeof lerMembros === 'function') ? (lerMembros() || []) : [];
+            locais = locais.filter(function (m) {
+                if (!m || m.id === undefined || m.id === null || m.id === '') return false;
+                try { if (typeof isContaSistema === 'function' && isContaSistema(m)) return false; } catch (e) {}
+                try { if (typeof membroFoiExcluido === 'function' && membroFoiExcluido(m)) return false; } catch (e2) {}
+                return true;
+            });
+
+            if (typeof onProgress === 'function') {
+                try { onProgress(0, locais.length, 'comparando'); } catch (eP0) {}
+            }
+
+            // IDs já na nuvem
+            var naNuvem = {};
+            try {
+                var snap = await _comTimeout(db.collection('membros').get(), 15000, 'timeout_list');
+                if (snap && snap.__timeout) {
+                    return {
+                        sucesso: false,
+                        mensagem: 'Timeout ao listar membros da nuvem. Publique as Regras do Firestore e tente de novo.'
+                    };
+                }
+                snap.forEach(function (doc) {
+                    naNuvem[String(doc.id)] = true;
+                });
+            } catch (eList) {
+                var ml = (eList && (eList.code || eList.message)) || String(eList);
+                if (String(ml).indexOf('permission') !== -1) {
+                    return {
+                        sucesso: false,
+                        mensagem: 'Firestore bloqueou a leitura (regras). Publique firestore.rules no Firebase Console.'
+                    };
+                }
+                return { sucesso: false, mensagem: 'Não listou a nuvem: ' + ml };
+            }
+
+            var faltando = locais.filter(function (m) {
+                return !naNuvem[String(m.id)];
+            });
+
+            if (!faltando.length) {
+                registrarEnvioMembrosOk({ quantidade: 0, force: true });
+                return {
+                    sucesso: true,
+                    quantidade: 0,
+                    totalLocal: locais.length,
+                    totalNuvem: Object.keys(naNuvem).length,
+                    mensagem: 'Nenhum cadastro faltando: os ' + locais.length + ' deste aparelho já estão na nuvem (nuvem tem ' + Object.keys(naNuvem).length + ').'
+                };
+            }
+
+            // Garante timestamps
+            faltando.forEach(function (m) {
+                if (!m.atualizadoEm) m.atualizadoEm = m.dataCadastro || new Date().toISOString();
+                if (!m.criadoEm) m.criadoEm = m.dataCadastro || m.atualizadoEm;
+            });
+
+            var enviados = 0;
+            var erros = 0;
+            var detalhesErros = [];
+            for (var i = 0; i < faltando.length; i++) {
+                if (typeof onProgress === 'function') {
+                    try { onProgress(i + 1, faltando.length, 'enviando'); } catch (eP) {}
+                }
+                try {
+                    var r1 = await sincronizarUmMembro(faltando[i], { force: true });
+                    if (r1 && r1.sucesso) {
+                        enviados++;
+                        if (typeof marcarPendenteNuvem === 'function') {
+                            try { marcarPendenteNuvem(faltando[i].id, false); } catch (eM) {}
+                        }
+                    } else {
+                        erros++;
+                        if (detalhesErros.length < 3) {
+                            detalhesErros.push((faltando[i].nome || faltando[i].id) + ': ' + ((r1 && r1.mensagem) || 'falha'));
+                        }
+                    }
+                } catch (eItem) {
+                    erros++;
+                    if (detalhesErros.length < 3) {
+                        detalhesErros.push((faltando[i].nome || '') + ': ' + ((eItem && eItem.message) || String(eItem)));
+                    }
+                }
+            }
+
+            if (enviados > 0) {
+                registrarEnvioMembrosOk({ quantidade: enviados, force: true });
+            }
+
+            var msg = 'Faltavam ' + faltando.length + ' neste aparelho. Enviados: ' + enviados;
+            if (erros) msg += ' · Falhas: ' + erros + (detalhesErros.length ? ' (' + detalhesErros.join(' | ') + ')' : '');
+            if (erros && /permission|timeout|Regras|regras/i.test(msg)) {
+                msg += ' → Publique as Regras do Firestore no Firebase.';
+            }
+
+            return {
+                sucesso: enviados > 0 || erros === 0,
+                quantidade: enviados,
+                faltavam: faltando.length,
+                erros: erros,
+                totalLocal: locais.length,
+                totalNuvem: Object.keys(naNuvem).length,
+                mensagem: msg,
+                nomes: faltando.slice(0, 15).map(function (m) { return m.nome || String(m.id); })
+            };
+        } catch (e) {
+            ultimoErro = (e && e.message) || String(e);
+            return { sucesso: false, mensagem: ultimoErro };
+        }
+    }
+
     /** Se passou 24h sem envio bem-sucedido, força upload silencioso dos membros locais. */
     async function verificarEForcarEnvioSe24h(motivo) {
         if (!configValida()) return { sucesso: false, pulou: true, motivo: 'nuvem_inativa' };
@@ -166,7 +286,11 @@ const IBNNuvem = (function () {
                 }
             }
         } catch (eF) {}
-        console.info('IBNNuvem: >24h sem envio de membros — forçando upload (' + (motivo || '') + ')');
+        console.info('IBNNuvem: >24h sem envio de membros — enviando ausentes (' + (motivo || '') + ')');
+        try {
+            var ra = await enviarCadastrosAusentesNaNuvem(null);
+            if (ra && (ra.quantidade > 0 || ra.sucesso)) return ra;
+        } catch (eA) {}
         return await forcarEnvioMembrosLocais(null);
     }
 
@@ -179,6 +303,23 @@ const IBNNuvem = (function () {
         } catch (e) {}
         const copia = Object.assign({}, m);
         delete copia.respostaSeguranca;
+        // Nunca manda foto/base64 no doc do membro (Firestore trava / estoura limite)
+        delete copia.foto;
+        delete copia.fotoUrl;
+        delete copia.avatar;
+        delete copia.imagem;
+        delete copia.imagemUrl;
+        delete copia.dataUrl;
+        delete copia.base64;
+        delete copia.fotos;
+        // Remove campos acidentalmente enormes
+        Object.keys(copia).forEach(function (k) {
+            try {
+                var v = copia[k];
+                if (typeof v === 'string' && v.length > 20000) delete copia[k];
+                if (typeof v === 'string' && v.indexOf('data:image') === 0) delete copia[k];
+            } catch (eK) {}
+        });
         return copia;
     }
 
@@ -188,6 +329,17 @@ const IBNNuvem = (function () {
 
     /** Só grava se a versão local for igual ou mais nova que a da nuvem (evita PC antigo apagar celular).
      * force=true: gestão/aprovação sempre grava (não deixa cópia antiga bloquear). */
+    function _comTimeout(promessa, ms, motivo) {
+        return Promise.race([
+            promessa,
+            new Promise(function (resolve) {
+                setTimeout(function () {
+                    resolve({ __timeout: true, motivo: motivo || ('timeout_' + ms + 'ms') });
+                }, ms);
+            })
+        ]);
+    }
+
     async function _gravarMembroSeMaisNovo(col, m, force) {
         var pub = membroPublico(m);
         if (!pub) return { ok: false, motivo: 'invalido' };
@@ -195,19 +347,48 @@ const IBNNuvem = (function () {
         var tLocal = _tsMembro(m);
         if (!force) {
             try {
-                var snap = await ref.get();
-                if (snap.exists) {
-                    var remote = snap.data() || {};
+                var snapGet = await _comTimeout(ref.get(), 5000, 'timeout_get');
+                if (snapGet && snapGet.__timeout) {
+                    // get demorou: grava mesmo assim
+                } else if (snapGet && snapGet.exists) {
+                    var remote = snapGet.data() || {};
                     var tRemote = _tsMembro(remote);
                     if (tRemote > tLocal) {
                         return { ok: false, motivo: 'nuvem_mais_nova', remoto: remote };
                     }
                 }
-            } catch (eGet) { /* se não ler, tenta gravar mesmo assim */ }
+            } catch (eGet) {
+                var msgG = (eGet && (eGet.code || eGet.message)) || '';
+                if (String(msgG).indexOf('permission') !== -1) {
+                    return { ok: false, motivo: 'permission-denied', detalhe: String(msgG) };
+                }
+            }
         }
         if (!pub.atualizadoEm || force) pub.atualizadoEm = new Date().toISOString();
-        await ref.set(pub, { merge: true });
-        return { ok: true };
+        try {
+            // set com timeout; se rules bloqueiam, costuma vir permission-denied rápido
+            var setPromise = ref.set(pub, { merge: true }).then(function () {
+                return { ok: true };
+            }).catch(function (eSet) {
+                var code = (eSet && eSet.code) || '';
+                var msg = (eSet && eSet.message) || String(eSet);
+                if (String(code).indexOf('permission') !== -1 || String(msg).indexOf('permission') !== -1) {
+                    return { ok: false, motivo: 'permission-denied', detalhe: msg };
+                }
+                return { ok: false, motivo: 'erro_firebase', detalhe: msg };
+            });
+            var setRes = await _comTimeout(setPromise, 10000, 'timeout_set');
+            if (setRes && setRes.__timeout) {
+                return {
+                    ok: false,
+                    motivo: 'timeout_set',
+                    detalhe: 'Firebase não respondeu em 10s. Quase sempre: regras do Firestore bloqueando ou rede.'
+                };
+            }
+            return setRes;
+        } catch (e) {
+            return { ok: false, motivo: 'erro_firebase', detalhe: (e && e.message) || String(e) };
+        }
     }
 
     async function sincronizarMembros(lista, opcoes) {
@@ -302,19 +483,20 @@ const IBNNuvem = (function () {
                 m.atualizadoEm = new Date().toISOString();
             }
             var col = db.collection('membros');
-            // Timeout 12s no iPhone (rede lenta / Firebase pendurado)
-            var r = await Promise.race([
-                _gravarMembroSeMaisNovo(col, m, force),
-                new Promise(function (resolve) {
-                    setTimeout(function () {
-                        resolve({ ok: false, motivo: 'timeout_12s' });
-                    }, 12000);
-                })
-            ]);
+            var r = await _gravarMembroSeMaisNovo(col, m, force);
             if (!r.ok && r.motivo === 'nuvem_mais_nova') {
                 return { sucesso: true, ignorado: true, mensagem: 'Nuvem já tinha versão mais recente deste membro' };
             }
-            if (!r.ok) return { sucesso: false, mensagem: r.motivo || 'Falha ao gravar' };
+            if (!r.ok) {
+                var msgF = r.motivo || 'Falha ao gravar';
+                if (r.motivo === 'permission-denied') {
+                    msgF = 'Firestore bloqueou a gravação (regras de segurança). No Firebase Console → Firestore → Regras, libere escrita em membros.';
+                } else if (r.motivo === 'timeout_set' || r.motivo === 'timeout_12s') {
+                    msgF = 'Timeout: Firebase não respondeu. Verifique internet e as Regras do Firestore (permission).';
+                }
+                if (r.detalhe) msgF += ' (' + r.detalhe + ')';
+                return { sucesso: false, mensagem: msgF, motivo: r.motivo };
+            }
             // Regrava no localStorage o membro já com atualizadoEm (evita cópia local “sem data”)
             try {
                 if (typeof lerMembros === 'function' && typeof salvarMembros === 'function' && m && m.id !== undefined) {
@@ -1477,11 +1659,46 @@ const IBNNuvem = (function () {
         }
     }
 
+
+    /** Teste rápido: tenta gravar e ler um doc de diagnóstico (sem UI). */
+    async function testarConexaoNuvem() {
+        if (!iniciar() || !db) {
+            return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
+        }
+        var id = 'teste_' + Date.now();
+        try {
+            var ref = db.collection('membros').doc(id);
+            var w = await _comTimeout(
+                ref.set({ id: id, nome: '__teste_conexao__', atualizadoEm: new Date().toISOString(), _teste: true }, { merge: true })
+                    .then(function () { return { ok: true }; })
+                    .catch(function (e) {
+                        return { ok: false, code: (e && e.code) || '', msg: (e && e.message) || String(e) };
+                    }),
+                10000,
+                'timeout_set'
+            );
+            if (w && w.__timeout) {
+                return { sucesso: false, mensagem: 'Timeout ao gravar. Regras do Firestore ou rede bloqueando.' };
+            }
+            if (w && !w.ok) {
+                if (String(w.code).indexOf('permission') !== -1 || String(w.msg).indexOf('permission') !== -1) {
+                    return { sucesso: false, mensagem: 'PERMISSION-DENIED: abra Firebase Console → Firestore → Regras e permita write em /membros.' };
+                }
+                return { sucesso: false, mensagem: w.msg || 'Falha ao gravar teste' };
+            }
+            try { await ref.delete(); } catch (eD) {}
+            return { sucesso: true, mensagem: 'Nuvem OK — gravação de membros funcionando.' };
+        } catch (e) {
+            return { sucesso: false, mensagem: (e && e.message) || String(e) };
+        }
+    }
+
     return {
         iniciar: iniciar,
         sincronizarTudoDaNuvem: sincronizarTudoDaNuvem,
         agendarSincronizacaoPeriodica: agendarSincronizacaoPeriodica,
         status: status,
+        testarConexaoNuvem: testarConexaoNuvem,
         sincronizarMembros: sincronizarMembros,
         sincronizarUmMembro: sincronizarUmMembro,
         buscarMembros: buscarMembros,
@@ -1499,6 +1716,7 @@ const IBNNuvem = (function () {
         exportarRelatoriosCSV: exportarRelatoriosCSV,
         enviarTudoDoAparelho: enviarTudoDoAparelho,
         forcarEnvioMembrosLocais: forcarEnvioMembrosLocais,
+        enviarCadastrosAusentesNaNuvem: enviarCadastrosAusentesNaNuvem,
         verificarEForcarEnvioSe24h: verificarEForcarEnvioSe24h,
         precisaForceEnvio24h: precisaForceEnvio24h,
         lerUltimoEnvioMembros: lerUltimoEnvioMembros,
