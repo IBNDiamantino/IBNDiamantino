@@ -145,8 +145,8 @@
                 </form>
                 <!-- Pergunta obrigatória na hora de salvar (se ainda não escolheu) -->
                 <div id="boxPerguntaTipoInsc" class="hidden mt-4 border-2 border-secondary rounded-xl p-5 bg-yellow-50 text-center">
-                    <p class="font-bold text-primary text-lg mb-1">Antes de concluir</p>
-                    <p class="text-sm text-gray-700 mb-4">Você é <strong>membro</strong> ou <strong>visitante</strong>?</p>
+                    <p class="font-bold text-primary text-lg mb-1">Antes de se inscrever</p>
+                    <p class="text-sm text-gray-700 mb-4">Você é <strong>membro</strong> ou <strong>visitante</strong>? Escolha uma opção para continuar.</p>
                     <div class="flex flex-wrap justify-center gap-3">
                         <button type="button" id="btnSalvarComoMembro" class="bg-primary text-white px-6 py-3 rounded-lg font-bold hover:bg-accent">Membro</button>
                         <button type="button" id="btnSalvarComoVisitante" class="bg-secondary text-primary px-6 py-3 rounded-lg font-bold hover:bg-yellow-400">Visitante</button>
@@ -872,6 +872,22 @@
                 try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
             }
             try { sel.focus(); } catch (e) {}
+            // Sempre pergunta Membro/Visitante antes de seguir o cadastro
+            // (se já estiver logado como membro, não precisa perguntar)
+            try {
+                var jaMembro = (typeof verificarMembro === 'function') ? verificarMembro() : false;
+                if (jaMembro) {
+                    modoVisitante = false;
+                    esconderPerguntaTipoInsc();
+                    var boxV0 = document.getElementById('camposVisitante');
+                    if (boxV0) boxV0.classList.add('hidden');
+                } else if (!modoVisitante) {
+                    mostrarPerguntaTipoInsc();
+                    // destaca a pergunta; usuário escolhe e só então preenche/envia
+                    var btn = document.getElementById('btnEnviarInsc');
+                    if (btn) btn.classList.add('opacity-60');
+                }
+            } catch (eTipo) {}
         }
 
         function carregarSelectEventos() {
@@ -999,6 +1015,8 @@
                     esconderPerguntaTipoInsc();
                     var boxV = document.getElementById('camposVisitante');
                     if (boxV) boxV.classList.remove('hidden');
+                    var btnOk = document.getElementById('btnEnviarInsc');
+                    if (btnOk) btnOk.classList.remove('opacity-60');
                     var n = (document.getElementById('nome') || {}).value || '';
                     var t = (document.getElementById('telefone') || {}).value || '';
                     if (!String(n).trim() || !String(t).trim()) {
