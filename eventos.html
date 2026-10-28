@@ -84,6 +84,10 @@
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Data de nascimento</label>
                         <input type="date" id="visNascimento" class="w-full p-3 border rounded-md">
                     </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Endereço</label>
+                        <input type="text" id="visEndereco" class="w-full p-3 border rounded-md" placeholder="Rua, número, bairro">
+                    </div>
                     <button type="button" id="btnUsarDadosVisitante" class="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-accent">Continuar para inscrição</button>
                 </div>
             </div>
@@ -153,33 +157,7 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-3">É preciso responder para finalizar a inscrição.</p>
                 </div>
-                <!-- Ficha do visitante (após escolher Visitante) -->
-                <div id="boxFichaVisitante" class="hidden mt-4 border-2 border-secondary rounded-xl p-5 bg-white">
-                    <p class="font-bold text-primary text-lg mb-1 text-center">Dados do visitante</p>
-                    <p class="text-sm text-gray-600 mb-4 text-center">Preencha seus dados para continuar a inscrição.</p>
-                    <div class="space-y-3 text-left max-w-md mx-auto">
-                        <div>
-                            <label class="block font-semibold mb-1">Nome completo</label>
-                            <input type="text" id="visNome" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" autocomplete="name">
-                        </div>
-                        <div>
-                            <label class="block font-semibold mb-1">Telefone / WhatsApp</label>
-                            <input type="tel" id="visTelefone" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" placeholder="(65) 9 9999-9999" autocomplete="tel">
-                        </div>
-                        <div>
-                            <label class="block font-semibold mb-1">Data de nascimento</label>
-                            <input type="date" id="visNascimento" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
-                        </div>
-                        <div>
-                            <label class="block font-semibold mb-1">Endereço</label>
-                            <input type="text" id="visEndereco" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" placeholder="Rua, número, bairro">
-                        </div>
-                        <button type="button" id="btnContinuarVisitante" class="w-full bg-primary text-white p-3 rounded-md font-bold hover:bg-accent mt-2">
-                            Continuar inscrição
-                        </button>
-                    </div>
-                </div>
-            </div>
+                            </div>
         </section>
 
         <section id="fatura" class="hidden mb-12">
@@ -511,6 +489,9 @@
 
         function aplicarDadosVisitanteNoForm() {
             var v = window._visitanteEvento || {};
+            try {
+                if (!v.nome) v = JSON.parse(sessionStorage.getItem('ibn_evento_visitante') || '{}') || {};
+            } catch (e0) {}
             var elNome = document.getElementById('nome');
             var elTel = document.getElementById('telefone');
             var elNasc = document.getElementById('nascimentoInsc');
@@ -524,6 +505,31 @@
             var nv = document.getElementById('nomeVisitanteAtivo');
             if (av) av.classList.remove('hidden');
             if (nv) nv.textContent = v.nome || 'visitante';
+            // Formulário personalizado (ex.: nome do casal) — preenche 1º nome + " e "
+            try {
+                var box = document.getElementById('camposFormularioEvento');
+                if (box && v.nome) {
+                    var inputs = box.querySelectorAll('input[type="text"], input:not([type]), textarea');
+                    if (inputs && inputs.length) {
+                        var first = inputs[0];
+                        var atual = String(first.value || '').trim();
+                        if (!atual || atual.indexOf(v.nome) === -1) {
+                            first.value = v.nome + ' e ';
+                            try {
+                                first.focus();
+                                var pos = first.value.length;
+                                first.setSelectionRange(pos, pos);
+                            } catch (eC) {}
+                        }
+                        inputs.forEach(function (inp) {
+                            var lab = String(inp.getAttribute('data-flabel') || inp.id || '').toLowerCase();
+                            if (/telef|whats|celular|fone/.test(lab) && !String(inp.value || '').trim()) {
+                                inp.value = v.telefone || '';
+                            }
+                        });
+                    }
+                }
+            } catch (eF) {}
             // rola até o formulário
             var sec = document.getElementById('inscricao');
             if (sec) try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
@@ -679,11 +685,11 @@
                     var nome = (document.getElementById('visNome').value || '').trim();
                     var tel = (document.getElementById('visTelefone').value || '').trim();
                     var nasc = (document.getElementById('visNascimento').value || '').trim();
+                    var end = (document.getElementById('visEndereco') && document.getElementById('visEndereco').value || '').trim();
                     if (!nome) return alert('Informe o nome.');
                     if (!tel) return alert('Informe o telefone.');
-                    if (!nasc) return alert('Informe a data de nascimento.');
                     modoVisitante = true;
-                    window._visitanteEvento = { nome: nome, telefone: tel, nascimento: nasc };
+                    window._visitanteEvento = { nome: nome, telefone: tel, nascimento: nasc, endereco: end };
                     try { sessionStorage.setItem('ibn_evento_visitante', JSON.stringify(window._visitanteEvento)); } catch (e) {}
                     // esconde escolha; mostra que é visitante e abre o formulário de inscrição
                     var avN = document.getElementById('avisoNaoLogado');
@@ -891,6 +897,23 @@
                 }
             }
             renderFormularioDoEvento(sel.value);
+            try {
+                var jaMembro = (typeof verificarMembro === 'function') ? verificarMembro() : false;
+                if (!jaMembro && !modoVisitante) {
+                    // Ainda não escolheu: leva para a escolha no topo (evita formulário bagunçado no celular)
+                    esconderPerguntaTipoInsc();
+                    var avN = document.getElementById('avisoNaoLogado');
+                    if (avN) {
+                        avN.classList.remove('hidden');
+                        var esc = document.getElementById('boxEscolhaInsc');
+                        if (esc) esc.classList.remove('hidden');
+                        try { avN.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc0) {}
+                    }
+                    // guarda o evento escolhido para abrir depois
+                    window._eventoConviteId = eventoId || window._eventoConviteId || '';
+                    return;
+                }
+            } catch (eTipo) {}
             // formulário só aparece depois de clicar em Inscrever-se (ou equivalente)
             var sec = document.getElementById('inscricao');
             if (sec) {
@@ -898,22 +921,13 @@
                 try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
             }
             try { sel.focus(); } catch (e) {}
-            // Sempre pergunta Membro/Visitante antes de seguir o cadastro
-            // (se já estiver logado como membro, não precisa perguntar)
             try {
-                var jaMembro = (typeof verificarMembro === 'function') ? verificarMembro() : false;
-                if (jaMembro) {
-                    modoVisitante = false;
-                    esconderPerguntaTipoInsc();
-                    var boxV0 = document.getElementById('camposVisitante');
-                    if (boxV0) boxV0.classList.add('hidden');
-                } else if (!modoVisitante) {
-                    mostrarPerguntaTipoInsc();
-                    // destaca a pergunta; usuário escolhe e só então preenche/envia
-                    var btn = document.getElementById('btnEnviarInsc');
-                    if (btn) btn.classList.add('opacity-60');
+                if (modoVisitante && typeof aplicarDadosVisitanteNoFormulario === 'function') {
+                    aplicarDadosVisitanteNoFormulario();
+                } else if (modoVisitante && typeof aplicarDadosVisitanteNoForm === 'function') {
+                    aplicarDadosVisitanteNoForm();
                 }
-            } catch (eTipo) {}
+            } catch (eA) {}
         }
 
         function carregarSelectEventos() {
