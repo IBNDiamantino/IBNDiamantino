@@ -997,10 +997,14 @@
                 bV.addEventListener('click', function () {
                     modoVisitante = true;
                     esconderPerguntaTipoInsc();
+                    var boxV = document.getElementById('camposVisitante');
+                    if (boxV) boxV.classList.remove('hidden');
                     var n = (document.getElementById('nome') || {}).value || '';
                     var t = (document.getElementById('telefone') || {}).value || '';
                     if (!String(n).trim() || !String(t).trim()) {
-                        alert('Como visitante, preencha pelo menos nome e telefone na ficha e clique de novo em Gerar Inscrição.');
+                        alert('Como visitante, preencha nome e telefone na ficha (e se quiser a data de nascimento) e clique de novo em Gerar Inscrição.');
+                        var el = !String(n).trim() ? document.getElementById('nome') : document.getElementById('telefone');
+                        if (el) { try { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (eF) {} }
                         return;
                     }
                     window._visitanteEvento = {
@@ -1183,10 +1187,17 @@
                 }
                 carregarListaPublica();
             }
+            var meioEl = document.querySelector('input[name="meioPag"]:checked');
+            var meioPag = meioEl ? String(meioEl.value || '') : '';
+            var ehDinheiro = /dinheiro/i.test(meioPag);
+
             if (valor > 0 && fileInput && fileInput.files && fileInput.files[0]) {
                 var reader = new FileReader();
                 reader.onload = function() { finalizar(reader.result); };
                 reader.readAsDataURL(fileInput.files[0]);
+            } else if (valor > 0 && ehDinheiro) {
+                // Pagamento em dinheiro na secretaria: não exige comprovante
+                finalizar('');
             } else if (valor > 0) {
                 if (!confirm('Não anexou comprovante. Deseja enviar mesmo assim? A secretaria precisará confirmar o pagamento.')) return;
                 finalizar('');
