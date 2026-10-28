@@ -832,7 +832,7 @@
                 var hh = String(agora.getHours()).padStart(2, '0');
                 var mm = String(agora.getMinutes()).padStart(2, '0');
                 if (txt) {
-                    txt.textContent = 'Última sincronização ' + hh + ':' + mm + ' — ' + qtd + ' membro(s). Alterações da Luana, Murian e demais entram aqui automaticamente.';
+                    txt.textContent = 'Última sincronização ' + hh + ':' + mm + ' — ' + qtd + ' membro(s). Clique em Atualizar da nuvem para ver o que os membros enviaram.';
                 }
                 try { renderizar(); } catch (eR) {}
                 try { formatarUltimoEnvio(); } catch (eU) {}
@@ -937,21 +937,13 @@
 
         // Master/adm/gestor: sempre o mesmo espelho da nuvem ao abrir
         (async function iniciarGestaoMembros() {
+            // 100% MANUAL: não baixa nem sobe sozinho ao abrir / em intervalo
             formatarUltimoEnvio();
-            await atualizarEspelhoNuvem(false);
-            formatarUltimoEnvio();
-            // Se >24h sem envio, tenta force automático (cadastros presos neste aparelho)
-            try {
-                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.verificarEForcarEnvioSe24h) {
-                    var rf = await IBNNuvem.verificarEForcarEnvioSe24h('gestao-abrir');
-                    if (rf && rf.sucesso && !rf.pulou) {
-                        await atualizarEspelhoNuvem(false);
-                    }
-                }
-            } catch (e24) {}
-            formatarUltimoEnvio();
-            // Re-puxa a cada 30s enquanto a página estiver aberta
-            setInterval(function () { atualizarEspelhoNuvem(false); formatarUltimoEnvio(); }, 30000);
+            var txt = document.getElementById('txtSyncGestao');
+            if (txt) {
+                txt.textContent = 'Modo manual: clique em "Atualizar da nuvem agora" para baixar, ou "Subir cadastros que faltam" para enviar.';
+            }
+            try { renderizar(); } catch (eR) {}
         })();
     </script>
 </body>

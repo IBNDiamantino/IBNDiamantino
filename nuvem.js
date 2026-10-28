@@ -370,19 +370,27 @@ const IBNNuvem = (function () {
             var setPromise = ref.set(pub, { merge: true }).then(function () {
                 return { ok: true };
             }).catch(function (eSet) {
-                var code = (eSet && eSet.code) || '';
+                var code = String((eSet && eSet.code) || '');
                 var msg = (eSet && eSet.message) || String(eSet);
-                if (String(code).indexOf('permission') !== -1 || String(msg).indexOf('permission') !== -1) {
+                var blob = (code + ' ' + msg).toLowerCase();
+                if (blob.indexOf('permission') !== -1) {
                     return { ok: false, motivo: 'permission-denied', detalhe: msg };
+                }
+                // Cota Spark esgotada
+                if (blob.indexOf('resource-exhausted') !== -1 || blob.indexOf('quota') !== -1 ||
+                    blob.indexOf('429') !== -1 || blob.indexOf('exceeded') !== -1) {
+                    return { ok: false, motivo: 'quota_exceeded', detalhe: msg };
                 }
                 return { ok: false, motivo: 'erro_firebase', detalhe: msg };
             });
             var setRes = await _comTimeout(setPromise, 10000, 'timeout_set');
             if (setRes && setRes.__timeout) {
+                // Timeout longo no Spark costuma ser cota/rede — mensagem orienta tentar outro dia
                 return {
                     ok: false,
                     motivo: 'timeout_set',
-                    detalhe: 'Firebase não respondeu em 10s. Quase sempre: regras do Firestore bloqueando ou rede.'
+                    possivelQuota: true,
+                    detalhe: 'Firebase não respondeu a tempo (rede ou cota diária esgotada).'
                 };
             }
             return setRes;
@@ -490,12 +498,13 @@ const IBNNuvem = (function () {
             if (!r.ok) {
                 var msgF = r.motivo || 'Falha ao gravar';
                 if (r.motivo === 'permission-denied') {
-                    msgF = 'Firestore bloqueou a gravação (regras de segurança). No Firebase Console → Firestore → Regras, libere escrita em membros.';
+                    msgF = 'Firestore bloqueou a gravação (regras de segurança).';
+                } else if (r.motivo === 'quota_exceeded') {
+                    msgF = 'A nuvem da igreja atingiu o limite diário grátis. Tente de novo amanhã de manhã (depois das 4h–5h) ou avise a secretaria.';
                 } else if (r.motivo === 'timeout_set' || r.motivo === 'timeout_12s') {
-                    msgF = 'Timeout: Firebase não respondeu. Verifique internet e as Regras do Firestore (permission).';
+                    msgF = 'Não deu para enviar agora (rede lenta ou limite diário da nuvem). Tente de novo mais tarde ou amanhã de manhã.';
                 }
-                if (r.detalhe) msgF += ' (' + r.detalhe + ')';
-                return { sucesso: false, mensagem: msgF, motivo: r.motivo };
+                return { sucesso: false, mensagem: msgF, motivo: r.motivo, possivelQuota: !!(r.motivo === 'quota_exceeded' || r.possivelQuota) };
             }
             // Regrava no localStorage o membro já com atualizadoEm (evita cópia local “sem data”)
             try {
@@ -1385,28 +1394,8 @@ const IBNNuvem = (function () {
             console.warn('sync sessão membro:', e);
         }
 
-        // 2) Fotos/escalas em segundo plano (não bloqueia o cadastro)
-        setTimeout(function () {
-            (async function () {
-                try {
-                    await puxarFotosParaLocal();
-                    await puxarFotosCelulasParaLocal();
-                    try { await puxarEscalasParaLocal(); } catch (eEsc) {}
-                } catch (e) {}
-                try {
-                    var fotos = JSON.parse(localStorage.getItem('ibn_fotos') || '[]');
-                    var maxF = Math.min(fotos.length, 8);
-                    for (var i = 0; i < maxF; i++) {
-                        var f = fotos[i];
-                        if (!f) continue;
-                        var autorOk = String(f.autorId || '') === String(usuario.id) ||
-                            (f.autor && usuario.nome && String(f.autor).toLowerCase() === String(usuario.nome).toLowerCase());
-                        if (!autorOk) continue;
-                        try { await salvarFotoNuvem(f); } catch (eF) {}
-                    }
-                } catch (e2) {}
-            })();
-        }, 1500);
+        // Fotos NÃO sincronizam mais aqui (economiza centenas de milhares de leituras).
+        // Cadastro do membro já foi enviado acima com force.
 
         try {
             localStorage.setItem('ibn_sync_sessao_' + String(usuario.id), String(Date.now()));
@@ -1569,16 +1558,58 @@ const IBNNuvem = (function () {
 
     var _syncTimer = null;
     var _syncBusy = false;
+    // ---- Economia de leituras (Spark estourou com ~840 mil reads/dia) ----
+    var CHAVE_ULTIMO_PULL = 'ibn_nuvem_ultimo_pull_ms';
+    var INTERVALO_PULL_MS = 10 * 60 * 1000; // 10 min entre pulls automáticos
+    var _ultimoPullMs = 0;
+    try { _ultimoPullMs = parseInt(localStorage.getItem(CHAVE_ULTIMO_PULL) || '0', 10) || 0; } catch (eU) {}
+
+    function _marcarPullOk() {
+        _ultimoPullMs = Date.now();
+        try { localStorage.setItem(CHAVE_ULTIMO_PULL, String(_ultimoPullMs)); } catch (e) {}
+    }
+
+    function _pullMuitoRecente(forcar) {
+        if (forcar) return false;
+        return _ultimoPullMs && (Date.now() - _ultimoPullMs) < INTERVALO_PULL_MS;
+    }
+
+    /**
+     * motivo:
+     *  - gestao-manual / manual / gestao-auto → full (membros)
+     *  - inicio / periodico / foco → leve e com throttle 10 min
+     *  - leve → só config (poucos docs), sem lista de membros/fotos
+     */
     async function sincronizarTudoDaNuvem(motivo) {
         if (_syncBusy) return { sucesso: false, ocupado: true };
+        motivo = String(motivo || '');
+        var forcar = /manual|gestao-manual|login|cadastro/i.test(motivo);
+        var precisaMembros = forcar || /gestao|aprov|membro/i.test(motivo);
+        // Automático: no máximo 1x a cada 10 min (vários celulares abertos não matam a cota)
+        if (!forcar && !precisaMembros && _pullMuitoRecente(false)) {
+            return { sucesso: true, pulou: true, motivo: 'throttle_10min' };
+        }
         _syncBusy = true;
         try {
-            try { await puxarMembrosParaLocal(); } catch (e1) {}
-            try { await puxarExcluidosParaLocal(); } catch (e2) {}
-            try { if (typeof puxarEscalasParaLocal === 'function') await puxarEscalasParaLocal(); } catch (e3) {}
-            try { if (typeof puxarEscalasCelulaParaLocal === 'function') await puxarEscalasCelulaParaLocal(); } catch (e4) {}
-            try { if (typeof puxarFotosParaLocal === 'function') await puxarFotosParaLocal(); } catch (e5) {}
-            try { if (typeof puxarFotosCelulasParaLocal === 'function') await puxarFotosCelulasParaLocal(); } catch (e6) {}
+            // MEMBROS: só quando gestão/manual ou a cada 10+ min no automático
+            if (precisaMembros || !_pullMuitoRecente(forcar)) {
+                if (precisaMembros || /inicio|periodico|foco|focus/i.test(motivo) || !motivo) {
+                    try { await puxarMembrosParaLocal(); } catch (e1) {}
+                    try { await puxarExcluidosParaLocal(); } catch (e2) {}
+                }
+            }
+            // Escalas: raras — só manual/gestão ou 1x no início da sessão (não a cada tick)
+            if (forcar || /gestao|inicio/i.test(motivo)) {
+                try { if (typeof puxarEscalasParaLocal === 'function') await puxarEscalasParaLocal(); } catch (e3) {}
+                try { if (typeof puxarEscalasCelulaParaLocal === 'function') await puxarEscalasCelulaParaLocal(); } catch (e4) {}
+            }
+            // FOTOS: NÃO puxar no sync automático (era o maior vilão de leituras).
+            // Só em pedido manual explícito.
+            if (/foto|manual-fotos/i.test(motivo) && forcar) {
+                try { if (typeof puxarFotosParaLocal === 'function') await puxarFotosParaLocal(); } catch (e5) {}
+                try { if (typeof puxarFotosCelulasParaLocal === 'function') await puxarFotosCelulasParaLocal(); } catch (e6) {}
+            }
+            // Config: poucos documentos (barato)
             try {
                 if (db) {
                     var snapA = await db.collection('config').doc('agenda_futebol_homens').get();
@@ -1593,7 +1624,6 @@ const IBNNuvem = (function () {
                         var itens = dc.itens || [];
                         if (Array.isArray(itens)) localStorage.setItem('ibn_catalogo_locais_futebol', JSON.stringify(itens));
                     }
-                    // Catálogo de células (gestor/admin adiciona/remove)
                     var snapCel = await db.collection('config').doc('lista_celulas').get();
                     if (snapCel.exists) {
                         var dCel = snapCel.data() || {};
@@ -1605,7 +1635,6 @@ const IBNNuvem = (function () {
                             } catch (eCel) {}
                         }
                     }
-                    // Eventos do site (inscrições)
                     var snapEv = await db.collection('config').doc('eventos_site').get();
                     if (snapEv.exists) {
                         var dEv = snapEv.data() || {};
@@ -1617,6 +1646,7 @@ const IBNNuvem = (function () {
                     }
                 }
             } catch (e7) {}
+            _marcarPullOk();
             try { window.dispatchEvent(new CustomEvent('ibn-nuvem-sincronizado', { detail: { motivo: motivo || '' } })); } catch (e8) {}
             return { sucesso: true };
         } finally {
@@ -1624,30 +1654,19 @@ const IBNNuvem = (function () {
         }
     }
     function agendarSincronizacaoPeriodica() {
+        // MODO MANUAL (economia de cota):
+        // - NÃO puxa membros sozinho ao abrir o site
+        // - NÃO fica em loop de 30s/15min
+        // - NÃO sincroniza ao focar a aba
+        // Gestão baixa/sobe só nos botões; membro só envia o próprio cadastro se faltar na nuvem.
+        if (_syncTimer) {
+            clearInterval(_syncTimer);
+            _syncTimer = null;
+        }
+        // Só garante Firebase inicializado (0 leitura de membros)
         setTimeout(function () {
-            sincronizarTudoDaNuvem('inicio');
-            // Se faz mais de 24h sem envio ok, força subir cadastros locais (recupera presos)
-            setTimeout(function () {
-                try { verificarEForcarEnvioSe24h('inicio'); } catch (e24) {}
-            }, 4000);
-        }, 1500);
-        if (_syncTimer) clearInterval(_syncTimer);
-        _syncTimer = setInterval(function () {
-            sincronizarTudoDaNuvem('periodico');
-        }, 30000);
-        // A cada ~2h verifica se precisa force 24h (além do intervalo de pull)
-        setInterval(function () {
-            try { verificarEForcarEnvioSe24h('periodico-24h'); } catch (e24b) {}
-        }, 2 * 60 * 60 * 1000);
-        document.addEventListener('visibilitychange', function () {
-            if (document.visibilityState === 'visible') {
-                sincronizarTudoDaNuvem('foco');
-                try { verificarEForcarEnvioSe24h('foco'); } catch (e24c) {}
-            }
-        });
-        window.addEventListener('focus', function () {
-            sincronizarTudoDaNuvem('focus');
-        });
+            try { iniciar(); } catch (e) {}
+        }, 300);
     }
     if (typeof document !== 'undefined') {
         if (document.readyState === 'loading') {
@@ -1659,6 +1678,37 @@ const IBNNuvem = (function () {
         }
     }
 
+
+    /**
+     * 1 leitura: confere se ESTE membro já tem documento na nuvem.
+     * Usado para mostrar/esconder o banner "Enviar meu cadastro".
+     */
+    async function membroExisteNaNuvem(membroId) {
+        if (membroId === undefined || membroId === null || membroId === '') {
+            return { sucesso: false, existe: false, mensagem: 'id vazio' };
+        }
+        if (!iniciar() || !db) {
+            return { sucesso: false, existe: false, mensagem: ultimoErro || 'Nuvem indisponível' };
+        }
+        try {
+            var snap = await _comTimeout(
+                db.collection('membros').doc(String(membroId)).get(),
+                8000,
+                'timeout_get'
+            );
+            if (snap && snap.__timeout) {
+                return { sucesso: false, existe: false, timeout: true, mensagem: 'timeout' };
+            }
+            var existe = !!(snap && snap.exists);
+            return { sucesso: true, existe: existe };
+        } catch (e) {
+            var msg = (e && (e.code || e.message)) || String(e);
+            if (String(msg).indexOf('permission') !== -1) {
+                return { sucesso: false, existe: false, mensagem: 'permission-denied' };
+            }
+            return { sucesso: false, existe: false, mensagem: msg };
+        }
+    }
 
     /** Teste rápido: tenta gravar e ler um doc de diagnóstico (sem UI). */
     async function testarConexaoNuvem() {
@@ -1699,6 +1749,7 @@ const IBNNuvem = (function () {
         agendarSincronizacaoPeriodica: agendarSincronizacaoPeriodica,
         status: status,
         testarConexaoNuvem: testarConexaoNuvem,
+        membroExisteNaNuvem: membroExisteNaNuvem,
         sincronizarMembros: sincronizarMembros,
         sincronizarUmMembro: sincronizarUmMembro,
         buscarMembros: buscarMembros,

@@ -265,50 +265,83 @@
             return envio.then(function (r) {
                 if (r && r.sucesso && !r.semNuvem) {
                     atualizarBannerNuvem('ok');
-                    if (manual) alert('Cadastro enviado para a igreja! A gestão já pode ver e aprovar.');
+                    if (manual) alert('Cadastro enviado para a igreja! A gestão já pode ver.');
                     return r;
                 }
-                var msg = (r && r.semNuvem)
-                    ? 'A nuvem ainda não está ativa neste site. Avise a secretaria.'
-                    : 'Não confirmou o envio. Verifique a internet e toque em Enviar de novo.';
+                var raw = ((r && r.mensagem) || '') + ' ' + ((r && r.motivo) || '');
+                var msg;
+                if (r && r.semNuvem) {
+                    msg = 'A nuvem ainda não está ativa neste site. Avise a secretaria.';
+                } else if (/quota|limite diário|resource-exhausted|429|exced/i.test(raw) || (r && r.possivelQuota)) {
+                    msg = 'A nuvem da igreja está no limite diário hoje. Seu cadastro ficou neste celular — tente enviar de novo amanhã de manhã (depois das 4h–5h).';
+                } else if (/timeout|não respondeu|demorou/i.test(raw)) {
+                    msg = 'Não confirmou o envio (rede ou limite da nuvem). Tente de novo mais tarde ou amanhã de manhã.';
+                } else {
+                    msg = 'Não foi possível enviar agora. Verifique a internet e toque em Enviar de novo. Se repetir, tente amanhã de manhã.';
+                }
                 atualizarBannerNuvem('erro', msg);
                 if (manual) alert(msg);
                 return r;
             }).catch(function (e) {
-                atualizarBannerNuvem('erro', 'Falha de rede. Tente de novo com internet.');
-                if (manual) alert('Falha: ' + ((e && e.message) || String(e)));
+                var em = (e && e.message) || String(e);
+                var msg = /quota|resource-exhausted|429|exceeded/i.test(em)
+                    ? 'A nuvem está no limite diário. Tente enviar de novo amanhã de manhã (depois das 4h–5h).'
+                    : 'Falha de rede. Tente de novo com internet.';
+                atualizarBannerNuvem('erro', msg);
+                if (manual) alert(msg);
                 return { sucesso: false };
             });
         }
 
-        // Mostra banner se ainda está pendente ou status pendente
-        (function checarPendenciaNuvem() {
+        // Banner SÓ se este membro AINDA NÃO tem documento na nuvem (1 leitura).
+        // Se já está na nuvem → some o aviso (mesmo que status seja pendente de aprovação).
+        (function checarSeFaltaNaNuvem() {
             var u = getUsuarioLogado();
-            var precisa = false;
-            try {
-                if (typeof temPendenteNuvem === 'function' && temPendenteNuvem(u && u.id)) precisa = true;
-            } catch (e) {}
-            try {
-                if (u && String(u.status || '').toLowerCase() === 'pendente') precisa = true;
-            } catch (e2) {}
-            // Sempre tenta enviar ao abrir a área (celular do membro)
-            if (precisa) {
-                atualizarBannerNuvem('pendente', 'Seu cadastro ainda precisa chegar na nuvem para a gestão aprovar.');
+            if (!u || u.id === undefined) return;
+            atualizarBannerNuvem('ok'); // esconde até confirmar
+
+            function mostrarPrecisaEnviar(txt) {
+                atualizarBannerNuvem(
+                    'pendente',
+                    txt || 'Seu cadastro ainda não está na nuvem da igreja. Toque em enviar com a internet ligada.'
+                );
             }
-            setTimeout(function () {
-                enviarMeuCadastroAgora(false).then(function (r) {
-                    // Se status pendente e enviou ok, some o banner; se ainda pendente de aprovação, mostra msg positiva
-                    if (r && r.sucesso) {
-                        var st = (getUsuarioLogado() || {}).status;
-                        if (String(st || '').toLowerCase() === 'pendente') {
-                            // já está na nuvem; banner pode sumir
-                            atualizarBannerNuvem('ok');
-                        }
-                    } else if (precisa) {
-                        atualizarBannerNuvem('erro', 'Toque no botão abaixo para enviar seu cadastro com a internet ligada.');
-                    }
-                });
-            }, 800);
+
+            // Flag local de pendência → já mostra, depois confirma na nuvem
+            var flagLocal = false;
+            try {
+                if (typeof temPendenteNuvem === 'function' && temPendenteNuvem(u.id)) flagLocal = true;
+            } catch (e) {}
+
+            if (typeof IBNNuvem === 'undefined' || !IBNNuvem.membroExisteNaNuvem) {
+                if (flagLocal) mostrarPrecisaEnviar();
+                return;
+            }
+
+            IBNNuvem.membroExisteNaNuvem(u.id).then(function (r) {
+                if (r && r.sucesso && r.existe) {
+                    // Já está na nuvem: não pede envio de novo
+                    try {
+                        if (typeof marcarPendenteNuvem === 'function') marcarPendenteNuvem(u.id, false);
+                    } catch (eM) {}
+                    atualizarBannerNuvem('ok');
+                    return;
+                }
+                // Não existe (ou não conseguiu ler) → mostrar e tentar 1 envio silencioso
+                mostrarPrecisaEnviar(
+                    (r && r.timeout)
+                        ? 'Não foi possível confirmar a nuvem agora. Se seu cadastro é novo, toque em enviar.'
+                        : 'Seu cadastro ainda não está na nuvem. Toque em enviar para a gestão poder ver.'
+                );
+                // Uma tentativa automática só se realmente parecer faltar
+                if (r && r.sucesso && r.existe === false) {
+                    setTimeout(function () {
+                        enviarMeuCadastroAgora(false);
+                    }, 600);
+                }
+            }).catch(function () {
+                if (flagLocal) mostrarPrecisaEnviar();
+            });
         })();
 
         var btnEnviarCad = document.getElementById('btnEnviarMeuCadastro');

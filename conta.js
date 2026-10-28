@@ -455,11 +455,19 @@ function garantirCadastroNaNuvem(membro, opcoes) {
                 return { sucesso: false, semNuvem: true, mensagem: r.mensagem || 'Nuvem não configurada', tentativa: n };
             }
             if (n >= tentativas) {
+                var msgFinal = (r && r.mensagem) || 'Não foi possível enviar após várias tentativas';
+                if (r && (r.possivelQuota || r.motivo === 'quota_exceeded' || /quota|limite diário/i.test(msgFinal))) {
+                    msgFinal = 'A nuvem da igreja atingiu o limite diário. Cadastro salvo neste celular — tente enviar de novo amanhã de manhã (depois das 4h–5h).';
+                } else if (r && (r.timeout || /timeout/i.test(msgFinal))) {
+                    msgFinal = 'Não confirmou o envio a tempo. Tente mais tarde ou amanhã de manhã (pode ser limite da nuvem).';
+                }
                 return {
                     sucesso: false,
-                    mensagem: (r && r.mensagem) || 'Não foi possível enviar após várias tentativas',
+                    mensagem: msgFinal,
                     tentativa: n,
-                    timeout: !!(r && r.timeout)
+                    timeout: !!(r && r.timeout),
+                    motivo: (r && r.motivo) || '',
+                    possivelQuota: !!(r && (r.possivelQuota || r.motivo === 'quota_exceeded'))
                 };
             }
             return new Promise(function (resolve) {
