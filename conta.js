@@ -785,6 +785,20 @@ function cadastrarMembro(dados) {
     const emailNorm = (dados.email || '').toLowerCase().trim();
     const telNorm = (dados.telefone || '').replace(/\D/g, '');
 
+    // Campos obrigatórios no cadastro
+    if (!(dados.nome || '').trim()) {
+        return { sucesso: false, mensagem: 'Nome é obrigatório.' };
+    }
+    if (!(dados.telefone || '').trim()) {
+        return { sucesso: false, mensagem: 'Telefone é obrigatório.' };
+    }
+    if (!(dados.nascimento || '').trim()) {
+        return { sucesso: false, mensagem: 'Data de nascimento é obrigatória.' };
+    }
+    if (!(dados.endereco || '').trim()) {
+        return { sucesso: false, mensagem: 'Endereço é obrigatório.' };
+    }
+
     // Bloqueios feitos pelo gestor/admin
     const bloq = (typeof estaBloqueadoCadastro === 'function') ? estaBloqueadoCadastro(dados) : { bloqueado: false };
     if (bloq.bloqueado) {
