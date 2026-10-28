@@ -153,6 +153,32 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-3">É preciso responder para finalizar a inscrição.</p>
                 </div>
+                <!-- Ficha do visitante (após escolher Visitante) -->
+                <div id="boxFichaVisitante" class="hidden mt-4 border-2 border-secondary rounded-xl p-5 bg-white">
+                    <p class="font-bold text-primary text-lg mb-1 text-center">Dados do visitante</p>
+                    <p class="text-sm text-gray-600 mb-4 text-center">Preencha seus dados para continuar a inscrição.</p>
+                    <div class="space-y-3 text-left max-w-md mx-auto">
+                        <div>
+                            <label class="block font-semibold mb-1">Nome completo</label>
+                            <input type="text" id="visNome" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" autocomplete="name">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1">Telefone / WhatsApp</label>
+                            <input type="tel" id="visTelefone" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" placeholder="(65) 9 9999-9999" autocomplete="tel">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1">Data de nascimento</label>
+                            <input type="date" id="visNascimento" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1">Endereço</label>
+                            <input type="text" id="visEndereco" class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary" placeholder="Rua, número, bairro">
+                        </div>
+                        <button type="button" id="btnContinuarVisitante" class="w-full bg-primary text-white p-3 rounded-md font-bold hover:bg-accent mt-2">
+                            Continuar inscrição
+                        </button>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1013,30 +1039,99 @@
                 bV.addEventListener('click', function () {
                     modoVisitante = true;
                     esconderPerguntaTipoInsc();
-                    var boxV = document.getElementById('camposVisitante');
-                    if (boxV) boxV.classList.remove('hidden');
-                    var btnOk = document.getElementById('btnEnviarInsc');
-                    if (btnOk) btnOk.classList.remove('opacity-60');
-                    var n = (document.getElementById('nome') || {}).value || '';
-                    var t = (document.getElementById('telefone') || {}).value || '';
-                    if (!String(n).trim() || !String(t).trim()) {
-                        alert('Como visitante, preencha nome e telefone na ficha (e se quiser a data de nascimento) e clique de novo em Gerar Inscrição.');
-                        var el = !String(n).trim() ? document.getElementById('nome') : document.getElementById('telefone');
-                        if (el) { try { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (eF) {} }
+                    var ficha = document.getElementById('boxFichaVisitante');
+                    if (ficha) {
+                        ficha.classList.remove('hidden');
+                        try { ficha.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (eS) {}
+                    }
+                    // preenche ficha se já tiver algo no formulário padrão
+                    try {
+                        var n0 = (document.getElementById('nome') || {}).value || '';
+                        var t0 = (document.getElementById('telefone') || {}).value || '';
+                        var vn = document.getElementById('visNome');
+                        var vt = document.getElementById('visTelefone');
+                        if (vn && n0 && !vn.value) vn.value = n0;
+                        if (vt && t0 && !vt.value) vt.value = t0;
+                        if (vn) vn.focus();
+                    } catch (eP) {}
+                });
+            }
+            var bCont = document.getElementById('btnContinuarVisitante');
+            if (bCont) {
+                bCont.addEventListener('click', function () {
+                    var n = String((document.getElementById('visNome') || {}).value || '').trim();
+                    var t = String((document.getElementById('visTelefone') || {}).value || '').trim();
+                    var nasc = String((document.getElementById('visNascimento') || {}).value || '').trim();
+                    var end = String((document.getElementById('visEndereco') || {}).value || '').trim();
+                    if (!n || !t) {
+                        alert('Preencha nome e telefone para continuar.');
+                        var el = !n ? document.getElementById('visNome') : document.getElementById('visTelefone');
+                        if (el) try { el.focus(); } catch (e) {}
                         return;
                     }
-                    window._visitanteEvento = {
-                        nome: String(n).trim(),
-                        telefone: String(t).trim(),
-                        nascimento: ((document.getElementById('nascimentoInsc') || {}).value || '')
-                    };
+                    modoVisitante = true;
+                    window._visitanteEvento = { nome: n, telefone: t, nascimento: nasc, endereco: end };
                     try { sessionStorage.setItem('ibn_evento_visitante', JSON.stringify(window._visitanteEvento)); } catch (e) {}
-                    // reenvia o formulário já como visitante
-                    var form = document.getElementById('formInsc');
-                    if (form) form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    var ficha = document.getElementById('boxFichaVisitante');
+                    if (ficha) ficha.classList.add('hidden');
+                    esconderPerguntaTipoInsc();
+                    var btnOk = document.getElementById('btnEnviarInsc');
+                    if (btnOk) btnOk.classList.remove('opacity-60');
+                    aplicarDadosVisitanteNoFormulario();
+                    try {
+                        var formBox = document.getElementById('formInscricao') || document.getElementById('formInsc');
+                        if (formBox) formBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } catch (e2) {}
                 });
             }
         })();
+
+        function aplicarDadosVisitanteNoFormulario() {
+            var v = window._visitanteEvento || null;
+            if (!v) {
+                try { v = JSON.parse(sessionStorage.getItem('ibn_evento_visitante') || 'null'); } catch (e) { v = null; }
+            }
+            if (!v || !v.nome) return;
+            // Campos padrão
+            var elNome = document.getElementById('nome');
+            var elTel = document.getElementById('telefone');
+            var elNasc = document.getElementById('nascimentoInsc');
+            if (elNome && !String(elNome.value || '').trim()) elNome.value = v.nome;
+            if (elTel && !String(elTel.value || '').trim()) elTel.value = v.telefone || '';
+            if (elNasc && v.nascimento) elNasc.value = v.nascimento;
+            var boxV = document.getElementById('camposVisitante');
+            if (boxV) boxV.classList.remove('hidden');
+            // Formulário personalizado do evento (ex.: nome do casal)
+            try {
+                var box = document.getElementById('camposFormularioEvento');
+                if (box) {
+                    var inputs = box.querySelectorAll('input[type="text"], input:not([type]), textarea');
+                    if (inputs && inputs.length) {
+                        var first = inputs[0];
+                        var atual = String(first.value || '').trim();
+                        // Se vazio: coloca o nome da pessoa; se for campo de casal, deixa pronto para o segundo nome
+                        if (!atual) {
+                            // Deixa o nome da pessoa e um espaço para o segundo nome (casal)
+                            first.value = v.nome + ' e ';
+                            try {
+                                first.focus();
+                                var pos = first.value.length;
+                                first.setSelectionRange(pos, pos);
+                            } catch (eC) {}
+                        } else if (atual.indexOf(v.nome) === -1) {
+                            first.value = v.nome + ' e ';
+                        }
+                        // Telefone no form custom, se houver campo parecido
+                        inputs.forEach(function (inp) {
+                            var lab = String(inp.getAttribute('data-flabel') || inp.id || '').toLowerCase();
+                            if (/telef|whats|celular|fone/.test(lab) && !String(inp.value || '').trim()) {
+                                inp.value = v.telefone || '';
+                            }
+                        });
+                    }
+                }
+            } catch (eF) {}
+        }
 
         document.getElementById('formInsc').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -1073,7 +1168,9 @@
             const nascV = (document.getElementById('nascimentoInsc') || {}).value
                 || (window._visitanteEvento && window._visitanteEvento.nascimento)
                 || '';
-            const endV = (document.getElementById('enderecoInsc') || {}).value || '';
+            const endV = (document.getElementById('enderecoInsc') || {}).value
+                || (window._visitanteEvento && window._visitanteEvento.endereco)
+                || '';
             const munV = (document.getElementById('municipioInsc') || {}).value || '';
             const paraOutro = !ehMembro || quemEhParticipante() === 'outro' || modoVisitante;
             // Visitante: exige nome, telefone e nascimento (endereço opcional)
