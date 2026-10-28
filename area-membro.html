@@ -250,10 +250,11 @@
             var envio;
             if (typeof garantirCadastroNaNuvem === 'function') {
                 envio = garantirCadastroNaNuvem(m, {
-                    tentativas: manual ? 6 : 4,
-                    intervaloMs: 2000,
+                    tentativas: manual ? 3 : 2,
+                    intervaloMs: 600,
+                    timeoutMs: 10000,
                     onProgress: function (n, total) {
-                        atualizarBannerNuvem('enviando', 'Enviando… tentativa ' + n + '/' + total);
+                        atualizarBannerNuvem('enviando', 'Enviando… ' + n + '/' + total);
                     }
                 });
             } else if (typeof enviarMembroParaNuvem === 'function') {

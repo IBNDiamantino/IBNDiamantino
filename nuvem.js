@@ -302,7 +302,15 @@ const IBNNuvem = (function () {
                 m.atualizadoEm = new Date().toISOString();
             }
             var col = db.collection('membros');
-            var r = await _gravarMembroSeMaisNovo(col, m, force);
+            // Timeout 12s no iPhone (rede lenta / Firebase pendurado)
+            var r = await Promise.race([
+                _gravarMembroSeMaisNovo(col, m, force),
+                new Promise(function (resolve) {
+                    setTimeout(function () {
+                        resolve({ ok: false, motivo: 'timeout_12s' });
+                    }, 12000);
+                })
+            ]);
             if (!r.ok && r.motivo === 'nuvem_mais_nova') {
                 return { sucesso: true, ignorado: true, mensagem: 'Nuvem já tinha versão mais recente deste membro' };
             }
@@ -1178,18 +1186,7 @@ const IBNNuvem = (function () {
 
         var resultados = { membro: false, fotos: 0, fotosCelula: 0, fotosPuxadas: false };
 
-        // 1) PUXA fotos da nuvem ANTES de enviar — o que admin/gestor apagou some deste aparelho
-        //    (evita reenviar foto já excluída)
-        try {
-            await puxarFotosParaLocal();
-            await puxarFotosCelulasParaLocal();
-            try { await puxarEscalasParaLocal(); } catch (eEsc) {}
-            resultados.fotosPuxadas = true;
-        } catch (e) {
-            console.warn('sync sessão puxar fotos:', e);
-        }
-
-        // 2) Membro completo da lista local — SEMPRE com force (celular do membro precisa subir)
+        // 1) PRIORIDADE: sobe o cadastro do membro AGORA (não espera fotos — no iPhone isso demorava)
         try {
             var completo = usuario;
             if (typeof lerMembros === 'function') {
@@ -1206,39 +1203,35 @@ const IBNNuvem = (function () {
             console.warn('sync sessão membro:', e);
         }
 
-        // 3) Envia fotos DESTE autor que ainda estão no aparelho (não apagadas na nuvem)
-        try {
-            var fotos = JSON.parse(localStorage.getItem('ibn_fotos') || '[]');
-            for (var i = 0; i < fotos.length; i++) {
-                var f = fotos[i];
-                if (!f) continue;
-                var autorOk = String(f.autorId || '') === String(usuario.id) ||
-                    (f.autor && usuario.nome && String(f.autor).toLowerCase() === String(usuario.nome).toLowerCase());
-                if (!autorOk) continue;
-                var rf = await salvarFotoNuvem(f);
-                if (rf && rf.sucesso) resultados.fotos++;
-            }
-        } catch (e) {}
-
-        try {
-            var fcs = JSON.parse(localStorage.getItem('ibn_fotos_celulas') || '[]');
-            for (var j = 0; j < fcs.length; j++) {
-                var fc = fcs[j];
-                if (!fc) continue;
-                var okA = String(fc.autorId || '') === String(usuario.id) ||
-                    (fc.autor && usuario.nome && String(fc.autor).toLowerCase() === String(usuario.nome).toLowerCase());
-                if (!okA) continue;
-                var rfc = await salvarFotoCelulaNuvem(fc);
-                if (rfc && rfc.sucesso) resultados.fotosCelula++;
-            }
-        } catch (e) {}
+        // 2) Fotos/escalas em segundo plano (não bloqueia o cadastro)
+        setTimeout(function () {
+            (async function () {
+                try {
+                    await puxarFotosParaLocal();
+                    await puxarFotosCelulasParaLocal();
+                    try { await puxarEscalasParaLocal(); } catch (eEsc) {}
+                } catch (e) {}
+                try {
+                    var fotos = JSON.parse(localStorage.getItem('ibn_fotos') || '[]');
+                    var maxF = Math.min(fotos.length, 8);
+                    for (var i = 0; i < maxF; i++) {
+                        var f = fotos[i];
+                        if (!f) continue;
+                        var autorOk = String(f.autorId || '') === String(usuario.id) ||
+                            (f.autor && usuario.nome && String(f.autor).toLowerCase() === String(usuario.nome).toLowerCase());
+                        if (!autorOk) continue;
+                        try { await salvarFotoNuvem(f); } catch (eF) {}
+                    }
+                } catch (e2) {}
+            })();
+        }, 1500);
 
         try {
             localStorage.setItem('ibn_sync_sessao_' + String(usuario.id), String(Date.now()));
         } catch (e) {}
 
         return {
-            sucesso: resultados.membro || resultados.fotos > 0 || resultados.fotosCelula > 0,
+            sucesso: !!resultados.membro,
             mensagem: 'Sessão sync',
             detalhes: resultados
         };

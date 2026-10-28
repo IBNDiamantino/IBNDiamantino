@@ -313,24 +313,46 @@
 
             // Aguarda o envio real para a nuvem no CELULAR DO MEMBRO (várias tentativas)
             if (typeof garantirCadastroNaNuvem === 'function' && resultado.membro) {
+                // Rápido no iPhone: 3 tentativas, timeout 8s cada, no máximo ~25s
+                var acabou = false;
+                var limiteTotal = setTimeout(function () {
+                    if (acabou) return;
+                    acabou = true;
+                    msg.textContent = 'Ainda enviando em segundo plano… entrando na sua área.';
+                    msg.className = 'text-amber-700 text-sm font-semibold';
+                    // Continua tentando em background
+                    try {
+                        garantirCadastroNaNuvem(resultado.membro, { tentativas: 4, intervaloMs: 1500, timeoutMs: 10000 });
+                    } catch (eBg) {}
+                    setTimeout(function () { window.location.href = 'area-membro.html'; }, 800);
+                }, 18000);
+
                 garantirCadastroNaNuvem(resultado.membro, {
-                    tentativas: 6,
-                    intervaloMs: 2500,
+                    tentativas: 3,
+                    intervaloMs: 600,
+                    timeoutMs: 8000,
                     onProgress: function (n, total) {
-                        msg.textContent = 'Enviando cadastro para a igreja… tentativa ' + n + '/' + total;
+                        if (acabou) return;
+                        msg.textContent = 'Enviando cadastro… ' + n + '/' + total + ' (pode levar alguns segundos no celular)';
                     }
                 }).then(function (rNuvem) {
+                    if (acabou) return;
+                    acabou = true;
+                    clearTimeout(limiteTotal);
                     if (rNuvem && rNuvem.sucesso) {
                         irArea('');
                     } else if (rNuvem && rNuvem.semNuvem) {
-                        irArea('(nuvem ainda não configurada neste site — secretaria verá quando ativar)');
+                        irArea('(nuvem ainda não configurada neste site)');
                     } else {
-                        msg.textContent = 'Cadastro ficou neste celular, mas a nuvem não confirmou. Abra a Área do Membro com internet para tentar de novo.';
+                        msg.textContent = 'Cadastro salvo no celular. Se a gestão não ver, abra Área do Membro e toque em Enviar.';
                         msg.className = 'text-amber-700 text-sm font-semibold';
-                        setTimeout(function () { window.location.href = 'area-membro.html'; }, 2500);
+                        setTimeout(function () { window.location.href = 'area-membro.html'; }, 1500);
                     }
                 }).catch(function () {
-                    setTimeout(function () { window.location.href = 'area-membro.html'; }, 1500);
+                    if (acabou) return;
+                    acabou = true;
+                    clearTimeout(limiteTotal);
+                    setTimeout(function () { window.location.href = 'area-membro.html'; }, 800);
                 });
             } else {
                 irArea('');

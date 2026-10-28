@@ -341,24 +341,8 @@ function salvarMembros(lista) {
     });
     localStorage.setItem(CHAVE_MEMBROS, JSON.stringify(limpa));
     try { if (typeof atualizarSessaoDoCadastro === 'function') atualizarSessaoDoCadastro(); } catch (e) {}
-    // Cópia na nuvem (se configurada) — não bloqueia o uso local
-    try {
-        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.sincronizarMembros) {
-            IBNNuvem.sincronizarMembros(limpa).then(function (r) {
-                if (r && !r.sucesso) {
-                    console.warn('Nuvem (membros):', r.mensagem || r);
-                    if (typeof avisarFalhaNuvem === 'function') {
-                        avisarFalhaNuvem('Cadastro de membros', r.mensagem || 'Falha ao sincronizar');
-                    }
-                }
-            }).catch(function (e) {
-                console.warn('Nuvem (membros):', e);
-                if (typeof avisarFalhaNuvem === 'function') {
-                    avisarFalhaNuvem('Cadastro de membros', (e && e.message) || String(e));
-                }
-            });
-        }
-    } catch (e) { /* silencioso */ }
+    // NÃO sobe a lista inteira aqui (no iPhone isso travava minutos: 1 get+set por membro).
+    // Quem altera usa enviarMembroParaNuvem / garantirCadastroNaNuvem / force da gestão.
 }
 
 /** Garante um membro específico na nuvem (cadastro / edição). Retorna Promise com { sucesso, mensagem }.
@@ -424,8 +408,10 @@ function temPendenteNuvem(membroId) {
  */
 function garantirCadastroNaNuvem(membro, opcoes) {
     opcoes = opcoes || {};
-    var tentativas = opcoes.tentativas != null ? opcoes.tentativas : 5;
-    var intervalo = opcoes.intervaloMs != null ? opcoes.intervaloMs : 2000;
+    // iPhone: poucas tentativas rápidas + timeout por tentativa (evita “eternidade”)
+    var tentativas = opcoes.tentativas != null ? opcoes.tentativas : 3;
+    var intervalo = opcoes.intervaloMs != null ? opcoes.intervaloMs : 700;
+    var timeoutMs = opcoes.timeoutMs != null ? opcoes.timeoutMs : 10000;
     var onProgress = opcoes.onProgress || null;
 
     if (!membro || membro.id === undefined || membro.id === null) {
@@ -434,16 +420,37 @@ function garantirCadastroNaNuvem(membro, opcoes) {
 
     marcarPendenteNuvem(membro.id, true);
 
+    function comTimeout(promessa, ms) {
+        return new Promise(function (resolve) {
+            var done = false;
+            var t = setTimeout(function () {
+                if (done) return;
+                done = true;
+                resolve({ sucesso: false, timeout: true, mensagem: 'Demorou demais (timeout ' + Math.round(ms / 1000) + 's)' });
+            }, ms);
+            Promise.resolve(promessa).then(function (r) {
+                if (done) return;
+                done = true;
+                clearTimeout(t);
+                resolve(r);
+            }).catch(function (e) {
+                if (done) return;
+                done = true;
+                clearTimeout(t);
+                resolve({ sucesso: false, mensagem: (e && e.message) || String(e) });
+            });
+        });
+    }
+
     function umaTentativa(n) {
         if (typeof onProgress === 'function') {
             try { onProgress(n, tentativas); } catch (eP) {}
         }
-        return enviarMembroParaNuvem(membro, { force: true }).then(function (r) {
+        return comTimeout(enviarMembroParaNuvem(membro, { force: true }), timeoutMs).then(function (r) {
             if (r && r.sucesso && !r.semNuvem) {
                 marcarPendenteNuvem(membro.id, false);
                 return { sucesso: true, tentativa: n, mensagem: r.mensagem || 'Enviado para a nuvem' };
             }
-            // semNuvem: Firebase não configurado neste build — não adianta insistir
             if (r && r.semNuvem) {
                 return { sucesso: false, semNuvem: true, mensagem: r.mensagem || 'Nuvem não configurada', tentativa: n };
             }
@@ -451,22 +458,12 @@ function garantirCadastroNaNuvem(membro, opcoes) {
                 return {
                     sucesso: false,
                     mensagem: (r && r.mensagem) || 'Não foi possível enviar após várias tentativas',
-                    tentativa: n
+                    tentativa: n,
+                    timeout: !!(r && r.timeout)
                 };
             }
             return new Promise(function (resolve) {
-                setTimeout(function () {
-                    resolve(umaTentativa(n + 1));
-                }, intervalo);
-            });
-        }).catch(function (e) {
-            if (n >= tentativas) {
-                return { sucesso: false, mensagem: (e && e.message) || String(e), tentativa: n };
-            }
-            return new Promise(function (resolve) {
-                setTimeout(function () {
-                    resolve(umaTentativa(n + 1));
-                }, intervalo);
+                setTimeout(function () { resolve(umaTentativa(n + 1)); }, intervalo);
             });
         });
     }
@@ -874,13 +871,8 @@ function cadastrarMembro(dados) {
             IBNNuvem.registrarAtividade('cadastro', 'Novo cadastro no site: ' + (novo.nome || ''), novo);
         }
     } catch (e) {}
-    // NÃO dispara só fire-and-forget: a página deve chamar garantirCadastroNaNuvem
-    // e aguardar. Ainda assim inicia um envio imediato em paralelo.
-    try {
-        garantirCadastroNaNuvem(novo, { tentativas: 5, intervaloMs: 2500 });
-    } catch (e2) {
-        try { enviarMembroParaNuvem(novo, { force: true }); } catch (e3) {}
-    }
+    // A página (completar-cadastro / área do membro) chama garantirCadastroNaNuvem e aguarda.
+    // Não dispara segundo envio em paralelo (no iPhone isso dobrava o tempo e travava).
     return { sucesso: true, mensagem: 'Cadastro realizado!', membro: novo, aguardarNuvem: true };
 }
 
