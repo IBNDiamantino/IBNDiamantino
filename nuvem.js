@@ -53,6 +53,113 @@ const IBNNuvem = (function () {
         };
     }
 
+
+    // ---------- Cloudflare R2 (fotos) ----------
+    function r2Ativo() {
+        return typeof R2_CONFIG !== 'undefined' && R2_CONFIG && R2_CONFIG.accessKeyId && R2_CONFIG.secretAccessKey && R2_CONFIG.bucket && R2_CONFIG.publicBase;
+    }
+
+    function _r2ToHex(buf) {
+        return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+
+    async function _r2Hmac(key, data) {
+        var enc = new TextEncoder();
+        var cryptoKey = await crypto.subtle.importKey('raw', typeof key === 'string' ? enc.encode(key) : key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+        return crypto.subtle.sign('HMAC', cryptoKey, typeof data === 'string' ? enc.encode(data) : data);
+    }
+
+    async function _r2Sha256(data) {
+        var enc = new TextEncoder();
+        var buf = typeof data === 'string' ? enc.encode(data) : data;
+        return crypto.subtle.digest('SHA-256', buf);
+    }
+
+    async function _r2GetSignatureKey(secret, dateStamp, region, service) {
+        var kDate = await _r2Hmac('AWS4' + secret, dateStamp);
+        var kRegion = await _r2Hmac(kDate, region);
+        var kService = await _r2Hmac(kRegion, service);
+        return _r2Hmac(kService, 'aws4_request');
+    }
+
+    /** Converte data:URL em Blob */
+    function dataUrlParaBlob(dataUrl) {
+        var parts = String(dataUrl).split(',');
+        var meta = parts[0] || '';
+        var b64 = parts[1] || '';
+        var mime = 'image/jpeg';
+        var m = meta.match(/data:([^;]+)/);
+        if (m) mime = m[1];
+        var bin = atob(b64);
+        var arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return new Blob([arr], { type: mime });
+    }
+
+    /**
+     * Sobe arquivo/blob para o R2 e devolve a URL publica.
+     * key exemplo: ministerios/foto-123.jpg ou celulas/fc-456.jpg
+     */
+    async function uploadParaR2(blob, key, contentType) {
+        if (!r2Ativo()) throw new Error('R2 nao configurado (R2_CONFIG em firebase-config.js)');
+        if (!blob) throw new Error('Sem arquivo para enviar ao R2');
+        contentType = contentType || blob.type || 'image/jpeg';
+        key = String(key || '').replace(/^\/+/, '');
+        if (!key) throw new Error('Chave R2 vazia');
+
+        var cfg = R2_CONFIG;
+        var method = 'PUT';
+        var service = 's3';
+        var region = 'auto';
+        var host = cfg.accountId + '.r2.cloudflarestorage.com';
+        var canonicalUri = '/' + cfg.bucket + '/' + key.split('/').map(encodeURIComponent).join('/');
+        var now = new Date();
+        var amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+        // YYYYMMDDTHHMMSSZ
+        amzDate = now.getUTCFullYear().toString() +
+            String(now.getUTCMonth() + 1).padStart(2, '0') +
+            String(now.getUTCDate()).padStart(2, '0') + 'T' +
+            String(now.getUTCHours()).padStart(2, '0') +
+            String(now.getUTCMinutes()).padStart(2, '0') +
+            String(now.getUTCSeconds()).padStart(2, '0') + 'Z';
+        var dateStamp = amzDate.slice(0, 8);
+
+        var payloadHash = _r2ToHex(await _r2Sha256(await blob.arrayBuffer()));
+        var canonicalHeaders =
+            'content-type:' + contentType + '\n' +
+            'host:' + host + '\n' +
+            'x-amz-content-sha256:' + payloadHash + '\n' +
+            'x-amz-date:' + amzDate + '\n';
+        var signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
+        var canonicalRequest = [method, canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+        var credentialScope = dateStamp + '/' + region + '/' + service + '/aws4_request';
+        var stringToSign = ['AWS4-HMAC-SHA256', amzDate, credentialScope, _r2ToHex(await _r2Sha256(canonicalRequest))].join('\n');
+        var signingKey = await _r2GetSignatureKey(cfg.secretAccessKey, dateStamp, region, service);
+        var signature = _r2ToHex(await _r2Hmac(signingKey, stringToSign));
+        var authorization = 'AWS4-HMAC-SHA256 Credential=' + cfg.accessKeyId + '/' + credentialScope +
+            ', SignedHeaders=' + signedHeaders + ', Signature=' + signature;
+
+        var url = 'https://' + host + canonicalUri;
+        var resp = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': contentType,
+                'x-amz-content-sha256': payloadHash,
+                'x-amz-date': amzDate,
+                'Authorization': authorization
+            },
+            body: blob
+        });
+        if (!resp.ok) {
+            var txt = '';
+            try { txt = await resp.text(); } catch (e) {}
+            throw new Error('Falha R2 (' + resp.status + '): ' + (txt || resp.statusText).slice(0, 200));
+        }
+        var publicUrl = String(cfg.publicBase).replace(/\/$/, '') + '/' + key;
+        return publicUrl;
+    }
+
+
     // ---- Controle de último envio de membros (detecta cadastros presos no aparelho) ----
     var CHAVE_ULTIMO_ENVIO_MEMBROS = 'ibn_nuvem_ultimo_envio_membros';
     var CHAVE_ULTIMO_ENVIO_FORCE = 'ibn_nuvem_ultimo_force_membros';
@@ -887,35 +994,42 @@ const IBNNuvem = (function () {
 
     // ---------- FOTOS (ministérios) ----------
     async function salvarFotoNuvem(foto) {
-        // Firestore-first (Storage costuma travar no celular sem bucket configurado)
-        if (!iniciar() || !db || !foto) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
+        // Fotos de ministerio: arquivo no R2, so o link no Firestore (nao estoura cota)
+        if (!iniciar() || !db || !foto) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponivel' };
         try {
             const id = String(foto.id || ('foto-' + Date.now()));
             let src = foto.imagemUrl || foto.url || foto.imagem || '';
-            // Se for http(s), grava só o link (leve)
+            let publicUrl = '';
+
             if (src && String(src).indexOf('http') === 0) {
-                const doc = {
-                    id: id,
-                    titulo: foto.titulo || '',
-                    ministerio: foto.ministerio || '',
-                    autor: foto.autor || '',
-                    autorId: foto.autorId || '',
-                    dataFormatada: foto.dataFormatada || '',
-                    mesAno: foto.mesAno || '',
-                    imagemUrl: src,
-                    url: src,
-                    imagem: '',
-                    criadoEm: foto.criadoEm || foto.dataEnvio || new Date().toISOString()
-                };
-                await db.collection('fotos').doc(id).set(doc, { merge: true });
-                return { sucesso: true, foto: doc };
-            }
-            // data:URL base64 — precisa caber no Firestore (~1MB)
-            if (src && String(src).indexOf('data:') === 0) {
-                if (String(src).length > 900000) {
-                    throw new Error('Foto grande demais para a nuvem. Use outra com menos resolução.');
+                publicUrl = src;
+            } else if (src && String(src).indexOf('data:') === 0) {
+                if (r2Ativo()) {
+                    var blob = dataUrlParaBlob(src);
+                    var ext = (blob.type || '').indexOf('png') >= 0 ? 'png' : 'jpg';
+                    var key = 'ministerios/' + id + '.' + ext;
+                    publicUrl = await uploadParaR2(blob, key, blob.type || 'image/jpeg');
+                    const docR2 = {
+                        id: id,
+                        titulo: foto.titulo || '',
+                        ministerio: foto.ministerio || '',
+                        autor: foto.autor || '',
+                        autorId: foto.autorId || '',
+                        dataFormatada: foto.dataFormatada || '',
+                        mesAno: foto.mesAno || '',
+                        imagemUrl: publicUrl,
+                        url: publicUrl,
+                        imagem: '',
+                        criadoEm: foto.criadoEm || foto.dataEnvio || new Date().toISOString()
+                    };
+                    await db.collection('fotos').doc(id).set(docR2, { merge: true });
+                    return { sucesso: true, foto: Object.assign({}, docR2, { imagem: publicUrl, url: publicUrl }) };
                 }
-                const doc = {
+                // Fallback: grava base64 no Firestore (R2 ainda nao ativo)
+                if (String(src).length > 900000) {
+                    throw new Error('Foto grande demais para a nuvem. Use outra com menos resolucao.');
+                }
+                const docFs = {
                     id: id,
                     titulo: foto.titulo || '',
                     ministerio: foto.ministerio || '',
@@ -928,10 +1042,27 @@ const IBNNuvem = (function () {
                     imagem: src,
                     criadoEm: foto.criadoEm || foto.dataEnvio || new Date().toISOString()
                 };
-                await db.collection('fotos').doc(id).set(doc, { merge: true });
-                return { sucesso: true, foto: Object.assign({}, doc, { imagem: src, url: src }) };
+                await db.collection('fotos').doc(id).set(docFs, { merge: true });
+                return { sucesso: true, foto: Object.assign({}, docFs, { imagem: src, url: src }) };
+            } else {
+                throw new Error('Nenhuma imagem valida para enviar.');
             }
-            throw new Error('Nenhuma imagem válida para enviar.');
+
+            const doc = {
+                id: id,
+                titulo: foto.titulo || '',
+                ministerio: foto.ministerio || '',
+                autor: foto.autor || '',
+                autorId: foto.autorId || '',
+                dataFormatada: foto.dataFormatada || '',
+                mesAno: foto.mesAno || '',
+                imagemUrl: publicUrl,
+                url: publicUrl,
+                imagem: '',
+                criadoEm: foto.criadoEm || foto.dataEnvio || new Date().toISOString()
+            };
+            await db.collection('fotos').doc(id).set(doc, { merge: true });
+            return { sucesso: true, foto: Object.assign({}, doc, { imagem: publicUrl, url: publicUrl }) };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
             console.warn('salvarFotoNuvem:', ultimoErro);
@@ -965,31 +1096,39 @@ const IBNNuvem = (function () {
 
     // ---------- FOTOS DE CÉLULA ----------
     async function salvarFotoCelulaNuvem(foto) {
-        // Mesma estratégia das fotos de ministério: Firestore direto
-        if (!iniciar() || !db || !foto) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
+        // Fotos de celula: arquivo no R2, so o link no Firestore
+        if (!iniciar() || !db || !foto) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponivel' };
         try {
             const id = String(foto.id || ('fc-' + Date.now()));
             let src = foto.url || foto.imagemUrl || foto.imagem || '';
+            let publicUrl = '';
+
             if (src && String(src).indexOf('http') === 0) {
-                const doc = {
-                    id: id,
-                    celulaId: foto.celulaId || '',
-                    titulo: foto.titulo || '',
-                    autorNome: foto.autorNome || foto.autor || '',
-                    autorId: foto.autorId || '',
-                    data: foto.data || foto.criadoEm || new Date().toISOString(),
-                    url: src,
-                    imagemUrl: src,
-                    imagem: ''
-                };
-                await db.collection('fotos_celulas').doc(id).set(doc, { merge: true });
-                return { sucesso: true, foto: doc };
-            }
-            if (src && String(src).indexOf('data:') === 0) {
-                if (String(src).length > 900000) {
-                    throw new Error('Foto grande demais para a nuvem. Use outra com menos resolução.');
+                publicUrl = src;
+            } else if (src && String(src).indexOf('data:') === 0) {
+                if (r2Ativo()) {
+                    var blob = dataUrlParaBlob(src);
+                    var ext = (blob.type || '').indexOf('png') >= 0 ? 'png' : 'jpg';
+                    var key = 'celulas/' + id + '.' + ext;
+                    publicUrl = await uploadParaR2(blob, key, blob.type || 'image/jpeg');
+                    const docR2 = {
+                        id: id,
+                        celulaId: foto.celulaId || '',
+                        titulo: foto.titulo || '',
+                        autorNome: foto.autorNome || foto.autor || '',
+                        autorId: foto.autorId || '',
+                        data: foto.data || foto.criadoEm || new Date().toISOString(),
+                        url: publicUrl,
+                        imagemUrl: publicUrl,
+                        imagem: ''
+                    };
+                    await db.collection('fotos_celulas').doc(id).set(docR2, { merge: true });
+                    return { sucesso: true, foto: Object.assign({}, docR2, { url: publicUrl, imagem: publicUrl }) };
                 }
-                const doc = {
+                if (String(src).length > 900000) {
+                    throw new Error('Foto grande demais para a nuvem. Use outra com menos resolucao.');
+                }
+                const docFs = {
                     id: id,
                     celulaId: foto.celulaId || '',
                     titulo: foto.titulo || '',
@@ -1000,10 +1139,25 @@ const IBNNuvem = (function () {
                     imagemUrl: '',
                     imagem: src
                 };
-                await db.collection('fotos_celulas').doc(id).set(doc, { merge: true });
-                return { sucesso: true, foto: Object.assign({}, doc, { url: src, imagem: src }) };
+                await db.collection('fotos_celulas').doc(id).set(docFs, { merge: true });
+                return { sucesso: true, foto: Object.assign({}, docFs, { url: src, imagem: src }) };
+            } else {
+                throw new Error('Nenhuma imagem valida para enviar.');
             }
-            throw new Error('Nenhuma imagem válida para enviar.');
+
+            const doc = {
+                id: id,
+                celulaId: foto.celulaId || '',
+                titulo: foto.titulo || '',
+                autorNome: foto.autorNome || foto.autor || '',
+                autorId: foto.autorId || '',
+                data: foto.data || foto.criadoEm || new Date().toISOString(),
+                url: publicUrl,
+                imagemUrl: publicUrl,
+                imagem: ''
+            };
+            await db.collection('fotos_celulas').doc(id).set(doc, { merge: true });
+            return { sucesso: true, foto: Object.assign({}, doc, { url: publicUrl, imagem: publicUrl }) };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
             console.warn('salvarFotoCelulaNuvem:', ultimoErro);
@@ -1011,7 +1165,7 @@ const IBNNuvem = (function () {
         }
     }
 
-    async function buscarFotosCelulas() {
+    async function buscarFotosCelulas    async function buscarFotosCelulas() {
         if (!iniciar() || !db) return { sucesso: false, lista: [], mensagem: ultimoErro };
         try {
             const snap = await db.collection('fotos_celulas').get();
@@ -1743,6 +1897,108 @@ const IBNNuvem = (function () {
         }
     }
 
+
+    // ---------- INSCRITOS DE EVENTOS ----------
+    function _docInscritoLeve(insc) {
+        if (!insc) return null;
+        var o = Object.assign({}, insc);
+        // Nao manda comprovante base64 (estoura / trava)
+        if (o.comprovante && String(o.comprovante).indexOf('data:') === 0) {
+            o.comprovanteEnviado = true;
+            o.comprovante = '';
+        }
+        if (String(o.comprovante || '').length > 5000) {
+            o.comprovanteEnviado = true;
+            o.comprovante = '';
+        }
+        o.atualizadoEm = o.atualizadoEm || new Date().toISOString();
+        return o;
+    }
+
+    async function salvarInscritoEventoNuvem(insc) {
+        if (!iniciar() || !db || !insc) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponivel' };
+        try {
+            var id = String(insc.codigo || insc.id || ('insc-' + Date.now()));
+            var doc = _docInscritoLeve(Object.assign({}, insc, { id: id, codigo: insc.codigo || id }));
+            await db.collection('inscritos_eventos').doc(id).set(doc, { merge: true });
+            return { sucesso: true, id: id };
+        } catch (e) {
+            ultimoErro = (e && e.message) || String(e);
+            console.warn('salvarInscritoEventoNuvem:', ultimoErro);
+            return { sucesso: false, mensagem: ultimoErro };
+        }
+    }
+
+    async function puxarInscritosEventosParaLocal() {
+        if (!iniciar() || !db) return { sucesso: false, lista: [], mensagem: ultimoErro };
+        try {
+            var snap = await db.collection('inscritos_eventos').get();
+            var lista = [];
+            snap.forEach(function (doc) {
+                var d = Object.assign({ id: doc.id }, doc.data());
+                if (!d.codigo) d.codigo = doc.id;
+                lista.push(d);
+            });
+            // Mescla com local (nuvem manda / preenche faltantes)
+            var local = [];
+            try { local = JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch (e0) { local = []; }
+            if (!Array.isArray(local)) local = [];
+            var map = {};
+            local.forEach(function (i) {
+                if (!i) return;
+                var k = String(i.codigo || i.id || '');
+                if (k) map[k] = i;
+            });
+            var mudou = false;
+            lista.forEach(function (n) {
+                var k = String(n.codigo || n.id || '');
+                if (!k) return;
+                var prev = map[k];
+                if (!prev) {
+                    map[k] = n;
+                    mudou = true;
+                    return;
+                }
+                // Atualiza status de pagamento se nuvem estiver mais avancada
+                var rank = function (x) {
+                    var s = String((x && x.statusPagamento) || '');
+                    if (s === 'confirmado' || (x && x.pago)) return 3;
+                    if (s === 'aguardando_conferencia' || (x && x.comprovanteEnviado)) return 2;
+                    return 1;
+                };
+                if (rank(n) > rank(prev)) {
+                    map[k] = Object.assign({}, prev, n);
+                    mudou = true;
+                } else if (!prev.nome && n.nome) {
+                    map[k] = Object.assign({}, n, prev);
+                    mudou = true;
+                }
+            });
+            var mesclada = Object.keys(map).map(function (k) { return map[k]; });
+            // Ordena mais recentes primeiro
+            mesclada.sort(function (a, b) {
+                return String(b.dataInsc || b.atualizadoEm || '').localeCompare(String(a.dataInsc || a.atualizadoEm || ''));
+            });
+            localStorage.setItem('inscritosIBN', JSON.stringify(mesclada));
+            return { sucesso: true, lista: mesclada, mudou: mudou, quantidade: mesclada.length };
+        } catch (e) {
+            ultimoErro = (e && e.message) || String(e);
+            return { sucesso: false, lista: [], mensagem: ultimoErro };
+        }
+    }
+
+    async function removerInscritoEventoNuvem(codigo) {
+        if (!iniciar() || !db || !codigo) return { sucesso: false, mensagem: ultimoErro };
+        try {
+            await db.collection('inscritos_eventos').doc(String(codigo)).delete();
+            return { sucesso: true };
+        } catch (e) {
+            ultimoErro = (e && e.message) || String(e);
+            return { sucesso: false, mensagem: ultimoErro };
+        }
+    }
+
+
     return {
         iniciar: iniciar,
         sincronizarTudoDaNuvem: sincronizarTudoDaNuvem,
@@ -1793,6 +2049,9 @@ const IBNNuvem = (function () {
         puxarFotosCelulasParaLocal: puxarFotosCelulasParaLocal,
         salvarPedidoOracao: salvarPedidoOracao,
         buscarPedidosOracao: buscarPedidosOracao,
-        puxarPedidosOracaoParaLocal: puxarPedidosOracaoParaLocal
+        puxarPedidosOracaoParaLocal: puxarPedidosOracaoParaLocal,
+        salvarInscritoEventoNuvem: salvarInscritoEventoNuvem,
+        puxarInscritosEventosParaLocal: puxarInscritosEventosParaLocal,
+        removerInscritoEventoNuvem: removerInscritoEventoNuvem
     };
 })();

@@ -716,6 +716,12 @@
             carregarSelectEventos();
             atualizarUISemEvento();
             carregarListaPublica();
+            // Gestão/líder: puxa inscritos da nuvem (outros aparelhos)
+            try {
+                if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
+                    puxarInscritosDaNuvemEAtualizar();
+                }
+            } catch (ePi) {}
             // Puxa eventos da nuvem e atualiza a tela; se só existir local, sobe para a nuvem
             (async function syncEventosNuvem() {
                 try {
@@ -727,6 +733,11 @@
                         carregarSelectEventos();
                         atualizarUISemEvento();
                         try { if (typeof renderAdminEventos === 'function') renderAdminEventos(); } catch (eR) {}
+                        try {
+                            if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
+                                await puxarInscritosDaNuvemEAtualizar();
+                            }
+                        } catch (eIn) {}
                         // re-aplica evento do link de convite
                         if (window._eventoConviteId) {
                             var sel2 = document.getElementById('eventoSelect');
@@ -1051,6 +1062,7 @@
             };
             inscritos.push(novaInsc);
             salvarInscritos();
+            try { salvarUmInscritoNuvem(novaInsc); } catch (eNuv) {}
             try {
                 registrarNotifEvento('inscrito', evento,
                     'Nova inscrição: ' + (nome || '—') +
@@ -1128,6 +1140,7 @@
                 inscritos[idx].dataPagamento = new Date().toLocaleString('pt-BR');
                 inscritos[idx].meioPagamento = (document.querySelector('input[name="meioPag"]:checked') || {}).value || 'PIX';
                 inscritos[idx].statusPagamento = valor <= 0 ? 'confirmado' : 'aguardando_conferencia';
+                inscritos[idx].atualizadoEm = new Date().toISOString();
                 try {
                     var evP = eventos.find(function(e){ return String(e.id) === String(inscritos[idx].eventoId); });
                     registrarNotifEvento('pagamento', evP || { id: inscritos[idx].eventoId, nome: inscritos[idx].eventoNome },
@@ -1136,6 +1149,7 @@
                 } catch (eP) {}
 
                 salvarInscritos();
+                try { salvarUmInscritoNuvem(inscritos[idx]); } catch (eNuvP) {}
                 document.getElementById('msgConfirmacao').classList.remove('hidden');
                 document.getElementById('btnConfirmar').disabled = true;
                 document.getElementById('btnConfirmar').textContent = valor <= 0 ? '✅ Inscrito' : '✅ Comprovante enviado';
@@ -1344,6 +1358,58 @@
 
         function salvarInscritos() {
             localStorage.setItem('inscritosIBN', JSON.stringify(inscritos));
+            // Sobe para a nuvem (mesmo esquema dos membros) — gestão vê em qualquer aparelho
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
+                    // Envia os que mudaram recentemente (ultimos 30) para nao travar
+                    var fila = (inscritos || []).slice(0, 30);
+                    fila.forEach(function (insc) {
+                        if (!insc || !(insc.codigo || insc.id)) return;
+                        IBNNuvem.salvarInscritoEventoNuvem(insc).catch(function () {});
+                    });
+                }
+            } catch (eUp) {}
+        }
+
+        function salvarUmInscritoNuvem(insc) {
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem && insc) {
+                    return IBNNuvem.salvarInscritoEventoNuvem(insc);
+                }
+            } catch (e1) {}
+            return Promise.resolve({ sucesso: false });
+        }
+
+        async function puxarInscritosDaNuvemEAtualizar() {
+            try {
+                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.puxarInscritosEventosParaLocal) return false;
+                var r = await IBNNuvem.puxarInscritosEventosParaLocal();
+                if (r && r.sucesso && Array.isArray(r.lista)) {
+                    inscritos = r.lista;
+                    try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (e2) {}
+                    try { carregarListaPublica(); } catch (e3) {}
+                    if (r.mudou) {
+                        try { marcarSinoInscritosNovo(); } catch (e4) {}
+                    }
+                    return !!r.mudou;
+                }
+            } catch (e) { console.warn('puxarInscritosDaNuvem:', e); }
+            return false;
+        }
+
+        function marcarSinoInscritosNovo() {
+            try {
+                var badge = document.getElementById('badgeSinoEventos');
+                var btn = document.getElementById('btnSinoEventos');
+                if (badge) {
+                    badge.classList.remove('hidden');
+                    var n = parseInt(badge.textContent || '0', 10) || 0;
+                    badge.textContent = String(n + 1);
+                }
+                if (btn) {
+                    btn.classList.add('ring-2', 'ring-red-400', 'bg-red-500/20');
+                }
+            } catch (e) {}
         }
 
         function listaLideresDoEvento(ev) {
