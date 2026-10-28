@@ -716,9 +716,18 @@
             carregarSelectEventos();
             atualizarUISemEvento();
             carregarListaPublica();
-            // Gestão/líder: puxa inscritos da nuvem (outros aparelhos)
+            // Gestão/líder: sobe inscritos locais e puxa da nuvem (outros aparelhos)
             try {
                 if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
+                    // Garante que o que está só neste aparelho vai para a nuvem
+                    try {
+                        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
+                            (inscritos || []).forEach(function (insc) {
+                                if (!insc || !(insc.codigo || insc.id)) return;
+                                IBNNuvem.salvarInscritoEventoNuvem(insc).catch(function () {});
+                            });
+                        }
+                    } catch (eUp) {}
                     puxarInscritosDaNuvemEAtualizar();
                 }
             } catch (ePi) {}
@@ -735,6 +744,15 @@
                         try { if (typeof renderAdminEventos === 'function') renderAdminEventos(); } catch (eR) {}
                         try {
                             if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
+                                try {
+                                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
+                                        for (var k = 0; k < (inscritos || []).length; k++) {
+                                            var insc = inscritos[k];
+                                            if (!insc || !(insc.codigo || insc.id)) continue;
+                                            try { await IBNNuvem.salvarInscritoEventoNuvem(insc); } catch (eS) {}
+                                        }
+                                    }
+                                } catch (eUp2) {}
                                 await puxarInscritosDaNuvemEAtualizar();
                             }
                         } catch (eIn) {}
@@ -1484,23 +1502,99 @@
                 return;
             }
             const pagos = lista.filter(i => i.pago).length;
+            const ehAdminGestao = (function () {
+                try {
+                    var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                    if (!u) return false;
+                    if (u.nivel === 'admin' || u.nivel === 'gestor') return true;
+                    if (typeof isAdmin === 'function' && isAdmin(u)) return true;
+                    if (typeof isGestor === 'function' && isGestor(u)) return true;
+                    if (typeof podeCriarEventos === 'function' && podeCriarEventos()) return true;
+                } catch (e) {}
+                return false;
+            })();
             container.innerHTML = `
                 <p class="text-sm text-gray-500 mb-4">Total: ${lista.length} · Pagos: ${pagos} · Pendentes: ${lista.length - pagos}</p>
                 <div class="space-y-2">
-                    ${lista.map(i => `
-                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <span class="font-semibold">${i.nome}</span>
+                    ${lista.map(i => {
+                        const cod = String(i.codigo || i.id || '');
+                        return `
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                            <div class="min-w-0">
+                                <span class="font-semibold">${i.nome || '—'}</span>
                                 <span class="text-xs text-gray-500 block sm:inline sm:ml-2">${i.eventoNome || ''}</span>
                                 <span class="text-xs text-gray-400 block">${i.tipo === 'visitante' ? 'Visitante' : 'Membro'} · ${i.telefone || ''}</span>
                             </div>
-                            <span class="text-xs px-2 py-1 rounded-full w-fit ${i.pago ? 'status-pago' : 'status-pendente'}">
-                                ${i.pago ? '✅ Pago' : '⏳ Pendente'}
-                            </span>
-                        </div>
-                    `).join('')}
+                            <div class="flex flex-wrap items-center gap-2 shrink-0">
+                                <span class="text-xs px-2 py-1 rounded-full w-fit ${i.pago ? 'status-pago' : 'status-pendente'}">
+                                    ${i.pago ? '✅ Pago' : '⏳ Pendente'}
+                                </span>
+                                ${ehAdminGestao ? `
+                                <button type="button" data-cod="${cod}" class="btn-toggle-pago text-xs px-2 py-1 rounded border ${i.pago ? 'border-amber-400 text-amber-700' : 'border-green-500 text-green-700'} hover:bg-white">
+                                    ${i.pago ? 'Marcar pendente' : 'Confirmar pagamento'}
+                                </button>
+                                <button type="button" data-cod="${cod}" class="btn-excluir-inscrito text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50">
+                                    Excluir
+                                </button>
+                                ` : ''}
+                            </div>
+                        </div>`;
+                    }).join('')}
                 </div>
             `;
+            // Liga os botões de gestão
+            if (ehAdminGestao) {
+                container.querySelectorAll('.btn-toggle-pago').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var cod = btn.getAttribute('data-cod');
+                        alternarPagamentoInscrito(cod);
+                    });
+                });
+                container.querySelectorAll('.btn-excluir-inscrito').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var cod = btn.getAttribute('data-cod');
+                        excluirInscrito(cod);
+                    });
+                });
+            }
+        }
+
+        function _acharIdxInscrito(codigo) {
+            var cod = String(codigo || '');
+            return inscritos.findIndex(function (i) {
+                return i && (String(i.codigo || '') === cod || String(i.id || '') === cod);
+            });
+        }
+
+        function alternarPagamentoInscrito(codigo) {
+            var idx = _acharIdxInscrito(codigo);
+            if (idx < 0) return;
+            inscritos[idx].pago = !inscritos[idx].pago;
+            if (inscritos[idx].pago) {
+                inscritos[idx].statusPagamento = 'confirmado';
+                inscritos[idx].pagoEm = new Date().toISOString();
+            } else {
+                inscritos[idx].statusPagamento = 'pendente';
+                delete inscritos[idx].pagoEm;
+            }
+            salvarInscritos();
+            try { salvarUmInscritoNuvem(inscritos[idx]); } catch (e) {}
+            carregarListaPublica();
+        }
+
+        function excluirInscrito(codigo) {
+            if (!confirm('Excluir esta inscrição? Esta ação não pode ser desfeita.')) return;
+            var idx = _acharIdxInscrito(codigo);
+            if (idx < 0) return;
+            var cod = String(inscritos[idx].codigo || inscritos[idx].id || codigo);
+            inscritos.splice(idx, 1);
+            salvarInscritos();
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.removerInscritoEventoNuvem) {
+                    IBNNuvem.removerInscritoEventoNuvem(cod);
+                }
+            } catch (e) {}
+            carregarListaPublica();
         }
 
         // Admin: datas múltiplas + foto 4:5

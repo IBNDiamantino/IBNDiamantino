@@ -42,6 +42,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Inscritos em eventos (sincroniza entre aparelhos)
+    match /inscritos_eventos/{id} {
+      allow read, write: if true;
+    }
+
+    // Pedidos de oração / intercessão
+    match /pedidos_oracao/{id} {
+      allow read, write: if true;
+    }
+
     // demais coleções: bloqueado por padrão
     match /{document=**} {
       allow read, write: if false;
