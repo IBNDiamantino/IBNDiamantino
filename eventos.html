@@ -67,7 +67,7 @@
         <div id="avisoNaoLogado" class="hidden mb-8 bg-yellow-50 border border-yellow-300 rounded-xl p-5 text-center">
             <p class="font-bold text-primary mb-4 text-lg">Como deseja se inscrever?</p>
             <div id="boxEscolhaInsc" class="flex flex-wrap justify-center gap-3">
-                <a href="login.html?destino=eventos.html" class="bg-primary text-white px-8 py-3 rounded-lg font-bold hover:bg-accent text-base">Membro</a>
+                <a href="login.html?destino=eventos.html" id="linkMembroInsc" class="bg-primary text-white px-8 py-3 rounded-lg font-bold hover:bg-accent text-base">Membro</a>
                 <button type="button" id="btnModoVisitante" class="bg-secondary text-primary px-8 py-3 rounded-lg font-bold hover:bg-yellow-400 text-base">Visitante</button>
             </div>
             <div id="boxFichaVisitante" class="hidden mt-5 max-w-md mx-auto text-left bg-white border border-yellow-200 rounded-xl p-5 shadow-sm">
@@ -118,11 +118,15 @@
             </div>
             <div id="formInscricao" class="bg-white rounded-xl shadow-lg p-6">
                 <form id="formInsc" class="space-y-4">
-                    <div>
+                    <div id="boxEscolhaEvento">
                         <label class="block font-semibold mb-1">Escolha o Evento</label>
                         <select id="eventoSelect" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
                             <option value="">Carregando eventos...</option>
                         </select>
+                    </div>
+                    <div id="boxEventoFixo" class="hidden mb-1">
+                        <label class="block font-semibold mb-1">Evento</label>
+                        <div id="txtEventoFixo" class="w-full p-3 border rounded-md bg-gray-50 text-gray-800 font-medium"></div>
                     </div>
                     <div id="camposPadraoInsc">
                         <div class="mb-4">
@@ -889,6 +893,35 @@
             });
         }
 
+        
+        function atualizarUIEventoFixo() {
+            var sel = document.getElementById('eventoSelect');
+            var boxSel = document.getElementById('boxEscolhaEvento');
+            var boxFixo = document.getElementById('boxEventoFixo');
+            var txt = document.getElementById('txtEventoFixo');
+            if (!sel || !boxSel || !boxFixo) return;
+            var id = String(sel.value || '');
+            if (!id) {
+                boxSel.classList.remove('hidden');
+                boxFixo.classList.add('hidden');
+                return;
+            }
+            var nome = '';
+            try {
+                var opt = sel.options[sel.selectedIndex];
+                nome = opt ? String(opt.text || '').trim() : '';
+            } catch (e) {}
+            if (!nome) {
+                try {
+                    var ev = eventos.find(function (e) { return String(e.id) === id; });
+                    if (ev) nome = ev.nome || '';
+                } catch (e2) {}
+            }
+            if (txt) txt.textContent = nome || ('Evento selecionado');
+            boxSel.classList.add('hidden');
+            boxFixo.classList.remove('hidden');
+        }
+
         function selecionarEventoParaInscricao(eventoId) {
             var sel = document.getElementById('eventoSelect');
             if (!sel) return;
@@ -910,6 +943,14 @@
                 }
             }
             window._eventoConviteId = eventoId || window._eventoConviteId || '';
+            try {
+                var lm = document.getElementById('linkMembroInsc');
+                if (lm) {
+                    var dest = 'eventos.html';
+                    if (window._eventoConviteId) dest += '?evento=' + encodeURIComponent(window._eventoConviteId);
+                    lm.href = 'login.html?destino=' + encodeURIComponent(dest);
+                }
+            } catch (eL) {}
             try { renderFormularioDoEvento(sel.value); } catch (eRf) {}
             try {
                 var jaMembro = false;
@@ -943,6 +984,7 @@
                 sec.classList.remove('hidden');
                 try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
             }
+            try { atualizarUIEventoFixo(); } catch (eFix) {}
             try { sel.focus(); } catch (e) {}
             try {
                 if (modoVisitante && typeof aplicarDadosVisitanteNoFormulario === 'function') {
