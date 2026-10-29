@@ -1288,14 +1288,18 @@
 
             const codigo = 'IBN-' + eventoId.toUpperCase().replace(/-/g,'') + '-' + Date.now().toString(36).toUpperCase();
 
+            const tipoInsc = (ehMembro && quemEhParticipante() === 'eu' && !modoVisitante) ? 'membro' : 'visitante';
             const novaInsc = {
                 codigo, eventoId, eventoNome: evento.nome, nome, telefone, email,
                 valor: evento.valor, dataInsc: new Date().toLocaleString('pt-BR'), pago: false,
-                tipo: (ehMembro && quemEhParticipante() === 'eu' && !modoVisitante) ? 'membro' : 'visitante',
+                tipo: tipoInsc,
                 nascimento: nascV || (membro && membro.nascimento) || '',
                 endereco: endV || (membro && membro.endereco) || '',
                 municipio: munV || (membro && membro.municipio) || '',
                 membroId: (ehMembro && membro && (membro.email || membro.nome)) || '',
+                inscritoPorNome: (ehMembro && membro && membro.nome) ? String(membro.nome) : (modoVisitante ? 'Visitante (próprio)' : ''),
+                inscritoPorEmail: (ehMembro && membro && membro.email) ? String(membro.email) : '',
+                inscritoPorTipo: ehMembro ? 'membro' : (modoVisitante ? 'visitante' : ''),
                 respostas: col.respostas || {}
             };
             inscritos.push(novaInsc);
@@ -1745,25 +1749,52 @@
                 <div class="space-y-2">
                     ${lista.map(i => {
                         const cod = String(i.codigo || i.id || '');
+                        const tipo = (i.tipo === 'visitante') ? 'Visitante' : 'Membro';
+                        const por = i.inscritoPorNome || (i.membroId ? String(i.membroId) : '');
+                        const resp = i.respostas && typeof i.respostas === 'object' ? i.respostas : {};
+                        const respHtml = Object.keys(resp).map(function (k) {
+                            return '<div><span class="text-gray-500">' + k + ':</span> ' + String(resp[k] || '—') + '</div>';
+                        }).join('');
                         return `
-                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                            <div class="min-w-0">
-                                <span class="font-semibold">${i.nome || '—'}</span>
-                                <span class="text-xs text-gray-500 block sm:inline sm:ml-2">${i.eventoNome || ''}</span>
-                                <span class="text-xs text-gray-400 block">${i.tipo === 'visitante' ? 'Visitante' : 'Membro'} · ${i.telefone || ''}</span>
+                        <div class="p-3 bg-gray-50 rounded-lg space-y-2">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                                <div class="min-w-0">
+                                    <span class="font-semibold">${i.nome || '—'}</span>
+                                    <span class="text-xs text-gray-500 block sm:inline sm:ml-2">${i.eventoNome || ''}</span>
+                                    <span class="text-xs text-gray-400 block">${tipo} · ${i.telefone || '—'}${i.email ? ' · ' + i.email : ''}</span>
+                                    ${por ? '<span class="text-xs text-blue-700 block">Inscrito por: ' + por + (i.inscritoPorEmail ? ' (' + i.inscritoPorEmail + ')' : '') + '</span>' : ''}
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                                    <span class="text-xs px-2 py-1 rounded-full w-fit ${i.pago ? 'status-pago' : 'status-pendente'}">
+                                        ${i.pago ? '✅ Pago' : '⏳ Pendente'}
+                                    </span>
+                                    <button type="button" data-cod="${cod}" class="btn-detalhe-inscrito text-xs px-2 py-1 rounded border border-gray-300 text-gray-700 hover:bg-white">
+                                        Ver dados
+                                    </button>
+                                    ${ehAdminGestao ? `
+                                    <button type="button" data-cod="${cod}" class="btn-toggle-pago text-xs px-2 py-1 rounded border ${i.pago ? 'border-amber-400 text-amber-700' : 'border-green-500 text-green-700'} hover:bg-white">
+                                        ${i.pago ? 'Marcar pendente' : 'Confirmar pagamento'}
+                                    </button>
+                                    <button type="button" data-cod="${cod}" class="btn-excluir-inscrito text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50">
+                                        Excluir
+                                    </button>
+                                    ` : ''}
+                                </div>
                             </div>
-                            <div class="flex flex-wrap items-center gap-2 shrink-0">
-                                <span class="text-xs px-2 py-1 rounded-full w-fit ${i.pago ? 'status-pago' : 'status-pendente'}">
-                                    ${i.pago ? '✅ Pago' : '⏳ Pendente'}
-                                </span>
-                                ${ehAdminGestao ? `
-                                <button type="button" data-cod="${cod}" class="btn-toggle-pago text-xs px-2 py-1 rounded border ${i.pago ? 'border-amber-400 text-amber-700' : 'border-green-500 text-green-700'} hover:bg-white">
-                                    ${i.pago ? 'Marcar pendente' : 'Confirmar pagamento'}
-                                </button>
-                                <button type="button" data-cod="${cod}" class="btn-excluir-inscrito text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50">
-                                    Excluir
-                                </button>
-                                ` : ''}
+                            <div id="det-${cod.replace(/[^a-zA-Z0-9_-]/g,'_')}" class="hidden text-xs bg-white border border-gray-200 rounded-lg p-3 space-y-1 text-gray-700">
+                                <div><span class="text-gray-500">Código:</span> ${i.codigo || i.id || '—'}</div>
+                                <div><span class="text-gray-500">Tipo:</span> ${tipo}</div>
+                                <div><span class="text-gray-500">Nome:</span> ${i.nome || '—'}</div>
+                                <div><span class="text-gray-500">Telefone:</span> ${i.telefone || '—'}</div>
+                                <div><span class="text-gray-500">E-mail:</span> ${i.email || '—'}</div>
+                                <div><span class="text-gray-500">Nascimento:</span> ${i.nascimento || '—'}</div>
+                                <div><span class="text-gray-500">Endereço:</span> ${i.endereco || '—'}${i.municipio ? ' — ' + i.municipio : ''}</div>
+                                <div><span class="text-gray-500">Valor:</span> R$ ${Number(i.valor || 0).toFixed(2)}</div>
+                                <div><span class="text-gray-500">Pagamento:</span> ${i.meioPagamento || '—'}${i.pago ? ' (confirmado)' : ' (pendente)'}</div>
+                                <div><span class="text-gray-500">Data inscrição:</span> ${i.dataInsc || '—'}</div>
+                                ${por ? '<div><span class="text-gray-500">Feita por:</span> ' + por + (i.inscritoPorEmail ? ' · ' + i.inscritoPorEmail : '') + '</div>' : ''}
+                                ${i.membroId ? '<div><span class="text-gray-500">ID/conta membro:</span> ' + i.membroId + '</div>' : ''}
+                                ${respHtml ? '<div class="pt-1 border-t border-gray-100 mt-1"><span class="text-gray-500 font-semibold">Respostas do formulário</span>' + respHtml + '</div>' : ''}
                             </div>
                         </div>`;
                     }).join('')}
@@ -1784,6 +1815,17 @@
                     });
                 });
             }
+            container.querySelectorAll('.btn-detalhe-inscrito').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var cod = btn.getAttribute('data-cod') || '';
+                    var id = 'det-' + String(cod).replace(/[^a-zA-Z0-9_-]/g, '_');
+                    var painel = document.getElementById(id);
+                    if (!painel) return;
+                    var aberto = !painel.classList.contains('hidden');
+                    painel.classList.toggle('hidden', aberto);
+                    btn.textContent = aberto ? 'Ver dados' : 'Ocultar dados';
+                });
+            });
         }
 
         function _acharIdxInscrito(codigo) {
