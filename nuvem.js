@@ -1929,7 +1929,8 @@ const IBNNuvem = (function () {
         }
     }
 
-    async function puxarInscritosEventosParaLocal() {
+    async function puxarInscritosEventosParaLocal(opcoes) {
+        opcoes = opcoes || {};
         if (!iniciar() || !db) return { sucesso: false, lista: [], mensagem: ultimoErro };
         try {
             var snap = await db.collection('inscritos_eventos').get();
@@ -1939,6 +1940,14 @@ const IBNNuvem = (function () {
                 if (!d.codigo) d.codigo = doc.id;
                 lista.push(d);
             });
+            // substituir: true → local vira exatamente a lista da nuvem (referência)
+            if (opcoes.substituir) {
+                lista.sort(function (a, b) {
+                    return String(b.dataInsc || b.atualizadoEm || '').localeCompare(String(a.dataInsc || a.atualizadoEm || ''));
+                });
+                localStorage.setItem('inscritosIBN', JSON.stringify(lista));
+                return { sucesso: true, lista: lista, mudou: true, quantidade: lista.length, modo: 'substituir' };
+            }
             // Mescla com local (nuvem manda / preenche faltantes)
             var local = [];
             try { local = JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch (e0) { local = []; }
@@ -1966,7 +1975,9 @@ const IBNNuvem = (function () {
                     if (s === 'aguardando_conferencia' || (x && x.comprovanteEnviado)) return 2;
                     return 1;
                 };
-                if (rank(n) > rank(prev)) {
+                var tN = String((n && n.atualizadoEm) || '');
+                var tP = String((prev && prev.atualizadoEm) || '');
+                if (rank(n) > rank(prev) || (tN && tN > tP)) {
                     map[k] = Object.assign({}, prev, n);
                     mudou = true;
                 } else if (!prev.nome && n.nome) {
@@ -1984,6 +1995,68 @@ const IBNNuvem = (function () {
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
             return { sucesso: false, lista: [], mensagem: ultimoErro };
+        }
+    }
+
+    /**
+     * Publica a lista local como referência na nuvem:
+     * - sobe todos os inscritos locais
+     * - remove da nuvem os que não estão na lista local
+     * Assim o computador de referência (ex.: Luana/Master) define o que vale.
+     */
+    async function publicarInscritosComoReferencia(listaLocal) {
+        if (!iniciar() || !db) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
+        try {
+            var lista = Array.isArray(listaLocal) ? listaLocal : [];
+            try {
+                if (!lista.length) lista = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
+            } catch (e0) { lista = []; }
+            if (!Array.isArray(lista)) lista = [];
+
+            var idsLocais = {};
+            var enviados = 0;
+            for (var i = 0; i < lista.length; i++) {
+                var insc = lista[i];
+                if (!insc) continue;
+                var id = String(insc.codigo || insc.id || '');
+                if (!id) continue;
+                idsLocais[id] = true;
+                var doc = _docInscritoLeve(Object.assign({}, insc, {
+                    id: id,
+                    codigo: insc.codigo || id,
+                    atualizadoEm: insc.atualizadoEm || new Date().toISOString(),
+                    publicadoEm: new Date().toISOString()
+                }));
+                await db.collection('inscritos_eventos').doc(id).set(doc, { merge: true });
+                enviados++;
+            }
+
+            // Remove da nuvem o que não está na lista de referência
+            var snap = await db.collection('inscritos_eventos').get();
+            var removidos = 0;
+            var deletes = [];
+            snap.forEach(function (doc) {
+                if (!idsLocais[doc.id]) {
+                    deletes.push(doc.ref.delete());
+                    removidos++;
+                }
+            });
+            if (deletes.length) await Promise.all(deletes);
+
+            // Marca timestamp da referência
+            try {
+                await db.collection('config').doc('inscritos_eventos_ref').set({
+                    quando: new Date().toISOString(),
+                    quantidade: enviados,
+                    removidos: removidos
+                }, { merge: true });
+            } catch (eRef) {}
+
+            return { sucesso: true, enviados: enviados, removidos: removidos, quantidade: enviados };
+        } catch (e) {
+            ultimoErro = (e && e.message) || String(e);
+            console.warn('publicarInscritosComoReferencia:', ultimoErro);
+            return { sucesso: false, mensagem: ultimoErro };
         }
     }
 
@@ -2052,6 +2125,7 @@ const IBNNuvem = (function () {
         puxarPedidosOracaoParaLocal: puxarPedidosOracaoParaLocal,
         salvarInscritoEventoNuvem: salvarInscritoEventoNuvem,
         puxarInscritosEventosParaLocal: puxarInscritosEventosParaLocal,
+        publicarInscritosComoReferencia: publicarInscritosComoReferencia,
         removerInscritoEventoNuvem: removerInscritoEventoNuvem
     };
 })();
