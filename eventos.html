@@ -1745,16 +1745,15 @@
                 return false;
             })();
             container.innerHTML = `
-                <p class="text-sm text-gray-500 mb-4">Total: ${lista.length} · Pagos: ${pagos} · Pendentes: ${lista.length - pagos}</p>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                    <p class="text-sm text-gray-500">Total: ${lista.length} · Pagos: ${pagos} · Pendentes: ${lista.length - pagos}</p>
+                    ${ehAdminGestao ? '<button type="button" id="btnCsvInscritos" class="text-sm font-bold bg-primary text-white px-4 py-2 rounded-lg hover:opacity-90 w-fit"><i class="fa fa-download mr-1"></i> Baixar CSV de inscritos</button>' : ''}
+                </div>
                 <div class="space-y-2">
                     ${lista.map(i => {
                         const cod = String(i.codigo || i.id || '');
                         const tipo = (i.tipo === 'visitante') ? 'Visitante' : 'Membro';
                         const por = i.inscritoPorNome || (i.membroId ? String(i.membroId) : '');
-                        const resp = i.respostas && typeof i.respostas === 'object' ? i.respostas : {};
-                        const respHtml = Object.keys(resp).map(function (k) {
-                            return '<div><span class="text-gray-500">' + k + ':</span> ' + String(resp[k] || '—') + '</div>';
-                        }).join('');
                         return `
                         <div class="p-3 bg-gray-50 rounded-lg space-y-2">
                             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
@@ -1794,7 +1793,6 @@
                                 <div><span class="text-gray-500">Data inscrição:</span> ${i.dataInsc || '—'}</div>
                                 ${por ? '<div><span class="text-gray-500">Feita por:</span> ' + por + (i.inscritoPorEmail ? ' · ' + i.inscritoPorEmail : '') + '</div>' : ''}
                                 ${i.membroId ? '<div><span class="text-gray-500">ID/conta membro:</span> ' + i.membroId + '</div>' : ''}
-                                ${respHtml ? '<div class="pt-1 border-t border-gray-100 mt-1"><span class="text-gray-500 font-semibold">Respostas do formulário</span>' + respHtml + '</div>' : ''}
                             </div>
                         </div>`;
                     }).join('')}
@@ -1826,6 +1824,72 @@
                     btn.textContent = aberto ? 'Ver dados' : 'Ocultar dados';
                 });
             });
+            var btnCsv = document.getElementById('btnCsvInscritos');
+            if (btnCsv) {
+                btnCsv.addEventListener('click', function () {
+                    exportarInscritosEventosCSV(lista);
+                });
+            }
+        }
+
+        function _csvEscapar(v) {
+            var s = String(v == null ? '' : v);
+            if (/[;"\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+            return s;
+        }
+
+        function exportarInscritosEventosCSV(listaFonte) {
+            var lista = Array.isArray(listaFonte) ? listaFonte : (inscritos || []);
+            if (!lista.length) {
+                alert('Nenhum inscrito para exportar.');
+                return;
+            }
+            var cols = [
+                'codigo', 'evento', 'tipo', 'nome', 'telefone', 'email', 'nascimento', 'endereco', 'municipio',
+                'valor', 'pago', 'meioPagamento', 'statusPagamento', 'dataInscricao', 'inscritoPorNome', 'inscritoPorEmail', 'membroId'
+            ];
+            var header = cols.join(';');
+            var linhas = lista.map(function (i) {
+                if (!i) return '';
+                var row = [
+                    i.codigo || i.id || '',
+                    i.eventoNome || '',
+                    i.tipo || '',
+                    i.nome || '',
+                    i.telefone || '',
+                    i.email || '',
+                    i.nascimento || '',
+                    i.endereco || '',
+                    i.municipio || '',
+                    (i.valor != null ? Number(i.valor) : ''),
+                    i.pago ? 'sim' : 'nao',
+                    i.meioPagamento || '',
+                    i.statusPagamento || (i.pago ? 'confirmado' : 'pendente'),
+                    i.dataInsc || '',
+                    i.inscritoPorNome || '',
+                    i.inscritoPorEmail || '',
+                    i.membroId || ''
+                ];
+                return row.map(_csvEscapar).join(';');
+            }).filter(Boolean);
+            var csv = '\uFEFF' + header + '\n' + linhas.join('\n');
+            var nome = 'inscritos-eventos-ibn_' + new Date().toISOString().slice(0, 10) + '.csv';
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.baixarArquivo) {
+                    IBNNuvem.baixarArquivo(csv, nome);
+                    return;
+                }
+            } catch (e1) {}
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = nome;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () {
+                try { URL.revokeObjectURL(url); a.remove(); } catch (e2) {}
+            }, 500);
         }
 
         function _acharIdxInscrito(codigo) {
