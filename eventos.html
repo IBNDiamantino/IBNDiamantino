@@ -82,7 +82,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Data de nascimento</label>
-                        <input type="date" id="visNascimento" class="w-full p-3 border rounded-md">
+                        <input type="text" id="visNascimento" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" class="w-full p-3 border rounded-md">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Endereço</label>
@@ -668,7 +668,21 @@
                 }
             } catch (ePre) {}
             // Visitante: só nome, telefone, nascimento → continua inscrição
-            var btnVis = document.getElementById('btnModoVisitante');
+            var btnVis = document.
+            // Máscara dd/mm/aaaa na data de nascimento do visitante
+            (function () {
+                var el = document.getElementById('visNascimento');
+                if (!el || el.dataset.maskBound) return;
+                el.dataset.maskBound = '1';
+                el.addEventListener('input', function () {
+                    var v = this.value.replace(/\D/g, '').slice(0, 8);
+                    if (v.length >= 5) v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+                    else if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+                    this.value = v;
+                });
+            })();
+
+            getElementById('btnModoVisitante');
             if (btnVis) {
                 btnVis.addEventListener('click', function () {
                     var esc = document.getElementById('boxEscolhaInsc');
@@ -896,25 +910,35 @@
                     }
                 }
             }
-            renderFormularioDoEvento(sel.value);
+            window._eventoConviteId = eventoId || window._eventoConviteId || '';
+            try { renderFormularioDoEvento(sel.value); } catch (eRf) {}
             try {
-                var jaMembro = (typeof verificarMembro === 'function') ? verificarMembro() : false;
+                var jaMembro = false;
+                try { jaMembro = (typeof verificarMembro === 'function') && !!verificarMembro(); } catch (eM) {}
                 if (!jaMembro && !modoVisitante) {
-                    // Ainda não escolheu: leva para a escolha no topo (evita formulário bagunçado no celular)
-                    esconderPerguntaTipoInsc();
+                    // Ainda não escolheu: destaca a escolha Membro/Visitante no topo
+                    try { esconderPerguntaTipoInsc(); } catch (e0) {}
                     var avN = document.getElementById('avisoNaoLogado');
                     if (avN) {
                         avN.classList.remove('hidden');
                         var esc = document.getElementById('boxEscolhaInsc');
                         if (esc) esc.classList.remove('hidden');
-                        try { avN.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc0) {}
+                        // esconde ficha se estava aberta
+                        var boxFv = document.getElementById('boxFichaVisitante');
+                        if (boxFv) boxFv.classList.add('hidden');
+                        avN.style.transition = 'box-shadow 0.3s';
+                        avN.style.boxShadow = '0 0 0 3px #D4AF37';
+                        setTimeout(function () { try { avN.style.boxShadow = ''; } catch (e) {} }, 1800);
+                        try { avN.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (eSc0) {}
+                    } else {
+                        alert('Escolha se você é Membro ou Visitante para continuar.');
                     }
-                    // guarda o evento escolhido para abrir depois
-                    window._eventoConviteId = eventoId || window._eventoConviteId || '';
                     return;
                 }
-            } catch (eTipo) {}
-            // formulário só aparece depois de clicar em Inscrever-se (ou equivalente)
+            } catch (eTipo) {
+                console.warn('selecionarEvento:', eTipo);
+            }
+            // Já escolheu tipo: abre o formulário de inscrição
             var sec = document.getElementById('inscricao');
             if (sec) {
                 sec.classList.remove('hidden');
