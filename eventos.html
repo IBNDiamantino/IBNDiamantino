@@ -668,7 +668,6 @@
                 }
             } catch (ePre) {}
             // Visitante: só nome, telefone, nascimento → continua inscrição
-            var btnVis = document.
             // Máscara dd/mm/aaaa na data de nascimento do visitante
             (function () {
                 var el = document.getElementById('visNascimento');
@@ -682,7 +681,7 @@
                 });
             })();
 
-            getElementById('btnModoVisitante');
+            var btnVis = document.getElementById('btnModoVisitante');
             if (btnVis) {
                 btnVis.addEventListener('click', function () {
                     var esc = document.getElementById('boxEscolhaInsc');
