@@ -1726,15 +1726,28 @@
          * - Depois todos puxam a nuvem substituindo o local → computadores ficam iguais.
          */
         async function sincronizarInscritosPeloSino() {
-            var statusEl = document.getElementById('statusSyncNuvemInscritos');
-            var btn = document.getElementById('btnSyncNuvemInscritos');
+            var statusEls = [
+                document.getElementById('statusSyncNuvemInscritos'),
+                document.getElementById('statusSyncInscritosLista')
+            ];
+            var btns = [
+                document.getElementById('btnSyncNuvemInscritos'),
+                document.getElementById('btnSyncInscritosLista')
+            ];
             function setStatus(msg, ok) {
-                if (!statusEl) return;
-                statusEl.classList.remove('hidden');
-                statusEl.textContent = msg || '';
-                statusEl.className = 'text-[10px] mt-1 text-center ' + (ok === false ? 'text-red-600' : (ok === true ? 'text-green-700' : 'text-gray-600'));
+                statusEls.forEach(function (statusEl) {
+                    if (!statusEl) return;
+                    statusEl.classList.remove('hidden');
+                    statusEl.textContent = msg || '';
+                    statusEl.className = 'text-xs mt-1 ' + (statusEl.id === 'statusSyncNuvemInscritos' ? 'text-center text-[10px] ' : '') +
+                        (ok === false ? 'text-red-600' : (ok === true ? 'text-green-700 font-semibold' : 'text-gray-600'));
+                });
             }
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Sincronizando...'; }
+            btns.forEach(function (btn) {
+                if (!btn) return;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Sincronizando...';
+            });
             setStatus('Conectando à nuvem...', null);
             try {
                 if (typeof IBNNuvem === 'undefined') {
@@ -1752,7 +1765,7 @@
                 } catch (eU) {}
 
                 if (ehRef && typeof IBNNuvem.publicarInscritosComoReferencia === 'function') {
-                    setStatus('Publicando lista deste computador como referência...', null);
+                    setStatus('Publicando lista deste aparelho como referência...', null);
                     var pub = await IBNNuvem.publicarInscritosComoReferencia(inscritos);
                     if (!pub || !pub.sucesso) {
                         setStatus('Falha ao publicar: ' + ((pub && pub.mensagem) || 'erro'), false);
@@ -1776,9 +1789,17 @@
             } catch (e) {
                 setStatus('Erro: ' + ((e && e.message) || String(e)), false);
             } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fa fa-cloud-upload mr-1"></i> Atualizar nuvem / sincronizar';
+                var b1 = document.getElementById('btnSyncNuvemInscritos');
+                if (b1) {
+                    b1.disabled = false;
+                    b1.innerHTML = '<i class="fa fa-cloud-upload mr-1"></i> Atualizar nuvem / sincronizar';
+                }
+                var b2 = document.getElementById('btnSyncInscritosLista');
+                if (b2) {
+                    b2.disabled = false;
+                    b2.innerHTML = '<i class="fa fa-cloud mr-1"></i> Sincronizar com a nuvem';
+                    b2._syncLigado = false;
+                    try { ligarBotoesSyncInscritos(); } catch (eL) {}
                 }
             }
         }
@@ -1865,10 +1886,6 @@
                     lista = lista.filter(function (i) { return ids.indexOf(String(i.eventoId)) !== -1; });
                 }
             } catch (eF) {}
-            if (lista.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center">Nenhum inscrito ainda.</p>';
-                return;
-            }
             const pagos = lista.filter(i => i.pago).length;
             const ehAdminGestao = (function () {
                 try {
@@ -1881,10 +1898,33 @@
                 } catch (e) {}
                 return false;
             })();
+            // Botões bem visíveis (não só dentro do sino)
+            var botoesGestao =
+                '<div class="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">' +
+                '<button type="button" id="btnSyncInscritosLista" class="text-sm font-bold bg-amber-500 text-primary px-4 py-2.5 rounded-lg hover:bg-amber-400 w-full sm:w-fit shadow">' +
+                '<i class="fa fa-cloud mr-1"></i> Sincronizar com a nuvem</button>' +
+                (ehAdminGestao
+                    ? '<button type="button" id="btnCsvInscritos" class="text-sm font-bold bg-primary text-white px-4 py-2.5 rounded-lg hover:opacity-90 w-full sm:w-fit"><i class="fa fa-download mr-1"></i> Baixar CSV de inscritos</button>'
+                    : '') +
+                '</div>' +
+                '<p id="statusSyncInscritosLista" class="text-xs text-gray-600 w-full mt-1 hidden"></p>';
+
+            if (lista.length === 0) {
+                container.innerHTML =
+                    '<div class="flex flex-col gap-2 mb-4">' +
+                    '<p class="text-sm text-gray-500">Total: 0 · Pagos: 0 · Pendentes: 0</p>' +
+                    botoesGestao +
+                    '</div>' +
+                    '<p class="text-gray-500 text-center">Nenhum inscrito ainda.</p>';
+                try { ligarBotoesSyncInscritos(); } catch (eB0) {}
+                return;
+            }
             container.innerHTML = `
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                    <p class="text-sm text-gray-500">Total: ${lista.length} · Pagos: ${pagos} · Pendentes: ${lista.length - pagos}</p>
-                    ${ehAdminGestao ? '<button type="button" id="btnCsvInscritos" class="text-sm font-bold bg-primary text-white px-4 py-2 rounded-lg hover:opacity-90 w-fit"><i class="fa fa-download mr-1"></i> Baixar CSV de inscritos</button>' : ''}
+                <div class="flex flex-col gap-2 mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <p class="text-sm text-gray-500">Total: ${lista.length} · Pagos: ${pagos} · Pendentes: ${lista.length - pagos}</p>
+                        ${botoesGestao}
+                    </div>
                 </div>
                 <div class="space-y-2">
                     ${lista.map(i => {
@@ -1993,6 +2033,17 @@
                     exportarInscritosEventosCSV(lista);
                 });
             }
+            try { ligarBotoesSyncInscritos(); } catch (eSync) {}
+        }
+
+        function ligarBotoesSyncInscritos() {
+            var btn = document.getElementById('btnSyncInscritosLista');
+            if (!btn || btn._syncLigado) return;
+            btn._syncLigado = true;
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                sincronizarInscritosPeloSino();
+            });
         }
 
         function _csvEscapar(v) {
@@ -2581,6 +2632,22 @@
         }
 
         init();
+        try { initSinoEventos(); } catch (eSino) {}
+        // Sino da home (?sync=1): abre Eventos e sincroniza inscritos com a nuvem
+        try {
+            var qSync = new URLSearchParams(location.search || '');
+            if (qSync.get('sync') === '1' && typeof sincronizarInscritosPeloSino === 'function') {
+                setTimeout(function () {
+                    try {
+                        if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
+                            sincronizarInscritosPeloSino();
+                            var sec = document.getElementById('listaPublica');
+                            if (sec) try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
+                        }
+                    } catch (eSync1) {}
+                }, 800);
+            }
+        } catch (eSync0) {}
     </script>
 
 <script>
