@@ -69,7 +69,7 @@
                         </div>
                         <div class="px-3 py-2 bg-amber-50 border-b border-amber-100">
                             <button type="button" id="btnSyncNuvemInscritos" class="w-full text-xs font-bold bg-primary text-white px-3 py-2 rounded-lg hover:opacity-90">
-                                <i class="fa fa-cloud-upload mr-1"></i> Atualizar nuvem / sincronizar
+                                <i class="fa fa-cloud-download mr-1"></i> Baixar da nuvem
                             </button>
                             <p id="statusSyncNuvemInscritos" class="text-[10px] text-gray-600 mt-1 text-center hidden"></p>
                         </div>
@@ -825,11 +825,11 @@
             carregarSelectEventos();
             atualizarUISemEvento();
             carregarListaPublica();
-            // Gestão/líder: só puxa da nuvem ao abrir (não sobe a lista inteira — evita misturar testes de outros PCs).
-            // Para publicar a lista deste PC como referência, use o botão no sino.
+            // Gestão/líder: ao abrir, SUBSTITUI o local pela nuvem (fonte da verdade).
+            // Assim exclusões feitas noutro aparelho (e publicadas) somem aqui sem misturar lixo local.
             try {
                 if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
-                    puxarInscritosDaNuvemEAtualizar();
+                    puxarInscritosDaNuvemEAtualizar({ substituir: true });
                 }
             } catch (ePi) {}
             // Puxa eventos da nuvem e atualiza a tela; se só existir local, sobe para a nuvem
@@ -845,7 +845,7 @@
                         try { if (typeof renderAdminEventos === 'function') renderAdminEventos(); } catch (eR) {}
                         try {
                             if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
-                                await puxarInscritosDaNuvemEAtualizar();
+                                await puxarInscritosDaNuvemEAtualizar({ substituir: true });
                             }
                         } catch (eIn) {}
                         // re-aplica evento do link de convite
@@ -1668,7 +1668,7 @@
                 btnSync.addEventListener('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    sincronizarInscritosPeloSino();
+                    sincronizarInscritosPeloSino(false);
                 });
             }
             (async function () {
@@ -1679,18 +1679,10 @@
 
 
         function salvarInscritos() {
+            // Só grava local. Nuvem: use salvarUmInscritoNuvem(item) no item alterado,
+            // ou "Publicar como referência" para a lista inteira.
+            // (Subir os 30 primeiros a cada save recolocava lixo excluído na nuvem.)
             localStorage.setItem('inscritosIBN', JSON.stringify(inscritos));
-            // Sobe para a nuvem (mesmo esquema dos membros) — gestão vê em qualquer aparelho
-            try {
-                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
-                    // Envia os que mudaram recentemente (ultimos 30) para nao travar
-                    var fila = (inscritos || []).slice(0, 30);
-                    fila.forEach(function (insc) {
-                        if (!insc || !(insc.codigo || insc.id)) return;
-                        IBNNuvem.salvarInscritoEventoNuvem(insc).catch(function () {});
-                    });
-                }
-            } catch (eUp) {}
         }
 
         function salvarUmInscritoNuvem(insc) {
@@ -1720,19 +1712,20 @@
         }
 
         /**
-         * Sincroniza inscritos pela nuvem (clique no sino).
-         * - Admin/Gestor (referência, ex. Luana): publica a lista DESTE computador como referência
-         *   (sobe tudo e remove da nuvem o que não está aqui).
-         * - Depois todos puxam a nuvem substituindo o local → computadores ficam iguais.
+         * Baixa a lista da nuvem e SUBSTITUI o local (não publica).
+         * Use em todos os aparelhos para ficar igual à nuvem.
+         * modoPublicar=true: sobe ESTE aparelho como referência (apaga na nuvem o que não está aqui).
+         *   Só use no PC que tem a lista correta (ex.: Luana), com confirmação.
          */
-        async function sincronizarInscritosPeloSino() {
+        async function sincronizarInscritosPeloSino(modoPublicar) {
             var statusEls = [
                 document.getElementById('statusSyncNuvemInscritos'),
                 document.getElementById('statusSyncInscritosLista')
             ];
             var btns = [
                 document.getElementById('btnSyncNuvemInscritos'),
-                document.getElementById('btnSyncInscritosLista')
+                document.getElementById('btnSyncInscritosLista'),
+                document.getElementById('btnPublicarRefInscritos')
             ];
             function setStatus(msg, ok) {
                 statusEls.forEach(function (statusEl) {
@@ -1746,7 +1739,9 @@
             btns.forEach(function (btn) {
                 if (!btn) return;
                 btn.disabled = true;
-                btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Sincronizando...';
+                if (btn.id !== 'btnPublicarRefInscritos') {
+                    btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Sincronizando...';
+                }
             });
             setStatus('Conectando à nuvem...', null);
             try {
@@ -1754,26 +1749,33 @@
                     setStatus('Nuvem não disponível neste navegador.', false);
                     return;
                 }
-                var ehRef = false;
-                try {
-                    var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
-                    if (u && (u.nivel === 'admin' || u.nivel === 'gestor' ||
-                        (typeof isAdmin === 'function' && isAdmin(u)) ||
-                        (typeof isGestor === 'function' && isGestor(u)))) {
-                        ehRef = true;
-                    }
-                } catch (eU) {}
 
-                if (ehRef && typeof IBNNuvem.publicarInscritosComoReferencia === 'function') {
+                if (modoPublicar) {
+                    var nLocal = (inscritos || []).length;
+                    if (!confirm(
+                        'PUBLICAR este aparelho como referência?\n\n' +
+                        '• Sobe os ' + nLocal + ' inscrito(s) deste aparelho para a nuvem\n' +
+                        '• APAGA na nuvem tudo que NÃO estiver nesta lista\n\n' +
+                        'Use só no computador que tem a lista CORRETA (ex.: Luana com 7).\n' +
+                        'Se este aparelho tiver testes a mais, eles vão para a nuvem e bagunçam os outros.'
+                    )) {
+                        setStatus('Publicação cancelada.', null);
+                        return;
+                    }
+                    if (typeof IBNNuvem.publicarInscritosComoReferencia !== 'function') {
+                        setStatus('Função de publicação indisponível. Atualize nuvem.js.', false);
+                        return;
+                    }
                     setStatus('Publicando lista deste aparelho como referência...', null);
                     var pub = await IBNNuvem.publicarInscritosComoReferencia(inscritos);
                     if (!pub || !pub.sucesso) {
                         setStatus('Falha ao publicar: ' + ((pub && pub.mensagem) || 'erro'), false);
                         return;
                     }
-                    setStatus('Publicado: ' + (pub.enviados || 0) + ' inscritos · removidos da nuvem: ' + (pub.removidos || 0), true);
+                    setStatus('Publicado: ' + (pub.enviados || 0) + ' · removidos da nuvem: ' + (pub.removidos || 0), true);
                 }
 
+                // Sempre termina baixando (substituir = nuvem manda)
                 setStatus('Baixando lista da nuvem...', null);
                 var r = await IBNNuvem.puxarInscritosEventosParaLocal({ substituir: true });
                 if (r && r.sucesso && Array.isArray(r.lista)) {
@@ -1781,7 +1783,7 @@
                     try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (e2) {}
                     try { carregarListaPublica(); } catch (e3) {}
                     var q = r.quantidade != null ? r.quantidade : r.lista.length;
-                    setStatus('Sincronizado! Total na nuvem: ' + q + ' inscrição(ões).', true);
+                    setStatus((modoPublicar ? 'Referência publicada. ' : '') + 'Lista local = nuvem: ' + q + ' inscrição(ões).', true);
                     try { renderSinoEventos(); } catch (eR) {}
                 } else {
                     setStatus('Não foi possível baixar da nuvem: ' + ((r && r.mensagem) || 'erro'), false);
@@ -1792,15 +1794,21 @@
                 var b1 = document.getElementById('btnSyncNuvemInscritos');
                 if (b1) {
                     b1.disabled = false;
-                    b1.innerHTML = '<i class="fa fa-cloud-upload mr-1"></i> Atualizar nuvem / sincronizar';
+                    b1.innerHTML = '<i class="fa fa-cloud-download mr-1"></i> Baixar da nuvem';
                 }
                 var b2 = document.getElementById('btnSyncInscritosLista');
                 if (b2) {
                     b2.disabled = false;
-                    b2.innerHTML = '<i class="fa fa-cloud mr-1"></i> Sincronizar com a nuvem';
+                    b2.innerHTML = '<i class="fa fa-cloud-download mr-1"></i> Baixar da nuvem';
                     b2._syncLigado = false;
-                    try { ligarBotoesSyncInscritos(); } catch (eL) {}
                 }
+                var b3 = document.getElementById('btnPublicarRefInscritos');
+                if (b3) {
+                    b3.disabled = false;
+                    b3.innerHTML = '<i class="fa fa-cloud-upload mr-1"></i> Publicar este aparelho como referência';
+                    b3._pubLigado = false;
+                }
+                try { ligarBotoesSyncInscritos(); } catch (eL) {}
             }
         }
 
@@ -1898,13 +1906,15 @@
                 } catch (e) {}
                 return false;
             })();
-            // Botões bem visíveis (não só dentro do sino)
+            // Botões bem visíveis — Baixar (seguro) vs Publicar referência (só lista correta)
             var botoesGestao =
                 '<div class="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">' +
                 '<button type="button" id="btnSyncInscritosLista" class="text-sm font-bold bg-amber-500 text-primary px-4 py-2.5 rounded-lg hover:bg-amber-400 w-full sm:w-fit shadow">' +
-                '<i class="fa fa-cloud mr-1"></i> Sincronizar com a nuvem</button>' +
+                '<i class="fa fa-cloud-download mr-1"></i> Baixar da nuvem</button>' +
                 (ehAdminGestao
-                    ? '<button type="button" id="btnCsvInscritos" class="text-sm font-bold bg-primary text-white px-4 py-2.5 rounded-lg hover:opacity-90 w-full sm:w-fit"><i class="fa fa-download mr-1"></i> Baixar CSV de inscritos</button>'
+                    ? '<button type="button" id="btnPublicarRefInscritos" class="text-sm font-bold bg-white border-2 border-amber-500 text-amber-800 px-4 py-2.5 rounded-lg hover:bg-amber-50 w-full sm:w-fit">' +
+                      '<i class="fa fa-cloud-upload mr-1"></i> Publicar este aparelho como referência</button>' +
+                      '<button type="button" id="btnCsvInscritos" class="text-sm font-bold bg-primary text-white px-4 py-2.5 rounded-lg hover:opacity-90 w-full sm:w-fit"><i class="fa fa-download mr-1"></i> Baixar CSV</button>'
                     : '') +
                 '</div>' +
                 '<p id="statusSyncInscritosLista" class="text-xs text-gray-600 w-full mt-1 hidden"></p>';
@@ -2038,12 +2048,31 @@
 
         function ligarBotoesSyncInscritos() {
             var btn = document.getElementById('btnSyncInscritosLista');
-            if (!btn || btn._syncLigado) return;
-            btn._syncLigado = true;
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                sincronizarInscritosPeloSino();
-            });
+            if (btn && !btn._syncLigado) {
+                btn._syncLigado = true;
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    // Só baixa — não publica (evita PC com 11 sobrescrever Luana com 7)
+                    sincronizarInscritosPeloSino(false);
+                });
+            }
+            var btnPub = document.getElementById('btnPublicarRefInscritos');
+            if (btnPub && !btnPub._pubLigado) {
+                btnPub._pubLigado = true;
+                btnPub.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    sincronizarInscritosPeloSino(true);
+                });
+            }
+            var btnSino = document.getElementById('btnSyncNuvemInscritos');
+            if (btnSino && !btnSino._syncLigado) {
+                btnSino._syncLigado = true;
+                btnSino.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    sincronizarInscritosPeloSino(false);
+                });
+            }
         }
 
         function _csvEscapar(v) {
@@ -2129,19 +2158,25 @@
             carregarListaPublica();
         }
 
-        function excluirInscrito(codigo) {
-            if (!confirm('Excluir esta inscrição? Esta ação não pode ser desfeita.')) return;
+        async function excluirInscrito(codigo) {
+            if (!confirm('Excluir esta inscrição? Esta ação não pode ser desfeita.\n\nTambém será removida da nuvem para os outros aparelhos.')) return;
             var idx = _acharIdxInscrito(codigo);
             if (idx < 0) return;
             var cod = String(inscritos[idx].codigo || inscritos[idx].id || codigo);
             inscritos.splice(idx, 1);
             salvarInscritos();
+            carregarListaPublica();
             try {
                 if (typeof IBNNuvem !== 'undefined' && IBNNuvem.removerInscritoEventoNuvem) {
-                    IBNNuvem.removerInscritoEventoNuvem(cod);
+                    var rDel = await IBNNuvem.removerInscritoEventoNuvem(cod);
+                    if (rDel && rDel.sucesso === false) {
+                        alert('Excluído neste aparelho, mas falhou na nuvem: ' + (rDel.mensagem || 'erro') +
+                            '\n\nUse “Publicar este aparelho como referência” no PC correto para limpar a nuvem.');
+                    }
                 }
-            } catch (e) {}
-            carregarListaPublica();
+            } catch (e) {
+                console.warn('excluirInscrito nuvem:', e);
+            }
         }
 
         // Admin: datas múltiplas + foto 4:5
@@ -2640,7 +2675,8 @@
                 setTimeout(function () {
                     try {
                         if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
-                            sincronizarInscritosPeloSino();
+                            // Sino da home: só BAIXA (não publica) — evita PC com lista suja sobrescrever a nuvem
+                            sincronizarInscritosPeloSino(false);
                             var sec = document.getElementById('listaPublica');
                             if (sec) try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
                         }
