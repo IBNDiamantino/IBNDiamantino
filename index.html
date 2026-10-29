@@ -287,31 +287,34 @@
                 <a href="adminlogin.html" id="linkGestao" class="hover:text-secondary transition-colors hidden font-semibold">Gestão</a>
                 <a href="#mais" class="hover:text-secondary transition-colors">Mais</a>
             </nav>
-            <div class="hidden md:flex items-center gap-3">
-                <a href="eventos.html" id="sinoEventosHome" class="relative hidden w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center" title="Notificações de eventos">
-                    <i class="fa fa-bell text-secondary"></i>
-                    <span id="badgeSinoEventosHome" class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">0</span>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Sino: visível no celular e no computador (JS mostra só para gestor/líder) -->
+                <a href="eventos.html" id="sinoEventosHome" class="relative hidden w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center shrink-0" title="Notificações de eventos / sincronizar nuvem">
+                    <i class="fa fa-bell text-secondary text-lg"></i>
+                    <span id="badgeSinoEventosHome" class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">0</span>
                 </a>
-                <div id="areaVisitante" class="flex gap-3">
-                    <a href="cadastro.html" class="bg-secondary text-primary px-4 py-2 rounded-md font-bold text-sm hover:bg-yellow-400 transition-colors">
-                        <i class="fa fa-user-plus mr-1"></i> Seja Membro
-                    </a>
-                    <a href="login.html" class="border border-white/40 px-4 py-2 rounded-md text-sm hover:bg-white/10 transition-colors">Entrar</a>
+                <div class="hidden md:flex items-center gap-3">
+                    <div id="areaVisitante" class="flex gap-3">
+                        <a href="cadastro.html" class="bg-secondary text-primary px-4 py-2 rounded-md font-bold text-sm hover:bg-yellow-400 transition-colors">
+                            <i class="fa fa-user-plus mr-1"></i> Seja Membro
+                        </a>
+                        <a href="login.html" class="border border-white/40 px-4 py-2 rounded-md text-sm hover:bg-white/10 transition-colors">Entrar</a>
+                    </div>
+                    <div id="areaLogado" class="hidden flex items-center gap-3">
+                        <a href="area-membro.html" id="botaoUsuario" class="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-md cursor-pointer hover:bg-white/20">
+                            <i class="fa fa-user-circle"></i>
+                            <span id="nomeMenu" class="text-sm">Usuário</span>
+                        </a>
+                        <button type="button" id="btnSairDesktop" class="text-xs text-red-300 hover:text-red-200 px-2" title="Sair">
+                            <i class="fa fa-sign-out"></i>
+                        </button>
+                    </div>
                 </div>
-                <div id="areaLogado" class="hidden flex items-center gap-3">
-                    <a href="area-membro.html" id="botaoUsuario" class="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-md cursor-pointer hover:bg-white/20">
-                        <i class="fa fa-user-circle"></i>
-                        <span id="nomeMenu" class="text-sm">Usuário</span>
-                    </a>
-                    <button type="button" id="btnSairDesktop" class="text-xs text-red-300 hover:text-red-200 px-2" title="Sair">
-                        <i class="fa fa-sign-out"></i>
-                    </button>
-                </div>
+                <button type="button" class="md:hidden flex items-center gap-2 bg-secondary text-primary px-3 py-2 rounded-lg font-bold text-sm shadow" id="btnMenu" aria-label="Abrir menu">
+                    <i class="fa fa-bars text-lg" id="iconMenu"></i>
+                    <span id="txtMenu">Menu</span>
+                </button>
             </div>
-            <button type="button" class="md:hidden flex items-center gap-2 bg-secondary text-primary px-3 py-2 rounded-lg font-bold text-sm shadow" id="btnMenu" aria-label="Abrir menu">
-                <i class="fa fa-bars text-lg" id="iconMenu"></i>
-                <span id="txtMenu">Menu</span>
-            </button>
         </div>
         <!-- Menu mobile reduzido (sem tela cheia — evita travar) -->
         <div id="menuMobile" class="md:hidden hidden px-4 pb-4 border-t border-white/10" style="background-color:#0A1A3F;">
@@ -320,6 +323,9 @@
                 <a href="#celulas" class="menu-link py-3 border-b border-white/15">Células</a>
                 <a href="#eventos" class="menu-link py-3 border-b border-white/15">Programação</a>
                 <a href="eventos.html" class="menu-link py-3 border-b border-white/15 font-bold" style="color:#D4AF37;">Eventos</a>
+                <a href="eventos.html" id="linkSinoMobileMenu" class="menu-link py-3 border-b border-white/15 hidden font-semibold text-amber-300">
+                    <i class="fa fa-bell mr-1"></i> Notificações / Sincronizar nuvem
+                </a>
                 <a href="ministerios.html" class="menu-link py-3 border-b border-white/15">Ministérios</a>
                 <a href="#biblia" class="menu-link py-3 border-b border-white/15">Bíblia</a>
                     <a href="#aniversariantes" id="linkMenuAnivMobile" role="button" class="block py-2 hover:text-secondary">Aniversariantes</a>
@@ -3758,9 +3764,17 @@
     function paint() {
         var a = document.getElementById('sinoEventosHome');
         var b = document.getElementById('badgeSinoEventosHome');
-        if (!a) return;
-        if (!podeVer()) { a.classList.add('hidden'); a.classList.remove('flex'); return; }
-        a.classList.remove('hidden'); a.classList.add('flex');
+        var linkMob = document.getElementById('linkSinoMobileMenu');
+        var pode = podeVer();
+        if (a) {
+            if (!pode) { a.classList.add('hidden'); a.classList.remove('flex'); }
+            else { a.classList.remove('hidden'); a.classList.add('flex'); }
+        }
+        if (linkMob) {
+            if (pode) linkMob.classList.remove('hidden');
+            else linkMob.classList.add('hidden');
+        }
+        if (!pode) return;
         var n = contar();
         if (b) {
             if (n > 0) { b.classList.remove('hidden'); b.textContent = n > 99 ? '99+' : String(n); }
