@@ -239,12 +239,28 @@
                             <button type="button" id="btnShareInsc" class="text-sm font-bold bg-primary text-white px-4 py-2 rounded-lg hover:opacity-90">
                                 <i class="fa fa-share-alt mr-1"></i> Compartilhar
                             </button>
+                            <button type="button" id="btnCopiarLinkInsc" class="text-sm font-bold border border-primary text-primary px-4 py-2 rounded-lg hover:bg-gray-50">
+                                <i class="fa fa-link mr-1"></i> Copiar link de acompanhamento
+                            </button>
                             <button type="button" id="btnPrintInsc" class="text-sm font-bold border border-primary text-primary px-4 py-2 rounded-lg hover:bg-gray-50">
                                 <i class="fa fa-print mr-1"></i> Imprimir / PDF
                             </button>
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Acompanhar inscrição (público, por código) -->
+        <section id="acompanharInsc" class="mb-12">
+            <h2 class="text-2xl font-bold mb-4 text-primary">Acompanhar inscrição</h2>
+            <div class="bg-white rounded-xl shadow-lg p-5 max-w-xl">
+                <p class="text-sm text-gray-600 mb-3">Digite o código do comprovante (ex.: IBN-EV...) para ver se está pendente ou confirmado.</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" id="inputCodigoAcomp" placeholder="Código da inscrição" class="flex-1 p-3 border rounded-md focus:ring-2 focus:ring-secondary">
+                    <button type="button" id="btnBuscarAcomp" class="bg-primary text-white px-5 py-3 rounded-md font-bold hover:bg-accent">Buscar</button>
+                </div>
+                <div id="resultadoAcomp" class="hidden mt-4 p-4 border rounded-xl text-sm bg-gray-50"></div>
             </div>
         </section>
 
@@ -275,9 +291,12 @@
                     </div>
                 </div>
                 <input type="number" id="admValor" placeholder="Valor (R$) — 0 = gratuito" step="0.01" min="0" required class="w-full p-2 border rounded">
+                <label class="block text-xs font-semibold text-gray-600">Chave PIX da igreja</label>
                 <input type="text" id="admPix" placeholder="Chave PIX da igreja" value="36.158.983/0001-36" class="w-full p-2 border rounded">
-                <input type="text" id="admForma" placeholder="Formas aceitas" value="PIX, Cartão (PagBank), Dinheiro" class="w-full p-2 border rounded">
-                <input type="url" id="admLinkPag" placeholder="Link PagBank de pagamento (opcional)" class="w-full p-2 border rounded">
+                <label class="block text-xs font-semibold text-gray-600">Formas aceitas</label>
+                <input type="text" id="admForma" placeholder="Ex.: PIX, Cartão (PagBank), Dinheiro" value="PIX, Cartão (PagBank), Dinheiro" class="w-full p-2 border rounded">
+                <label class="block text-xs font-semibold text-gray-600">Link PagBank deste evento (opcional)</label>
+                <input type="url" id="admLinkPag" placeholder="https://pagamento.pagbank.com.br/..." value="" class="w-full p-2 border rounded">
                 <div class="border rounded-lg p-2 bg-gray-50 space-y-2">
                     <p class="text-xs font-bold text-gray-700">Imagem 4:5 (divulgação)</p>
                     <div class="flex gap-3 items-start">
@@ -372,7 +391,7 @@
                     out.horarios = Array.isArray(e.horarios) ? e.horarios : (out.horario ? [out.horario] : []);
                     out.local = e.local || '';
                     out.valor = e.valor != null ? Number(e.valor) : 0;
-                    out.pix = e.pix || e.chavePix || '36.158.983/0001-36';
+                    out.pix = e.pix || e.chavePix || e.pixDestino || '36.158.983/0001-36';
                     out.forma = e.forma || e.formas || e.formaPagamento || 'PIX';
                     out.formaPagamento = e.formaPagamento || out.forma;
                     out.foto = e.foto || e.imagem || '';
@@ -1328,7 +1347,7 @@
             document.getElementById('nomeEventoFat').textContent = evento.nome;
             document.getElementById('valorEventoFat').textContent = `R$ ${Number(evento.valor).toFixed(2)}`;
             document.getElementById('formaPagamento').textContent = evento.forma || evento.formaPagamento || 'PIX, Cartão, Dinheiro';
-            document.getElementById('pixCode').textContent = evento.pix || evento.pixDestino || '36.158.983/0001-36';
+            document.getElementById('pixCode').textContent = (evento.pix || evento.pixDestino || '').trim() || '36.158.983/0001-36';
 
             document.getElementById('fatura').scrollIntoView({ behavior: 'smooth' });
             // reset meio pagamento UI
@@ -1398,11 +1417,14 @@
                 var box = document.getElementById('boxComprovanteInsc');
                 var txt = document.getElementById('txtComprovanteInsc');
                 if (box && txt) {
+                    var linkAcomp = (location.origin || '') + (location.pathname || '/eventos.html') + '?codigo=' + encodeURIComponent(inscritos[idx].codigo || '');
                     txt.innerHTML = '<strong>Código:</strong> ' + inscritos[idx].codigo +
                         '<br><strong>Evento:</strong> ' + (inscritos[idx].eventoNome || '') +
                         '<br><strong>Nome:</strong> ' + (inscritos[idx].nome || '') +
                         '<br><strong>Valor:</strong> R$ ' + Number(inscritos[idx].valor||0).toFixed(2) +
-                        '<br><strong>Status:</strong> ' + (inscritos[idx].statusPagamento === 'confirmado' ? 'Confirmado' : 'Aguardando secretaria');
+                        '<br><strong>Status:</strong> ' + (inscritos[idx].pago || inscritos[idx].statusPagamento === 'confirmado' ? 'Confirmado / pago' : 'Aguardando secretaria') +
+                        '<br><br><strong>Acompanhar depois:</strong><br><a class="text-primary underline break-all" href="' + linkAcomp + '">' + linkAcomp + '</a>' +
+                        '<br><span class="text-xs text-gray-500">Guarde este link ou o código para consultar o status.</span>';
                     box.classList.remove('hidden');
                 }
                 carregarListaPublica();
@@ -1793,6 +1815,10 @@
                                 <div><span class="text-gray-500">Data inscrição:</span> ${i.dataInsc || '—'}</div>
                                 ${por ? '<div><span class="text-gray-500">Feita por:</span> ' + por + (i.inscritoPorEmail ? ' · ' + i.inscritoPorEmail : '') + '</div>' : ''}
                                 ${i.membroId ? '<div><span class="text-gray-500">ID/conta membro:</span> ' + i.membroId + '</div>' : ''}
+                                <div class="pt-2 mt-1 border-t border-gray-100 flex flex-wrap gap-2">
+                                    <button type="button" data-cod="${cod}" data-nome="${String(i.nome||'').replace(/"/g,'&quot;')}" class="btn-copiar-link-insc text-xs px-3 py-1.5 rounded-lg border border-primary text-primary font-bold hover:bg-white">Copiar link da inscrição</button>
+                                    <button type="button" data-cod="${cod}" data-nome="${String(i.nome||'').replace(/"/g,'&quot;')}" class="btn-share-link-insc text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700"><i class="fa fa-whatsapp mr-1"></i> Enviar link</button>
+                                </div>
                             </div>
                         </div>`;
                     }).join('')}
@@ -1822,6 +1848,28 @@
                     var aberto = !painel.classList.contains('hidden');
                     painel.classList.toggle('hidden', aberto);
                     btn.textContent = aberto ? 'Ver dados' : 'Ocultar dados';
+                });
+            });
+            container.querySelectorAll('.btn-copiar-link-insc').forEach(function (btn) {
+                btn.addEventListener('click', async function () {
+                    var cod = btn.getAttribute('data-cod') || '';
+                    var link = linkAcompanhamentoInsc(cod);
+                    if (!link) return;
+                    try {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            await navigator.clipboard.writeText(link);
+                            alert('Link copiado:\n' + link);
+                            return;
+                        }
+                    } catch (e) {}
+                    prompt('Copie o link:', link);
+                });
+            });
+            container.querySelectorAll('.btn-share-link-insc').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var cod = btn.getAttribute('data-cod') || '';
+                    var nome = btn.getAttribute('data-nome') || '';
+                    compartilharLinkAcompanhamento(cod, nome);
                 });
             });
             var btnCsv = document.getElementById('btnCsvInscritos');
@@ -2103,6 +2151,14 @@
             const pix = document.getElementById('admPix').value.trim() || '36.158.983/0001-36';
             const forma = document.getElementById('admForma').value.trim() || 'PIX, Cartão (PagBank), Dinheiro';
             const linkPag = (document.getElementById('admLinkPag') && document.getElementById('admLinkPag').value || '').trim();
+            if (!pix && /pix/i.test(forma || '')) {
+                if (!confirm('A chave PIX está vazia. Quem escolher PIX não verá chave para pagar. Continuar assim mesmo?')) return;
+            }
+            if (linkPag && !/^https?:\/\//i.test(linkPag)) {
+                alert('O link PagBank precisa começar com https://');
+                return;
+            }
+
             var fotoData = (document.getElementById('admFotoData') && document.getElementById('admFotoData').value || '').trim();
             var fotoUrl = (document.getElementById('admFoto') && document.getElementById('admFoto').value || '').trim();
             var payload = {
@@ -2352,6 +2408,8 @@
                     '<span class="flex items-center gap-2 min-w-0">' +
                     (e.foto ? '<img src="'+String(e.foto).replace(/"/g,'')+'" class="w-8 rounded object-cover shrink-0" style="aspect-ratio:4/5">' : '') +
                     '<span class="min-w-0"><span class="truncate text-sm block">' + (e.nome||'') + ' — ' + formatarDatasDoEvento(e) + ' — R$ ' + Number(e.valor).toFixed(2) + '</span>' +
+                    '<span class="text-[10px] text-gray-600 block">PIX: ' + (e.pix || e.pixDestino || '— não configurada') + '</span>' +
+                    (e.linkPagamento ? '<span class="text-[10px] text-gray-600 block truncate">Link: ' + e.linkPagamento + '</span>' : '<span class="text-[10px] text-amber-700 block">Sem link PagBank</span>') +
                     (lids ? '<span class="text-[10px] text-indigo-700">Líderes: ' + lids + '</span>' : '') +
                     '</span></span>' +
                     '<span class="flex flex-wrap gap-2 shrink-0 items-center">' +
@@ -2412,7 +2470,147 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
-    function _dadosComprovanteInsc() {
+    
+        async function buscarInscricaoPorCodigo(codigo) {
+            codigo = String(codigo || '').trim();
+            if (!codigo) return null;
+            var lista = [];
+            try { lista = JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch (e) { lista = []; }
+            if (!Array.isArray(lista)) lista = [];
+            var achou = lista.find(function (i) {
+                return i && (String(i.codigo || '') === codigo || String(i.id || '') === codigo);
+            });
+            if (achou) return achou;
+            try {
+                if (typeof IBNNuvem !== 'undefined' && IBNNuvem.puxarInscritosEventosParaLocal) {
+                    var r = await IBNNuvem.puxarInscritosEventosParaLocal();
+                    if (r && Array.isArray(r.lista)) {
+                        achou = r.lista.find(function (i) {
+                            return i && (String(i.codigo || '') === codigo || String(i.id || '') === codigo);
+                        });
+                        if (achou) return achou;
+                    }
+                }
+            } catch (eN) {}
+            try {
+                lista = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
+                if (Array.isArray(lista)) {
+                    achou = lista.find(function (i) {
+                        return i && (String(i.codigo || '') === codigo || String(i.id || '') === codigo);
+                    });
+                }
+            } catch (e2) {}
+            return achou || null;
+        }
+
+        function statusTextoInsc(i) {
+            if (!i) return '—';
+            if (i.pago || i.statusPagamento === 'confirmado') return 'Confirmado / pago pela secretaria';
+            if (i.comprovanteEnviado || i.comprovante) return 'Comprovante enviado — aguardando secretaria';
+            return 'Pendente — aguardando pagamento/confirmação';
+        }
+
+        function linkAcompanhamentoInsc(codigo) {
+            codigo = String(codigo || '').trim();
+            if (!codigo) return '';
+            var path = location.pathname || '/eventos.html';
+            if (!/eventos\.html$/i.test(path)) {
+                path = path.replace(/\/?$/, '/') + 'eventos.html';
+            }
+            return (location.origin || 'https://ibndiamantino.com.br') + path + '?codigo=' + encodeURIComponent(codigo);
+        }
+
+        async function compartilharLinkAcompanhamento(codigo, nome) {
+            var link = linkAcompanhamentoInsc(codigo);
+            if (!link) { alert('Código inválido.'); return; }
+            var texto = 'Acompanhe sua inscrição no evento IBN Diamantino' +
+                (nome ? ' (' + nome + ')' : '') +
+                '\nCódigo: ' + codigo +
+                '\n\nAbra este link para ver se está pendente ou confirmada:\n' + link;
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: 'Inscrição IBN Diamantino', text: texto, url: link });
+                    return;
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return;
+                }
+            }
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(texto);
+                    alert('Link copiado! Pode colar no WhatsApp, Telegram ou SMS.');
+                    return;
+                }
+            } catch (e2) {}
+            prompt('Copie o link:', link);
+        }
+
+        function renderResultadoAcomp(i, codigoBuscado) {
+            var box = document.getElementById('resultadoAcomp');
+            if (!box) return;
+            if (!i) {
+                box.classList.remove('hidden');
+                box.innerHTML = '<p class="text-red-700 font-semibold">Inscrição não encontrada.</p>' +
+                    '<p class="text-gray-600 mt-1">Confira o código (ex.: <code>' + String(codigoBuscado || '') + '</code>) ou tente de novo em alguns minutos.</p>';
+                return;
+            }
+            var pago = !!(i.pago || i.statusPagamento === 'confirmado');
+            box.classList.remove('hidden');
+            box.innerHTML =
+                '<p class="font-bold text-primary mb-2">Sua inscrição</p>' +
+                '<div class="space-y-1 text-gray-800">' +
+                '<div><span class="text-gray-500">Código:</span> ' + (i.codigo || i.id || '—') + '</div>' +
+                '<div><span class="text-gray-500">Evento:</span> ' + (i.eventoNome || '—') + '</div>' +
+                '<div><span class="text-gray-500">Nome:</span> ' + (i.nome || '—') + '</div>' +
+                '<div><span class="text-gray-500">Telefone:</span> ' + (i.telefone || '—') + '</div>' +
+                '<div><span class="text-gray-500">Valor:</span> R$ ' + Number(i.valor || 0).toFixed(2) + '</div>' +
+                '<div><span class="text-gray-500">Pagamento:</span> ' + (i.meioPagamento || '—') + '</div>' +
+                '<div><span class="text-gray-500">Data:</span> ' + (i.dataInsc || '—') + '</div>' +
+                '<div class="mt-2 p-2 rounded-lg ' + (pago ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-900') + '"><strong>Status:</strong> ' + statusTextoInsc(i) + '</div>' +
+                '</div>';
+        }
+
+        async function executarBuscaAcomp(codigo) {
+            var box = document.getElementById('resultadoAcomp');
+            if (box) {
+                box.classList.remove('hidden');
+                box.innerHTML = '<p class="text-gray-500">Buscando...</p>';
+            }
+            var i = await buscarInscricaoPorCodigo(codigo);
+            renderResultadoAcomp(i, codigo);
+        }
+
+        (function initAcompanharInsc() {
+            var btn = document.getElementById('btnBuscarAcomp');
+            var inp = document.getElementById('inputCodigoAcomp');
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    var cod = (inp && inp.value || '').trim();
+                    if (!cod) { alert('Informe o código da inscrição.'); return; }
+                    executarBuscaAcomp(cod);
+                });
+            }
+            if (inp) {
+                inp.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        if (btn) btn.click();
+                    }
+                });
+            }
+            try {
+                var q = new URLSearchParams(location.search || '');
+                var cod = q.get('codigo') || q.get('inscricao') || q.get('comprovante') || '';
+                if (cod) {
+                    if (inp) inp.value = cod;
+                    var sec = document.getElementById('acompanharInsc');
+                    if (sec) try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+                    executarBuscaAcomp(cod);
+                }
+            } catch (eQ) {}
+        })();
+
+        function _dadosComprovanteInsc() {
         var box = document.getElementById('boxComprovanteInsc');
         var txt = document.getElementById('txtComprovanteInsc');
         if (!box || !txt || box.classList.contains('hidden')) return null;
@@ -2488,6 +2686,23 @@ document.addEventListener('DOMContentLoaded', function(){
     if (bPrint) bPrint.addEventListener('click', function () { _imprimirComprovanteInsc(); });
     var bShare = document.getElementById('btnShareInsc');
     if (bShare) bShare.addEventListener('click', function () { _compartilharComprovanteInsc(); });
+    var bLink = document.getElementById('btnCopiarLinkInsc');
+    if (bLink) bLink.addEventListener('click', async function () {
+        var d = _dadosComprovanteInsc();
+        if (!d) { alert('Comprovante ainda não gerado.'); return; }
+        var codMatch = (d.corpoTexto || '').match(/IBN-[A-Z0-9-]+/i);
+        var cod = codMatch ? codMatch[0] : '';
+        if (!cod) { alert('Código não encontrado no comprovante.'); return; }
+        var link = linkAcompanhamentoInsc(cod);
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(link);
+                alert('Link de acompanhamento copiado!\n' + link);
+                return;
+            }
+        } catch (e) {}
+        prompt('Copie o link:', link);
+    });
 });
 </script>
     
