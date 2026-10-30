@@ -1,8 +1,11 @@
 // ==============================================
 // SINCRONIZAÇÃO COM A NUVEM — IBN Diamantino
-// Não substitui o funcionamento local: grava no
-// aparelho E, se a nuvem estiver configurada,
-// envia cópia para o Firebase (admin/gestor baixa CSV).
+// Versão OTIMIZADA para plano gratuito Firebase (Spark)
+// - Pull automático no máx. a cada 30 min
+// - Fotos NÃO entram no sync automático
+// - Comprovante base64 NÃO sobe (só flag)
+// - Inscritos de eventos com throttle próprio
+// Juntando base IBN + ideias de economia (intervalo/throttle)
 // ==============================================
 
 const IBNNuvem = (function () {
@@ -262,6 +265,8 @@ const IBNNuvem = (function () {
      * Use no celular onde a pessoa se cadastrou (é lá que o localStorage tem o registro).
      */
     async function enviarCadastrosAusentesNaNuvem(onProgress) {
+        // ATENÇÃO: faz 1 leitura por membro na nuvem (get da coleção inteira).
+        // Use só sob demanda, não em loop automático.
         if (!iniciar() || !db) {
             return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível. Confira as Regras do Firestore.' };
         }
@@ -1714,7 +1719,7 @@ const IBNNuvem = (function () {
     var _syncBusy = false;
     // ---- Economia de leituras (Spark estourou com ~840 mil reads/dia) ----
     var CHAVE_ULTIMO_PULL = 'ibn_nuvem_ultimo_pull_ms';
-    var INTERVALO_PULL_MS = 10 * 60 * 1000; // 10 min entre pulls automáticos
+    var INTERVALO_PULL_MS = 30 * 60 * 1000; // 30 min entre pulls automáticos (economia Spark)
     var _ultimoPullMs = 0;
     try { _ultimoPullMs = parseInt(localStorage.getItem(CHAVE_ULTIMO_PULL) || '0', 10) || 0; } catch (eU) {}
 
@@ -1731,7 +1736,7 @@ const IBNNuvem = (function () {
     /**
      * motivo:
      *  - gestao-manual / manual / gestao-auto → full (membros)
-     *  - inicio / periodico / foco → leve e com throttle 10 min
+     *  - inicio / periodico / foco → leve e com throttle 30 min
      *  - leve → só config (poucos docs), sem lista de membros/fotos
      */
     async function sincronizarTudoDaNuvem(motivo) {
@@ -1739,13 +1744,13 @@ const IBNNuvem = (function () {
         motivo = String(motivo || '');
         var forcar = /manual|gestao-manual|login|cadastro/i.test(motivo);
         var precisaMembros = forcar || /gestao|aprov|membro/i.test(motivo);
-        // Automático: no máximo 1x a cada 10 min (vários celulares abertos não matam a cota)
+        // Automático: no máximo 1x a cada 30 min (vários celulares abertos não matam a cota)
         if (!forcar && !precisaMembros && _pullMuitoRecente(false)) {
-            return { sucesso: true, pulou: true, motivo: 'throttle_10min' };
+            return { sucesso: true, pulou: true, motivo: 'throttle_30min' };
         }
         _syncBusy = true;
         try {
-            // MEMBROS: só quando gestão/manual ou a cada 10+ min no automático
+            // MEMBROS: só quando gestão/manual ou a cada 30+ min no automático
             if (precisaMembros || !_pullMuitoRecente(forcar)) {
                 if (precisaMembros || /inicio|periodico|foco|focus/i.test(motivo) || !motivo) {
                     try { await puxarMembrosParaLocal(); } catch (e1) {}
@@ -1929,25 +1934,40 @@ const IBNNuvem = (function () {
         }
     }
 
+    // Throttle próprio para inscritos (coleção costuma ser pequena, mas get() conta 1 leitura/doc)
+    var CHAVE_ULTIMO_PULL_INSC = 'ibn_nuvem_ultimo_pull_inscritos_ms';
+    var INTERVALO_PULL_INSC_MS = 15 * 60 * 1000; // 15 min entre pulls automáticos de inscritos
+    var _ultimoPullInscMs = 0;
+    try { _ultimoPullInscMs = parseInt(localStorage.getItem(CHAVE_ULTIMO_PULL_INSC) || '0', 10) || 0; } catch (eI) {}
+
     async function puxarInscritosEventosParaLocal(opcoes) {
         opcoes = opcoes || {};
+        var forcar = !!(opcoes.force || opcoes.forcar);
         if (!iniciar() || !db) return { sucesso: false, lista: [], mensagem: ultimoErro };
+        // Economia: não repetir get() completo a cada clique se foi há pouco (exceto force)
+        if (!forcar && _ultimoPullInscMs && (Date.now() - _ultimoPullInscMs) < INTERVALO_PULL_INSC_MS) {
+            var localSkip = [];
+            try { localSkip = JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch (eS) { localSkip = []; }
+            return {
+                sucesso: true,
+                lista: Array.isArray(localSkip) ? localSkip : [],
+                pulou: true,
+                motivo: 'throttle_inscritos_15min',
+                mensagem: 'Usando lista local (última busca na nuvem há menos de 15 min). Clique de novo depois ou force.'
+            };
+        }
         try {
             var snap = await db.collection('inscritos_eventos').get();
+            try {
+                _ultimoPullInscMs = Date.now();
+                localStorage.setItem(CHAVE_ULTIMO_PULL_INSC, String(_ultimoPullInscMs));
+            } catch (eM) {}
             var lista = [];
             snap.forEach(function (doc) {
                 var d = Object.assign({ id: doc.id }, doc.data());
                 if (!d.codigo) d.codigo = doc.id;
                 lista.push(d);
             });
-            // substituir: true → local vira exatamente a lista da nuvem (referência)
-            if (opcoes.substituir) {
-                lista.sort(function (a, b) {
-                    return String(b.dataInsc || b.atualizadoEm || '').localeCompare(String(a.dataInsc || a.atualizadoEm || ''));
-                });
-                localStorage.setItem('inscritosIBN', JSON.stringify(lista));
-                return { sucesso: true, lista: lista, mudou: true, quantidade: lista.length, modo: 'substituir' };
-            }
             // Mescla com local (nuvem manda / preenche faltantes)
             var local = [];
             try { local = JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch (e0) { local = []; }
@@ -1971,13 +1991,12 @@ const IBNNuvem = (function () {
                 // Atualiza status de pagamento se nuvem estiver mais avancada
                 var rank = function (x) {
                     var s = String((x && x.statusPagamento) || '');
-                    if (s === 'confirmado' || (x && x.pago)) return 3;
-                    if (s === 'aguardando_conferencia' || (x && x.comprovanteEnviado)) return 2;
+                    if (s === 'confirmado' || (x && x.pago)) return 4;
+                    if (s === 'comprovante_recebido' || (x && x.comprovanteRecebido)) return 3;
+                    if (s === 'comprovante_enviado' || s === 'aguardando_conferencia' || (x && x.comprovanteEnviado)) return 2;
                     return 1;
                 };
-                var tN = String((n && n.atualizadoEm) || '');
-                var tP = String((prev && prev.atualizadoEm) || '');
-                if (rank(n) > rank(prev) || (tN && tN > tP)) {
+                if (rank(n) > rank(prev)) {
                     map[k] = Object.assign({}, prev, n);
                     mudou = true;
                 } else if (!prev.nome && n.nome) {
@@ -1995,68 +2014,6 @@ const IBNNuvem = (function () {
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
             return { sucesso: false, lista: [], mensagem: ultimoErro };
-        }
-    }
-
-    /**
-     * Publica a lista local como referência na nuvem:
-     * - sobe todos os inscritos locais
-     * - remove da nuvem os que não estão na lista local
-     * Assim o computador de referência (ex.: Luana/Master) define o que vale.
-     */
-    async function publicarInscritosComoReferencia(listaLocal) {
-        if (!iniciar() || !db) return { sucesso: false, mensagem: ultimoErro || 'Nuvem indisponível' };
-        try {
-            var lista = Array.isArray(listaLocal) ? listaLocal : [];
-            try {
-                if (!lista.length) lista = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
-            } catch (e0) { lista = []; }
-            if (!Array.isArray(lista)) lista = [];
-
-            var idsLocais = {};
-            var enviados = 0;
-            for (var i = 0; i < lista.length; i++) {
-                var insc = lista[i];
-                if (!insc) continue;
-                var id = String(insc.codigo || insc.id || '');
-                if (!id) continue;
-                idsLocais[id] = true;
-                var doc = _docInscritoLeve(Object.assign({}, insc, {
-                    id: id,
-                    codigo: insc.codigo || id,
-                    atualizadoEm: insc.atualizadoEm || new Date().toISOString(),
-                    publicadoEm: new Date().toISOString()
-                }));
-                await db.collection('inscritos_eventos').doc(id).set(doc, { merge: true });
-                enviados++;
-            }
-
-            // Remove da nuvem o que não está na lista de referência
-            var snap = await db.collection('inscritos_eventos').get();
-            var removidos = 0;
-            var deletes = [];
-            snap.forEach(function (doc) {
-                if (!idsLocais[doc.id]) {
-                    deletes.push(doc.ref.delete());
-                    removidos++;
-                }
-            });
-            if (deletes.length) await Promise.all(deletes);
-
-            // Marca timestamp da referência
-            try {
-                await db.collection('config').doc('inscritos_eventos_ref').set({
-                    quando: new Date().toISOString(),
-                    quantidade: enviados,
-                    removidos: removidos
-                }, { merge: true });
-            } catch (eRef) {}
-
-            return { sucesso: true, enviados: enviados, removidos: removidos, quantidade: enviados };
-        } catch (e) {
-            ultimoErro = (e && e.message) || String(e);
-            console.warn('publicarInscritosComoReferencia:', ultimoErro);
-            return { sucesso: false, mensagem: ultimoErro };
         }
     }
 
@@ -2125,7 +2082,6 @@ const IBNNuvem = (function () {
         puxarPedidosOracaoParaLocal: puxarPedidosOracaoParaLocal,
         salvarInscritoEventoNuvem: salvarInscritoEventoNuvem,
         puxarInscritosEventosParaLocal: puxarInscritosEventosParaLocal,
-        publicarInscritosComoReferencia: publicarInscritosComoReferencia,
         removerInscritoEventoNuvem: removerInscritoEventoNuvem
     };
 })();
