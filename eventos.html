@@ -109,6 +109,18 @@
 
         <section id="inscricao" class="mb-12 hidden">
             <h2 class="text-2xl font-bold mb-6 text-primary">Fazer Inscrição</h2>
+            <div class="mb-4 bg-amber-50 border border-amber-300 rounded-xl p-4 text-sm text-amber-950">
+                <p class="font-bold mb-1"><i class="fa fa-exclamation-triangle mr-1"></i> Importante</p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>A inscrição <b>só é válida depois de gerar o código</b> (botão Gerar Inscrição).</li>
+                    <li>Depois do código, complete o pagamento/comprovante. Se sair no meio, <b>ao abrir de novo</b> a inscrição volta para você finalizar.</li>
+                    <li>O navegador avisa se você tentar fechar <b>depois que o código já foi gerado</b> e ainda não finalizou.</li>
+                </ul>
+            </div>
+            <div id="boxInscNaoFinalizadas" class="hidden mb-4 bg-white border border-orange-200 rounded-xl p-4">
+                <h3 class="font-bold text-primary text-sm mb-2"><i class="fa fa-hourglass-half mr-1"></i> Inscrições neste aparelho — código gerado, ainda não finalizadas</h3>
+                <div id="listaInscNaoFinalizadas" class="space-y-2 text-sm"></div>
+            </div>
             <div id="avisoSemEvento" class="hidden mb-4 bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-gray-600 text-sm">
                 Não há eventos abertos para inscrição no momento. Quando um evento for publicado, você poderá se inscrever aqui.
             </div>
@@ -459,6 +471,148 @@
         let eventos = carregarEventos();
         let inscritos = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
         let inscricaoAtual = null;
+        let inscricaoPendenteFechar = false; // true = gerou codigo e ainda nao finalizou pagamento
+        var CHAVE_INSC_PENDENTE = 'ibn_insc_pendente_evento';
+        function salvarInscPendenteLocal(insc) {
+            try {
+                if (!insc || !insc.codigo) {
+                    localStorage.removeItem(CHAVE_INSC_PENDENTE);
+                    return;
+                }
+                localStorage.setItem(CHAVE_INSC_PENDENTE, JSON.stringify(insc));
+            } catch (e) {}
+        }
+        function limparInscPendenteLocal() {
+            try { localStorage.removeItem(CHAVE_INSC_PENDENTE); } catch (e) {}
+            inscricaoPendenteFechar = false;
+        }
+        function lerInscPendenteLocal() {
+            try {
+                var raw = localStorage.getItem(CHAVE_INSC_PENDENTE);
+                if (!raw) return null;
+                var o = JSON.parse(raw);
+                return (o && o.codigo) ? o : null;
+            } catch (e) { return null; }
+        }
+        function preencherFormularioDaInsc(insc) {
+            if (!insc) return;
+            try {
+                var sel = document.getElementById('eventoSelect');
+                if (sel && insc.eventoId) {
+                    for (var i = 0; i < sel.options.length; i++) {
+                        if (String(sel.options[i].value) === String(insc.eventoId)) {
+                            sel.selectedIndex = i;
+                            try { sel.dispatchEvent(new Event('change')); } catch (e0) {}
+                            break;
+                        }
+                    }
+                }
+                var n = document.getElementById('nome');
+                var t = document.getElementById('telefone');
+                var em = document.getElementById('email');
+                var nasc = document.getElementById('nascimentoInsc');
+                var end = document.getElementById('enderecoInsc');
+                var mun = document.getElementById('municipioInsc');
+                if (n) n.value = insc.nome || '';
+                if (t) t.value = insc.telefone || '';
+                if (em) em.value = insc.email || '';
+                if (nasc && insc.nascimento) nasc.value = String(insc.nascimento).slice(0, 10);
+                if (end) end.value = insc.endereco || '';
+                if (mun) mun.value = insc.municipio || '';
+            } catch (e) {}
+        }
+
+        function abrirTelaPagamentoInsc(insc, opcoes) {
+            if (!insc || !insc.codigo) return;
+            opcoes = opcoes || {};
+            inscricaoAtual = insc;
+            inscricaoPendenteFechar = !(insc.pago || insc.comprovanteEnviado ||
+                String(insc.statusPagamento || '') === 'confirmado' ||
+                String(insc.statusPagamento || '') === 'aguardando_conferencia' ||
+                (Number(insc.valor || 0) <= 0 && insc.codigo));
+            // Sempre devolve a 1a parte preenchida para poder corrigir
+            preencherFormularioDaInsc(insc);
+            var sec = document.getElementById('inscricao');
+            if (sec) sec.classList.remove('hidden');
+            var formBox = document.getElementById('formInscricao');
+            if (formBox) formBox.classList.remove('hidden');
+            var fat = document.getElementById('fatura');
+            if (fat) fat.classList.remove('hidden');
+            var codEl = document.getElementById('codigoInsc');
+            if (codEl) codEl.textContent = insc.codigo;
+            try {
+                var els = {
+                    valor: document.getElementById('valorInsc'),
+                    evento: document.getElementById('eventoInscNome')
+                };
+                if (els.valor) els.valor.textContent = 'R$ ' + Number(insc.valor || 0).toFixed(2);
+            } catch (e2) {}
+            try {
+                var ev = (eventos || []).find(function (e) { return String(e.id) === String(insc.eventoId); });
+                var pix = (ev && (ev.pixDestino || ev.pix)) || '36158983000136';
+                var pixEl = document.getElementById('pixCode');
+                if (pixEl) pixEl.textContent = pix;
+            } catch (e3) {}
+            var btn = document.getElementById('btnConfirmar');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = Number(insc.valor || 0) <= 0 ? 'Confirmar inscrição' : 'Enviar comprovante e finalizar';
+            }
+            var msg = document.getElementById('msgConfirmacao');
+            if (msg) msg.classList.add('hidden');
+            // Faixa de correcao
+            var avisoCorr = document.getElementById('avisoCorrigirInsc');
+            if (!avisoCorr && sec) {
+                avisoCorr = document.createElement('div');
+                avisoCorr.id = 'avisoCorrigirInsc';
+                avisoCorr.className = 'mb-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-950';
+                avisoCorr.innerHTML = '<p class="font-bold mb-1"><i class="fa fa-pencil mr-1"></i> Inscrição pela metade — pode corrigir</p>' +
+                    '<p>Os dados voltaram no formulário acima. Corrija o que precisar e clique em <b>Gerar Inscrição</b> de novo (mantém o mesmo código). Depois finalize o pagamento.</p>' +
+                    '<button type="button" id="btnIrCorrigirInsc" class="mt-2 bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold">Corrigir dados (1ª parte)</button>';
+                var formInsc = document.getElementById('formInscricao');
+                if (formInsc && formInsc.parentNode) formInsc.parentNode.insertBefore(avisoCorr, formInsc);
+            }
+            if (avisoCorr) avisoCorr.classList.remove('hidden');
+            var btnCorr = document.getElementById('btnIrCorrigirInsc');
+            if (btnCorr) {
+                btnCorr.onclick = function () {
+                    var formInsc = document.getElementById('formInscricao');
+                    if (formInsc) {
+                        try { formInsc.scrollIntoView({ behavior: 'smooth' }); } catch (e) {}
+                        var nome = document.getElementById('nome');
+                        if (nome) try { nome.focus(); } catch (e2) {}
+                    }
+                };
+            }
+            if (opcoes.focarFormulario) {
+                try {
+                    var fi = document.getElementById('formInscricao');
+                    if (fi) fi.scrollIntoView({ behavior: 'smooth' });
+                } catch (e5) {}
+            } else {
+                try { fat && fat.scrollIntoView({ behavior: 'smooth' }); } catch (e4) {}
+            }
+        }
+        function restaurarInscPendenteSeHouver() {
+            var pend = lerInscPendenteLocal();
+            if (!pend) return false;
+            // se ja finalizou em outro momento, limpa
+            var naLista = (inscritos || []).find(function (i) { return String(i.codigo) === String(pend.codigo); });
+            if (naLista && inscricaoEstaFinalizada(naLista)) {
+                limparInscPendenteLocal();
+                return false;
+            }
+            // garante na lista local
+            if (!naLista) {
+                inscritos.unshift(pend);
+                try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (e5) {}
+            } else {
+                pend = naLista;
+            }
+            abrirTelaPagamentoInsc(pend, { focarFormulario: true });
+            try { renderInscNaoFinalizadas(); } catch (e6) {}
+            return true;
+        }
         let membro = null;
         let modoVisitante = false;
         try {
@@ -716,6 +870,8 @@
             carregarSelectEventos();
             atualizarUISemEvento();
             carregarListaPublica();
+            try { renderInscNaoFinalizadas(); } catch (eRnf) {}
+            try { restaurarInscPendenteSeHouver(); } catch (eRest) {}
             // Gestão/líder: puxa inscritos da nuvem (outros aparelhos)
             try {
                 if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
@@ -1042,28 +1198,60 @@
                 if (!nascV) return alert('Informe a data de nascimento do participante.');
             }
 
-            // Evitar inscrição duplicada no mesmo evento
-            const ja = inscritos.find(i => i.eventoId === eventoId && ((email && i.email === email) || (telefone && i.telefone === telefone)));
-            if (ja) {
-                alert('Você já possui inscrição neste evento. Código: ' + ja.codigo);
-                return;
+            // Se tem inscrição pela metade neste aparelho, permite CORRIGIR (mesmo código)
+            var pendente = lerInscPendenteLocal();
+            var atualizando = false;
+            var codigo;
+            if (pendente && pendente.codigo && String(pendente.eventoId) === String(eventoId) && !inscricaoEstaFinalizada(pendente)) {
+                atualizando = true;
+                codigo = pendente.codigo;
+            } else {
+                // Evitar inscrição duplicada finalizada no mesmo evento
+                const ja = inscritos.find(i => i.eventoId === eventoId && ((email && i.email === email) || (telefone && i.telefone === telefone)));
+                if (ja && inscricaoEstaFinalizada(ja)) {
+                    alert('Você já possui inscrição neste evento. Código: ' + ja.codigo);
+                    return;
+                }
+                if (ja && !inscricaoEstaFinalizada(ja)) {
+                    // retoma a que ficou pela metade
+                    atualizando = true;
+                    codigo = ja.codigo;
+                    pendente = ja;
+                } else {
+                    codigo = 'IBN-' + eventoId.toUpperCase().replace(/-/g,'') + '-' + Date.now().toString(36).toUpperCase();
+                }
             }
 
-            const codigo = 'IBN-' + eventoId.toUpperCase().replace(/-/g,'') + '-' + Date.now().toString(36).toUpperCase();
-
             const novaInsc = {
-                codigo, eventoId, eventoNome: evento.nome, nome, telefone, email,
-                valor: evento.valor, dataInsc: new Date().toLocaleString('pt-BR'), pago: false,
+                codigo: codigo,
+                eventoId: eventoId,
+                eventoNome: evento.nome,
+                nome: nome,
+                telefone: telefone,
+                email: email,
+                valor: evento.valor,
+                dataInsc: (pendente && pendente.dataInsc) || new Date().toLocaleString('pt-BR'),
+                pago: false,
                 tipo: (ehMembro && quemEhParticipante() === 'eu' && !modoVisitante) ? 'membro' : 'visitante',
                 nascimento: nascV || (membro && membro.nascimento) || '',
                 endereco: endV || (membro && membro.endereco) || '',
                 municipio: munV || (membro && membro.municipio) || '',
                 membroId: (ehMembro && membro && (membro.email || membro.nome)) || '',
-                respostas: col.respostas || {}
+                respostas: col.respostas || {},
+                atualizadoEm: new Date().toISOString()
             };
-            inscritos.push(novaInsc);
+            // Atualiza ou inclui
+            var ixEx = inscritos.findIndex(function (i) { return String(i.codigo) === String(codigo); });
+            if (ixEx >= 0) inscritos[ixEx] = Object.assign({}, inscritos[ixEx], novaInsc);
+            else inscritos.push(novaInsc);
+            inscricaoPendenteFechar = true;
+            salvarInscPendenteLocal(novaInsc);
             salvarInscritos();
             try { salvarUmInscritoNuvem(novaInsc); } catch (eNuv) {}
+            try { renderInscNaoFinalizadas(); } catch (eNf) {}
+            if (atualizando) {
+                try { alert('Dados atualizados. Código mantido: ' + codigo + '\nAgora escolha o pagamento e finalize.'); } catch (eA) {}
+            }
             try {
                 registrarNotifEvento('inscrito', evento,
                     'Nova inscrição: ' + (nome || '—') +
@@ -1149,8 +1337,11 @@
                         (inscritos[idx].nome || '—') + ' · R$ ' + Number(inscritos[idx].valor||0).toFixed(2));
                 } catch (eP) {}
 
+                inscricaoPendenteFechar = false;
+                limparInscPendenteLocal();
                 salvarInscritos();
                 try { salvarUmInscritoNuvem(inscritos[idx]); } catch (eNuvP) {}
+                try { renderInscNaoFinalizadas(); } catch (eNf2) {}
                 document.getElementById('msgConfirmacao').classList.remove('hidden');
                 document.getElementById('btnConfirmar').disabled = true;
                 document.getElementById('btnConfirmar').textContent = valor <= 0 ? '✅ Inscrito' : '✅ Comprovante enviado';
@@ -1356,6 +1547,58 @@
             })();
         }
 
+
+        function inscricaoEstaFinalizada(i) {
+            if (!i) return false;
+            if (i.pago) return true;
+            if (i.comprovanteEnviado) return true;
+            var s = String(i.statusPagamento || '');
+            if (s === 'confirmado' || s === 'aguardando_conferencia') return true;
+            // gratuito
+            if (Number(i.valor || 0) <= 0 && i.codigo) return true;
+            return false;
+        }
+
+        function renderInscNaoFinalizadas() {
+            var box = document.getElementById('boxInscNaoFinalizadas');
+            var listaEl = document.getElementById('listaInscNaoFinalizadas');
+            if (!box || !listaEl) return;
+            var pend = (inscritos || []).filter(function (i) {
+                return i && i.codigo && !inscricaoEstaFinalizada(i);
+            });
+            if (!pend.length) {
+                box.classList.add('hidden');
+                listaEl.innerHTML = '';
+                return;
+            }
+            box.classList.remove('hidden');
+            listaEl.innerHTML = pend.map(function (i) {
+                return '<button type="button" class="w-full text-left p-2 bg-orange-50 rounded-lg border border-orange-100 hover:bg-orange-100 btn-retomar-insc" data-codigo="' +
+                    String(i.codigo || '').replace(/"/g, '') + '">' +
+                    '<span class="font-semibold">' + (i.nome || '—') + '</span>' +
+                    ' · <span class="text-gray-600">' + (i.eventoNome || '') + '</span>' +
+                    '<br><span class="text-xs font-mono text-primary">' + (i.codigo || '') + '</span>' +
+                    '<span class="text-xs text-orange-700 block">Código gerado — toque para continuar e finalizar</span></button>';
+            }).join('');
+            listaEl.querySelectorAll('.btn-retomar-insc').forEach(function (btn) {
+                btn.onclick = function () {
+                    var cod = btn.getAttribute('data-codigo');
+                    var found = (inscritos || []).find(function (x) { return String(x.codigo) === String(cod); });
+                    if (found) {
+                        salvarInscPendenteLocal(found);
+                        abrirTelaPagamentoInsc(found);
+                    }
+                };
+            });
+        }
+
+        // Avisa ao tentar fechar/sair se gerou codigo e nao finalizou
+        window.addEventListener('beforeunload', function (e) {
+            if (!inscricaoPendenteFechar) return;
+            e.preventDefault();
+            e.returnValue = 'Sua inscrição ainda não foi finalizada. Se sair agora, ela pode ficar incompleta.';
+            return e.returnValue;
+        });
 
         function salvarInscritos() {
             localStorage.setItem('inscritosIBN', JSON.stringify(inscritos));
