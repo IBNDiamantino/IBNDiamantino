@@ -25,7 +25,21 @@
         html { scroll-behavior: smooth; }
         .status-pendente { background: #FEF3C7; color: #92400E; }
         .status-pago { background: #D1FAE5; color: #065F40; }
-    </style>
+    
+        .ibn-destaque-escolha {
+            animation: ibnPulse 1s ease-in-out 3;
+            box-shadow: 0 0 0 3px #dc2626, 0 0 12px rgba(220,38,38,.45) !important;
+            border-radius: 0.75rem;
+        }
+        @keyframes ibnPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        #avisoNaoLogado.ibn-aviso-ativo {
+            border-color: #dc2626 !important;
+            background: #fef2f2 !important;
+        }
+        </style>
 </head>
 <body class="bg-light text-gray-800 font-sans antialiased">
 
@@ -109,16 +123,9 @@
 
         <section id="inscricao" class="mb-12 hidden">
             <h2 class="text-2xl font-bold mb-6 text-primary">Fazer Inscrição</h2>
-            <div class="mb-4 bg-amber-50 border border-amber-300 rounded-xl p-4 text-sm text-amber-950">
-                <p class="font-bold mb-1"><i class="fa fa-exclamation-triangle mr-1"></i> Importante</p>
-                <ul class="list-disc list-inside space-y-1">
-                    <li>A inscrição <b>só é válida depois de gerar o código</b> (botão Gerar Inscrição).</li>
-                    <li>Depois do código, complete o pagamento/comprovante. Se sair no meio, <b>ao abrir de novo</b> a inscrição volta para você finalizar.</li>
-                    <li>O navegador avisa se você tentar fechar <b>depois que o código já foi gerado</b> e ainda não finalizou.</li>
-                </ul>
-            </div>
-            <div id="boxInscNaoFinalizadas" class="hidden mb-4 bg-white border border-orange-200 rounded-xl p-4">
-                <h3 class="font-bold text-primary text-sm mb-2"><i class="fa fa-hourglass-half mr-1"></i> Inscrições neste aparelho — código gerado, ainda não finalizadas</h3>
+            <p class="mb-3 text-xs text-gray-500 text-center">O código da inscrição só é gerado após preencher todos os campos e tocar em <b>Gerar Inscrição</b>.</p>
+            <div id="boxInscNaoFinalizadas" class="hidden mb-4 bg-white border border-orange-200 rounded-xl p-3">
+                <p class="font-semibold text-primary text-xs mb-2">Inscrições neste aparelho ainda não finalizadas</p>
                 <div id="listaInscNaoFinalizadas" class="space-y-2 text-sm"></div>
             </div>
             <div id="avisoSemEvento" class="hidden mb-4 bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-gray-600 text-sm">
@@ -126,7 +133,11 @@
             </div>
             <div id="formInscricao" class="bg-white rounded-xl shadow-lg p-6">
                 <form id="formInsc" class="space-y-4">
-                    <div>
+                    <div id="boxEventoFixo" class="hidden mb-3">
+                        <p class="text-xs text-gray-500 mb-1">Evento</p>
+                        <p id="nomeEventoFixo" class="font-bold text-primary text-base"></p>
+                    </div>
+                    <div id="boxEscolherEvento">
                         <label class="block font-semibold mb-1">Escolha o Evento</label>
                         <select id="eventoSelect" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-secondary">
                             <option value="">Carregando eventos...</option>
@@ -220,6 +231,10 @@
                     <button id="btnConfirmar" class="w-full bg-green-600 text-white p-3 rounded-md font-bold hover:bg-green-700">
                         <i class="fa fa-check mr-2"></i> Enviar comprovante e finalizar
                     </button>
+                    <button type="button" id="btnComprovanteDepois" class="w-full bg-white border-2 border-primary text-primary p-3 rounded-md font-bold hover:bg-gray-50">
+                        <i class="fa fa-clock-o mr-2"></i> Finalizar e enviar comprovante depois
+                    </button>
+                    <p class="text-xs text-gray-500 text-center">A inscrição é gerada do mesmo jeito. Sem comprovante, fica <b>pendente</b> para a secretaria.</p>
                     <p id="msgConfirmacao" class="mt-3 hidden text-center font-bold text-green-600">✅ Comprovante enviado! Aguarde confirmação da secretaria.</p>
                     <div id="boxComprovanteInsc" class="hidden mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-sm">
                         <p class="font-bold text-green-800 mb-1">Comprovante de inscrição</p>
@@ -560,30 +575,7 @@
             }
             var msg = document.getElementById('msgConfirmacao');
             if (msg) msg.classList.add('hidden');
-            // Faixa de correcao
-            var avisoCorr = document.getElementById('avisoCorrigirInsc');
-            if (!avisoCorr && sec) {
-                avisoCorr = document.createElement('div');
-                avisoCorr.id = 'avisoCorrigirInsc';
-                avisoCorr.className = 'mb-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-950';
-                avisoCorr.innerHTML = '<p class="font-bold mb-1"><i class="fa fa-pencil mr-1"></i> Inscrição pela metade — pode corrigir</p>' +
-                    '<p>Os dados voltaram no formulário acima. Corrija o que precisar e clique em <b>Gerar Inscrição</b> de novo (mantém o mesmo código). Depois finalize o pagamento.</p>' +
-                    '<button type="button" id="btnIrCorrigirInsc" class="mt-2 bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold">Corrigir dados (1ª parte)</button>';
-                var formInsc = document.getElementById('formInscricao');
-                if (formInsc && formInsc.parentNode) formInsc.parentNode.insertBefore(avisoCorr, formInsc);
-            }
-            if (avisoCorr) avisoCorr.classList.remove('hidden');
-            var btnCorr = document.getElementById('btnIrCorrigirInsc');
-            if (btnCorr) {
-                btnCorr.onclick = function () {
-                    var formInsc = document.getElementById('formInscricao');
-                    if (formInsc) {
-                        try { formInsc.scrollIntoView({ behavior: 'smooth' }); } catch (e) {}
-                        var nome = document.getElementById('nome');
-                        if (nome) try { nome.focus(); } catch (e2) {}
-                    }
-                };
-            }
+            // Corrigir: dados ja estao no formulario; ir para pagamento
             if (opcoes.focarFormulario) {
                 try {
                     var fi = document.getElementById('formInscricao');
@@ -784,8 +776,10 @@
                         if (typeof sel.onchange === 'function') sel.onchange();
                         else sel.dispatchEvent(new Event('change'));
                     }
-                    if (verificarMembro() && window._eventoConviteId) {
-                        selecionarEventoParaInscricao(window._eventoConviteId);
+                    if (verificarMembro()) {
+                        var idPosLogin = window._eventoConviteId || '';
+                        try { idPosLogin = idPosLogin || sessionStorage.getItem('ibn_evento_inscricao_id') || ''; } catch (eI) {}
+                        if (idPosLogin) selecionarEventoParaInscricao(idPosLogin);
                     }
                 }
             } catch (ePre) {}
@@ -818,6 +812,15 @@
                     if (avN) avN.classList.add('hidden');
                     var boxFv = document.getElementById('boxFichaVisitante');
                     if (boxFv) boxFv.classList.add('hidden');
+                    var idEv = window._eventoInscricaoAtualId || window._eventoConviteId || '';
+                    if (idEv && typeof selecionarEventoParaInscricao === 'function') {
+                        selecionarEventoParaInscricao(idEv);
+                    } else {
+                        var secI = document.getElementById('inscricao');
+                        if (secI) secI.classList.remove('hidden');
+                        var fb = document.getElementById('formInscricao');
+                        if (fb) fb.classList.remove('hidden');
+                    }
                     aplicarDadosVisitanteNoForm();
                     var idEv = window._eventoConviteId || (eventos[0] && eventos[0].id) || '';
                     if (idEv) selecionarEventoParaInscricao(idEv);
@@ -983,16 +986,15 @@
             });
         }
 
-        function selecionarEventoParaInscricao(eventoId) {
+        function prepararEventoNoForm(eventoId) {
             var sel = document.getElementById('eventoSelect');
-            if (!sel) return;
-            // garante opções atualizadas
+            if (!sel) return null;
             carregarSelectEventos();
+            var ev = null;
             if (eventoId) {
                 sel.value = String(eventoId);
-                // se não achou (id diferente), tenta pelo nome
                 if (!sel.value || sel.value !== String(eventoId)) {
-                    var ev = eventos.find(function (e) { return String(e.id) === String(eventoId); });
+                    ev = eventos.find(function (e) { return String(e.id) === String(eventoId); });
                     if (ev) {
                         for (var i = 0; i < sel.options.length; i++) {
                             if (String(sel.options[i].value) === String(ev.id) || sel.options[i].text.indexOf(ev.nome) === 0) {
@@ -1003,14 +1005,88 @@
                     }
                 }
             }
-            renderFormularioDoEvento(sel.value);
-            // formulário só aparece depois de clicar em Inscrever-se (ou equivalente)
-            var sec = document.getElementById('inscricao');
-            if (sec) {
-                sec.classList.remove('hidden');
-                try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
+            ev = ev || eventos.find(function (e) { return String(e.id) === String(sel.value); });
+            var boxFixo = document.getElementById('boxEventoFixo');
+            var boxEsc = document.getElementById('boxEscolherEvento');
+            var nomeFixo = document.getElementById('nomeEventoFixo');
+            if (ev && boxFixo && boxEsc) {
+                if (nomeFixo) nomeFixo.textContent = ev.nome || 'Evento';
+                boxFixo.classList.remove('hidden');
+                boxEsc.classList.add('hidden');
+            } else if (boxFixo && boxEsc) {
+                boxFixo.classList.add('hidden');
+                boxEsc.classList.remove('hidden');
             }
-            try { sel.focus(); } catch (e) {}
+            renderFormularioDoEvento(sel.value);
+            window._eventoInscricaoAtualId = sel.value || eventoId || '';
+            try { sessionStorage.setItem('ibn_evento_inscricao_id', window._eventoInscricaoAtualId); } catch (eS) {}
+            return ev;
+        }
+
+        function abrirFormularioInscricaoEvento() {
+            var sec = document.getElementById('inscricao');
+            var formBox = document.getElementById('formInscricao');
+            if (sec) sec.classList.remove('hidden');
+            if (formBox) formBox.classList.remove('hidden');
+            try { aplicarCamposInscricao(); } catch (eA) {}
+            if (sec) try { sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eSc) {}
+        }
+
+        /**
+         * Fluxo ao clicar Inscrever-se:
+         * 1) Membro ja logado → vai direto ao formulario daquele evento
+         * 2) Nao logado → pergunta Membro | Visitante
+         *    - Membro → login
+         *    - Visitante → formulario (como antes)
+         */
+        function selecionarEventoParaInscricao(eventoId) {
+            prepararEventoNoForm(eventoId);
+            var logado = false;
+            try { logado = !!verificarMembro(); } catch (e) {}
+            var jaVisitante = !!(modoVisitante && window._visitanteEvento);
+
+            if (logado || jaVisitante) {
+                // Membro logado (ou visitante ja identificado): nao pergunta de novo
+                var avN = document.getElementById('avisoNaoLogado');
+                if (avN) avN.classList.add('hidden');
+                abrirFormularioInscricaoEvento();
+                return;
+            }
+
+            // Nao logado: esconde form e destaca Membro | Visitante
+            var sec = document.getElementById('inscricao');
+            var formBox = document.getElementById('formInscricao');
+            if (sec) sec.classList.add('hidden');
+            if (formBox) formBox.classList.add('hidden');
+            var avN2 = document.getElementById('avisoNaoLogado');
+            var esc = document.getElementById('boxEscolhaInsc');
+            var boxFv = document.getElementById('boxFichaVisitante');
+            if (boxFv) boxFv.classList.add('hidden');
+            if (esc) esc.classList.remove('hidden');
+            if (avN2) {
+                avN2.classList.remove('hidden');
+                avN2.classList.add('ibn-aviso-ativo');
+                var tit = avN2.querySelector('p.font-bold');
+                if (tit) tit.innerHTML = 'Para se inscrever neste evento, escolha:';
+                // Link Membro guarda o evento para voltar apos login
+                var linkM = avN2.querySelector('a[href*="login"]');
+                if (linkM) {
+                    var idEv = window._eventoInscricaoAtualId || eventoId || '';
+                    linkM.href = 'login.html?destino=' + encodeURIComponent('eventos.html' + (idEv ? ('?evento=' + idEv) : ''));
+                    linkM.classList.add('ibn-destaque-escolha');
+                }
+                var btnV = document.getElementById('btnModoVisitante');
+                if (btnV) btnV.classList.add('ibn-destaque-escolha');
+                try { avN2.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) {}
+                // remove destaque depois de alguns segundos
+                setTimeout(function () {
+                    try {
+                        avN2.classList.remove('ibn-aviso-ativo');
+                        if (linkM) linkM.classList.remove('ibn-destaque-escolha');
+                        if (btnV) btnV.classList.remove('ibn-destaque-escolha');
+                    } catch (e3) {}
+                }, 5000);
+            }
         }
 
         function carregarSelectEventos() {
@@ -1322,9 +1398,10 @@
             if (idx === -1) return;
             const fileInput = document.getElementById('comprovantePag');
             const valor = Number(inscritos[idx].valor || 0);
-            function finalizar(comprovanteData) {
+            function finalizar(comprovanteData, depois) {
                 inscritos[idx].pago = valor <= 0; // gratuito já pago
                 inscritos[idx].comprovanteEnviado = !!comprovanteData || valor <= 0;
+                inscritos[idx].comprovanteDepois = !!depois && !comprovanteData;
                 inscritos[idx].comprovante = comprovanteData || '';
                 inscritos[idx].dataPagamento = new Date().toLocaleString('pt-BR');
                 inscritos[idx].meioPagamento = (document.querySelector('input[name="meioPag"]:checked') || {}).value || 'PIX';
@@ -1362,12 +1439,64 @@
                 reader.onload = function() { finalizar(reader.result); };
                 reader.readAsDataURL(fileInput.files[0]);
             } else if (valor > 0) {
-                if (!confirm('Não anexou comprovante. Deseja enviar mesmo assim? A secretaria precisará confirmar o pagamento.')) return;
-                finalizar('');
+                if (!confirm('Não anexou comprovante. Deseja finalizar mesmo assim? A inscrição fica pendente e você pode enviar o comprovante depois.')) return;
+                finalizar('', true);
             } else {
                 finalizar('');
             }
         });
+
+        // Finalizar inscrição sem comprovante agora (pode enviar depois)
+        (function () {
+            var btnDep = document.getElementById('btnComprovanteDepois');
+            if (!btnDep) return;
+            btnDep.addEventListener('click', function () {
+                if (!inscricaoAtual) return;
+                var idx = inscritos.findIndex(function (i) { return i.codigo === inscricaoAtual.codigo; });
+                if (idx === -1) return;
+                var valor = Number(inscritos[idx].valor || 0);
+                inscritos[idx].pago = valor <= 0;
+                inscritos[idx].comprovanteEnviado = false;
+                inscritos[idx].comprovanteDepois = true;
+                inscritos[idx].comprovante = '';
+                inscritos[idx].dataPagamento = '';
+                inscritos[idx].meioPagamento = (document.querySelector('input[name="meioPag"]:checked') || {}).value || 'PIX';
+                inscritos[idx].statusPagamento = valor <= 0 ? 'confirmado' : 'pendente_comprovante';
+                inscritos[idx].atualizadoEm = new Date().toISOString();
+                try {
+                    var evP = eventos.find(function (e) { return String(e.id) === String(inscritos[idx].eventoId); });
+                    registrarNotifEvento('inscrito', evP || { id: inscritos[idx].eventoId, nome: inscritos[idx].eventoNome },
+                        'Inscrição gerada (comprovante depois): ' + (inscritos[idx].nome || '—') +
+                        ' · R$ ' + Number(inscritos[idx].valor || 0).toFixed(2));
+                } catch (eP) {}
+                inscricaoPendenteFechar = false;
+                limparInscPendenteLocal();
+                salvarInscritos();
+                try { salvarUmInscritoNuvem(inscritos[idx]); } catch (eNuvP) {}
+                try { renderInscNaoFinalizadas(); } catch (eNf2) {}
+                var msg = document.getElementById('msgConfirmacao');
+                if (msg) {
+                    msg.classList.remove('hidden');
+                    msg.className = 'mt-3 text-center font-bold text-amber-700';
+                    msg.textContent = '✅ Inscrição gerada! Comprovante pode ser enviado depois. Status: pendente.';
+                }
+                btnDep.disabled = true;
+                btnDep.textContent = '✅ Inscrição gerada — comprovante depois';
+                var btnC = document.getElementById('btnConfirmar');
+                if (btnC) { btnC.disabled = true; }
+                var box = document.getElementById('boxComprovanteInsc');
+                var txt = document.getElementById('txtComprovanteInsc');
+                if (box && txt) {
+                    txt.innerHTML = '<strong>Código:</strong> ' + inscritos[idx].codigo +
+                        '<br><strong>Evento:</strong> ' + (inscritos[idx].eventoNome || '') +
+                        '<br><strong>Nome:</strong> ' + (inscritos[idx].nome || '') +
+                        '<br><strong>Valor:</strong> R$ ' + Number(inscritos[idx].valor || 0).toFixed(2) +
+                        '<br><strong>Status:</strong> Pendente — comprovante depois';
+                    box.classList.remove('hidden');
+                }
+                try { carregarListaPublica(); } catch (eL) {}
+            });
+        })();
 
 
         // ——— Sino de eventos (inscritos / pagamentos) — só gestão e líderes do evento ———
@@ -1552,9 +1681,9 @@
             if (!i) return false;
             if (i.pago) return true;
             if (i.comprovanteEnviado) return true;
+            if (i.comprovanteDepois) return true; // gerou inscricao; comprovante fica para depois
             var s = String(i.statusPagamento || '');
-            if (s === 'confirmado' || s === 'aguardando_conferencia') return true;
-            // gratuito
+            if (s === 'confirmado' || s === 'aguardando_conferencia' || s === 'pendente_comprovante') return true;
             if (Number(i.valor || 0) <= 0 && i.codigo) return true;
             return false;
         }
