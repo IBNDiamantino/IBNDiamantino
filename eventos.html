@@ -271,26 +271,24 @@
             </div>
         </section>
 
-        <!-- Acompanhar inscrição (público, por código + lista local) -->
+        <!-- Lista de inscritos: só gestão — aparece na hora -->
+        <section id="listaPublica" class="hidden mb-12">
+            <h2 class="text-2xl font-bold mb-6 text-primary">Inscritos <span class="text-sm font-normal text-gray-500">(somente gestão)</span></h2>
+            <div id="listaPub" class="bg-white rounded-xl shadow-lg p-6">
+                <p class="text-gray-500 text-center">Nenhum inscrito ainda.</p>
+            </div>
+        </section>
+
+        <!-- Acompanhar inscrição: só busca quando a pessoa pedir -->
         <section id="acompanharInsc" class="mb-12">
             <h2 class="text-2xl font-bold mb-4 text-primary">Acompanhar inscrição</h2>
             <div class="bg-white rounded-xl shadow-lg p-5 max-w-xl">
-                <p class="text-sm text-gray-600 mb-3">Inscrições feitas <b>neste aparelho</b> aparecem abaixo. Toque para ver o status, ou digite o código.</p>
-                <div id="listaLocalAcomp" class="mb-4 space-y-2 max-h-48 overflow-y-auto"></div>
-                <p class="text-xs text-gray-500 mb-2">Ou digite o código (ex.: IBN-EV...)</p>
+                <p class="text-sm text-gray-600 mb-3">Digite o código do comprovante (ex.: IBN-EV...) e toque em <b>Buscar</b> para ver se está pendente ou confirmado.</p>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <input type="text" id="inputCodigoAcomp" placeholder="Código da inscrição" class="flex-1 p-3 border rounded-md focus:ring-2 focus:ring-secondary">
                     <button type="button" id="btnBuscarAcomp" class="bg-primary text-white px-5 py-3 rounded-md font-bold hover:bg-accent">Buscar</button>
                 </div>
                 <div id="resultadoAcomp" class="hidden mt-4 p-4 border rounded-xl text-sm bg-gray-50"></div>
-            </div>
-        </section>
-
-        <!-- Lista de inscritos: só gestão (admin/gestor) -->
-        <section id="listaPublica" class="hidden mb-12">
-            <h2 class="text-2xl font-bold mb-6 text-primary">Inscritos <span class="text-sm font-normal text-gray-500">(somente gestão)</span></h2>
-            <div id="listaPub" class="bg-white rounded-xl shadow-lg p-6">
-                <p class="text-gray-500 text-center">Carregando...</p>
             </div>
         </section>
 
@@ -1855,7 +1853,6 @@
 
         function salvarInscritos() {
             localStorage.setItem('inscritosIBN', JSON.stringify(inscritos));
-            try { if (typeof renderListaLocalAcomp === 'function') renderListaLocalAcomp(); } catch (eRl) {}
             // Sobe para a nuvem (mesmo esquema dos membros) — gestão vê em qualquer aparelho
             try {
                 if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
@@ -1878,23 +1875,25 @@
             return Promise.resolve({ sucesso: false });
         }
 
-        async function puxarInscritosDaNuvemEAtualizar() {
+        async function puxarInscritosDaNuvemEAtualizar(forcar) {
             try {
                 if (typeof IBNNuvem === 'undefined' || !IBNNuvem.puxarInscritosEventosParaLocal) return false;
-                var r = await IBNNuvem.puxarInscritosEventosParaLocal();
+                var r = await IBNNuvem.puxarInscritosEventosParaLocal(forcar ? { force: true } : {});
                 if (r && r.sucesso && Array.isArray(r.lista)) {
                     inscritos = r.lista;
                     try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (e2) {}
                     try { carregarListaPublica(); } catch (e3) {}
-                    if (r.mudou) {
-                        try { marcarSinoInscritosNovo(); } catch (e4) {}
-                    }
-                    return !!r.mudou;
+                    return true;
                 }
-            } catch (e) { console.warn('puxarInscritosDaNuvem:', e); }
+                // Mesmo se nuvem falhar/throttle, atualiza tela com o que já tem no aparelho
+                try { carregarListaPublica(); } catch (e4) {}
+                return false;
+            } catch (e) {
+                console.warn('puxarInscritosDaNuvem:', e);
+                try { carregarListaPublica(); } catch (e5) {}
+            }
             return false;
         }
-
         function marcarSinoInscritosNovo() {
             try {
                 var badge = document.getElementById('badgeSinoEventos');
@@ -1968,7 +1967,14 @@
             }
             if (sec) sec.classList.remove('hidden');
             if (!container) return;
-            var lista = inscritos.slice();
+            // Garante array local (não fica "Carregando..." se nuvem travar)
+            try {
+                if (!Array.isArray(inscritos) || !inscritos.length) {
+                    var loc = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
+                    if (Array.isArray(loc) && loc.length) inscritos = loc;
+                }
+            } catch (eLoc) {}
+            var lista = (Array.isArray(inscritos) ? inscritos : []).slice();
             try {
                 var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
                 var soLider = u && !(u.nivel === 'admin' || u.nivel === 'gestor' || (typeof isAdmin === 'function' && isAdmin(u)) || (typeof isGestor === 'function' && isGestor(u)));
@@ -2069,7 +2075,7 @@
                     if (msgSync) msgSync.textContent = 'Baixando...';
                     bDown.disabled = true;
                     try {
-                        await puxarInscritosDaNuvemEAtualizar();
+                        await puxarInscritosDaNuvemEAtualizar(true);
                         if (msgSync) msgSync.textContent = 'Lista atualizada da nuvem.';
                         carregarListaPublica();
                     } catch (e) {
@@ -2919,64 +2925,13 @@ document.addEventListener('DOMContentLoaded', function(){
             renderResultadoAcomp(i, codigo);
         }
 
-        function lerInscritosLocaisAcomp() {
-            var lista = [];
-            try {
-                if (typeof inscritos !== 'undefined' && Array.isArray(inscritos) && inscritos.length) {
-                    lista = inscritos.slice();
-                } else {
-                    lista = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
-                }
-            } catch (e) { lista = []; }
-            if (!Array.isArray(lista)) lista = [];
-            // mais recentes primeiro
-            lista.sort(function (a, b) {
-                return String(b.dataInsc || b.atualizadoEm || '').localeCompare(String(a.dataInsc || a.atualizadoEm || ''));
-            });
-            return lista;
-        }
-
-        function renderListaLocalAcomp() {
-            var box = document.getElementById('listaLocalAcomp');
-            if (!box) return;
-            var lista = lerInscritosLocaisAcomp();
-            if (!lista.length) {
-                box.innerHTML = '<p class="text-xs text-gray-400">Nenhuma inscrição salva neste aparelho ainda.</p>';
-                return;
-            }
-            // mostra até 15
-            var slice = lista.slice(0, 15);
-            box.innerHTML = '<p class="text-xs font-semibold text-gray-600 mb-1">Neste aparelho (' + lista.length + '):</p>' +
-                slice.map(function (i) {
-                    var cod = String(i.codigo || i.id || '');
-                    var st = (typeof statusTextoInsc === 'function') ? statusTextoInsc(i) : (i.pago ? 'Pago' : 'Pendente');
-                    var pago = !!(i.pago || i.statusPagamento === 'confirmado');
-                    return '<button type="button" class="btn-pick-local-insc w-full text-left p-2.5 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5" data-cod="' +
-                        cod.replace(/"/g, '') + '">' +
-                        '<span class="font-semibold text-sm text-primary">' + (i.nome || '—') + '</span>' +
-                        '<span class="text-xs text-gray-500 block">' + (i.eventoNome || '') + '</span>' +
-                        '<span class="text-[11px] font-mono text-gray-600">' + cod + '</span>' +
-                        '<span class="text-[11px] block mt-0.5 ' + (pago ? 'text-green-700' : 'text-amber-700') + '">' + st + '</span>' +
-                        '</button>';
-                }).join('');
-            box.querySelectorAll('.btn-pick-local-insc').forEach(function (btn) {
-                btn.onclick = function () {
-                    var cod = btn.getAttribute('data-cod') || '';
-                    var inp = document.getElementById('inputCodigoAcomp');
-                    if (inp) inp.value = cod;
-                    executarBuscaAcomp(cod);
-                };
-            });
-        }
-
         (function initAcompanharInsc() {
             var btn = document.getElementById('btnBuscarAcomp');
             var inp = document.getElementById('inputCodigoAcomp');
-            try { renderListaLocalAcomp(); } catch (eL) {}
             if (btn) {
                 btn.addEventListener('click', function () {
                     var cod = (inp && inp.value || '').trim();
-                    if (!cod) { alert('Informe o código da inscrição ou escolha uma na lista acima.'); return; }
+                    if (!cod) { alert('Informe o código da inscrição.'); return; }
                     executarBuscaAcomp(cod);
                 });
             }
