@@ -838,7 +838,14 @@
                             });
                         }
                     } catch (eUp) {}
-                    puxarInscritosDaNuvemEAtualizar();
+                    carregarListaPublica();
+                    // Se este aparelho está vazio, força 1x a busca na nuvem (inscrições já existem no Firebase)
+                    (async function () {
+                        try {
+                            var vazio = !inscritos || !inscritos.length;
+                            await puxarInscritosDaNuvemEAtualizar(!!vazio);
+                        } catch (eP) {}
+                    })();
                     try { agendarEnvioInscritosPeriodico(); } catch (eAg) {}
                 }
             } catch (ePi) {}
@@ -1983,10 +1990,8 @@
                     lista = lista.filter(function (i) { return ids.indexOf(String(i.eventoId)) !== -1; });
                 }
             } catch (eF) {}
-            if (lista.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center">Nenhum inscrito ainda.</p>';
-                return;
-            }
+            // Não retorna cedo: mesmo vazio mostra botões Baixar da nuvem / Enviar
+
             const pagos = lista.filter(i => i.pago).length;
             const ehAdminGestao = (function () {
                 try {
@@ -2010,6 +2015,7 @@
                     <p class="text-sm text-gray-500">Total: ${lista.length} · Pagos: ${pagos} · Pendentes: ${lista.length - pagos}</p>
                 </div>
                 <div class="space-y-2">
+                    ${lista.length === 0 ? '<p class="text-gray-500 text-center py-4">Nenhum inscrito neste aparelho.<br><span class="text-sm">Clique em <b>Baixar da nuvem</b> para trazer do Firebase.</span></p>' : ''}
                     ${lista.map(i => {
                         const cod = String(i.codigo || i.id || '');
                         const tipo = (i.tipo === 'visitante') ? 'Visitante' : 'Membro';
