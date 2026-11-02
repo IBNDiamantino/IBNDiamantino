@@ -166,17 +166,17 @@
                 <div>
                     <label class="block text-sm font-medium mb-2">Data do evento</label>
                     <div class="grid grid-cols-3 gap-2">
-                        <select id="fotoDia" class="bg-white/10 border border-white/20 rounded-lg px-3 py-2 outline-none">
+                        <select id="fotoDia" class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg px-3 py-2 outline-none">
                             <option value="">DD</option>
                         </select>
-                        <select id="fotoMes" class="bg-white/10 border border-white/20 rounded-lg px-3 py-2 outline-none">
+                        <select id="fotoMes" class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg px-3 py-2 outline-none">
                             <option value="">Mês</option>
                             <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
                             <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
                             <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
                             <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                         </select>
-                        <select id="fotoAno" class="bg-white/10 border border-white/20 rounded-lg px-3 py-2 outline-none">
+                        <select id="fotoAno" class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg px-3 py-2 outline-none">
                             <option value="">AAAA</option>
                         </select>
                     </div>
@@ -315,24 +315,28 @@
         }
 
         // ========== PREENCHER DIAS E ANOS ==========
-        const selDia = document.getElementById('fotoDia');
-        const selMes = document.getElementById('fotoMes');
-        const selAno = document.getElementById('fotoAno');
-
-        for (let d = 1; d <= 31; d++) {
-            const opt = document.createElement('option');
-            opt.value = String(d).padStart(2, '0');
-            opt.textContent = d;
-            selDia.appendChild(opt);
-        }
-
-        const anoAtual = new Date().getFullYear();
-        for (let a = anoAtual; a >= 2023; a--) {
-            const opt = document.createElement('option');
-            opt.value = String(a);
-            opt.textContent = a;
-            selAno.appendChild(opt);
-        }
+        (function preencherDiaMesAno() {
+            var selDia = document.getElementById('fotoDia');
+            var selMes = document.getElementById('fotoMes');
+            var selAno = document.getElementById('fotoAno');
+            if (selDia && selDia.options.length <= 1) {
+                for (var d = 1; d <= 31; d++) {
+                    var opt = document.createElement('option');
+                    opt.value = (d < 10 ? '0' : '') + d;
+                    opt.textContent = String(d);
+                    selDia.appendChild(opt);
+                }
+            }
+            if (selAno && selAno.options.length <= 1) {
+                var anoAtual = new Date().getFullYear();
+                for (var a = anoAtual; a >= 2023; a--) {
+                    var optA = document.createElement('option');
+                    optA.value = String(a);
+                    optA.textContent = String(a);
+                    selAno.appendChild(optA);
+                }
+            }
+        })();
 
         // ========== COMPRIMIR FOTO (iPhone JPEG/PNG + nuvem grátis) ==========
         function comprimirImagem(arquivo, maxLado, qualidade) {
