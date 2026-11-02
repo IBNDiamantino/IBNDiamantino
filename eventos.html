@@ -441,15 +441,31 @@
         function salvarEventos(lista) {
             localStorage.setItem('ibn_eventos', JSON.stringify(lista || []));
             try { localStorage.setItem('eventos', JSON.stringify(lista || [])); } catch (e0) {}
-            // Sobe para a nuvem para outros aparelhos / site verem
+            // Sobe para a nuvem (versão LEVE: sem foto base64 — limite 1 MB do Firestore)
             try {
                 if (garantirFirebaseEventos()) {
+                    var leve = (lista || []).map(function (e) {
+                        if (!e) return e;
+                        var o = Object.assign({}, e);
+                        if (o.foto && String(o.foto).indexOf('data:') === 0) {
+                            o.fotoLocal = true;
+                            o.foto = '';
+                        }
+                        if (String(o.foto || '').length > 2000) o.foto = '';
+                        return o;
+                    });
                     firebase.firestore().collection('config').doc('eventos_site').set({
-                        itens: lista || [],
+                        itens: leve,
                         atualizadoEm: new Date().toISOString()
-                    }, { merge: true }).catch(function () {});
+                    }, { merge: true }).then(function () {
+                        console.log('Eventos salvos na nuvem OK');
+                    }).catch(function (err) {
+                        console.error('Falha ao salvar eventos_site:', err);
+                    });
                 }
-            } catch (e1) {}
+            } catch (e1) {
+                console.error('salvarEventos:', e1);
+            }
         }
 
         /** Baixa eventos da nuvem (se houver) e mescla com o local */
@@ -515,10 +531,22 @@
                 try {
                     var precisaSubir = mesclada.some(function (e) { return nForm(e) > 0; });
                     if (precisaSubir) {
+                        var leveUp = mesclada.map(function (e) {
+                            if (!e) return e;
+                            var o = Object.assign({}, e);
+                            if (o.foto && String(o.foto).indexOf('data:') === 0) {
+                                o.fotoLocal = true;
+                                o.foto = '';
+                            }
+                            if (String(o.foto || '').length > 2000) o.foto = '';
+                            return o;
+                        });
                         firebase.firestore().collection('config').doc('eventos_site').set({
-                            itens: mesclada,
+                            itens: leveUp,
                             atualizadoEm: new Date().toISOString()
-                        }, { merge: true }).catch(function () {});
+                        }, { merge: true }).catch(function (err) {
+                            console.error('Falha reenvio eventos_site:', err);
+                        });
                     }
                 } catch (eUp) {}
                 return true;
@@ -1962,6 +1990,18 @@
                 if (eventosQueLidero().length) return true;
             } catch (e) {}
             return false;
+        }
+
+        function badgeStatusInscrito(i) {
+            if (!i) return { texto: 'Pendente', cls: 'status-pendente' };
+            if (i.pago || i.statusPagamento === 'confirmado') return { texto: '✅ Pago', cls: 'status-pago' };
+            if (i.statusPagamento === 'comprovante_recebido' || i.comprovanteRecebido) {
+                return { texto: '📥 Comp. recebido', cls: 'status-pendente' };
+            }
+            if (i.statusPagamento === 'comprovante_enviado' || i.statusPagamento === 'aguardando_conferencia' || i.comprovanteEnviado || i.comprovante) {
+                return { texto: '📄 Comp. enviado', cls: 'status-pendente' };
+            }
+            return { texto: '⏳ Pendente', cls: 'status-pendente' };
         }
 
         function carregarListaPublica() {
