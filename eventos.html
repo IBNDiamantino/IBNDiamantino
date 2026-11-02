@@ -356,7 +356,10 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="firebase-config.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="eventos-supabase.js"></script>
     <script src="nuvem.js"></script>
     <script src="conta.js"></script>
     <script>
@@ -441,7 +444,16 @@
         function salvarEventos(lista) {
             localStorage.setItem('ibn_eventos', JSON.stringify(lista || []));
             try { localStorage.setItem('eventos', JSON.stringify(lista || [])); } catch (e0) {}
-            // Sobe para a nuvem (versão LEVE: sem foto base64 — limite 1 MB do Firestore)
+            // Preferência: Supabase (eventos). Fallback: Firestore config/eventos_site
+            try {
+                if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                    IBNEventosCloud.salvarEventos(lista || []).then(function (r) {
+                        if (r && r.sucesso) console.log('Eventos salvos no Supabase OK', r.quantidade);
+                        else console.warn('Supabase eventos:', r && r.mensagem);
+                    }).catch(function (err) { console.error('salvarEventos Supabase:', err); });
+                    return;
+                }
+            } catch (eSb) { console.warn(eSb); }
             try {
                 if (garantirFirebaseEventos()) {
                     var leve = (lista || []).map(function (e) {
@@ -458,7 +470,7 @@
                         itens: leve,
                         atualizadoEm: new Date().toISOString()
                     }, { merge: true }).then(function () {
-                        console.log('Eventos salvos na nuvem OK');
+                        console.log('Eventos salvos no Firestore OK');
                     }).catch(function (err) {
                         console.error('Falha ao salvar eventos_site:', err);
                     });
@@ -471,6 +483,44 @@
         /** Baixa eventos da nuvem (se houver) e mescla com o local */
         async function puxarEventosDaNuvem() {
             try {
+                // 1) Supabase
+                if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                    var rSb = await IBNEventosCloud.puxarEventos();
+                    if (rSb && rSb.sucesso && Array.isArray(rSb.lista) && rSb.lista.length) {
+                        var localSb = [];
+                        try { localSb = JSON.parse(localStorage.getItem('ibn_eventos') || '[]'); } catch (e0) { localSb = []; }
+                        if (!Array.isArray(localSb)) localSb = [];
+                        var mapSb = {};
+                        function nFormSb(ev) { return (ev && Array.isArray(ev.formulario)) ? ev.formulario.length : 0; }
+                        localSb.forEach(function (e) { if (e && e.id) mapSb[e.id] = e; });
+                        rSb.lista.forEach(function (e) {
+                            if (!e || !e.id) return;
+                            if (!mapSb[e.id]) mapSb[e.id] = e;
+                            else {
+                                var a = mapSb[e.id], b = e;
+                                var out = Object.assign({}, a, b);
+                                if (nFormSb(a) >= nFormSb(b) && nFormSb(a) > 0) out.formulario = a.formulario;
+                                else if (nFormSb(b) > 0) out.formulario = b.formulario;
+                                if ((!out.foto || String(out.foto).indexOf('data:') !== 0) && a.foto && String(a.foto).indexOf('data:') === 0) out.foto = a.foto;
+                                mapSb[e.id] = out;
+                            }
+                        });
+                        var mescladaSb = Object.keys(mapSb).map(function (k) { return mapSb[k]; });
+                        localStorage.setItem('ibn_eventos', JSON.stringify(mescladaSb));
+                        try { localStorage.setItem('eventos', JSON.stringify(mescladaSb)); } catch (e2) {}
+                        console.log('Eventos puxados do Supabase:', mescladaSb.length);
+                        return true;
+                    }
+                    if (rSb && rSb.sucesso && (!rSb.lista || !rSb.lista.length)) {
+                        // nuvem vazia — sobe local se houver
+                        try {
+                            var locUp = JSON.parse(localStorage.getItem('ibn_eventos') || '[]');
+                            if (Array.isArray(locUp) && locUp.length) await IBNEventosCloud.salvarEventos(locUp);
+                        } catch (eUp0) {}
+                        return false;
+                    }
+                }
+                // 2) Fallback Firestore
                 if (!garantirFirebaseEventos()) return false;
                 var snap = await firebase.firestore().collection('config').doc('eventos_site').get();
                 if (!snap.exists) return false;
@@ -859,7 +909,9 @@
                 if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
                     // Garante que o que está só neste aparelho vai para a nuvem
                     try {
-                        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
+                        if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                            IBNEventosCloud.salvarInscritosLista(inscritos || []).catch(function () {});
+                        } else if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
                             (inscritos || []).forEach(function (insc) {
                                 if (!insc || !(insc.codigo || insc.id)) return;
                                 IBNNuvem.salvarInscritoEventoNuvem(insc).catch(function () {});
@@ -891,7 +943,9 @@
                         try {
                             if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
                                 try {
-                                    if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
+                                    if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                                        await IBNEventosCloud.salvarInscritosLista(inscritos || []);
+                                    } else if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
                                         for (var k = 0; k < (inscritos || []).length; k++) {
                                             var insc = inscritos[k];
                                             if (!insc || !(insc.codigo || insc.id)) continue;
@@ -1871,13 +1925,16 @@
             async function tick() {
                 if (_envioInscritosBusy) return;
                 if (!inscritos || !inscritos.length) return;
-                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.salvarInscritoEventoNuvem) return;
                 _envioInscritosBusy = true;
                 try {
-                    for (var i = 0; i < inscritos.length; i++) {
-                        var insc = inscritos[i];
-                        if (!insc || !(insc.codigo || insc.id)) continue;
-                        try { await IBNNuvem.salvarInscritoEventoNuvem(insc); } catch (e1) {}
+                    if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                        await IBNEventosCloud.salvarInscritosLista(inscritos);
+                    } else if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
+                        for (var i = 0; i < inscritos.length; i++) {
+                            var insc = inscritos[i];
+                            if (!insc || !(insc.codigo || insc.id)) continue;
+                            try { await IBNNuvem.salvarInscritoEventoNuvem(insc); } catch (e1) {}
+                        }
                     }
                 } catch (e) {}
                 finally { _envioInscritosBusy = false; }
@@ -1888,12 +1945,19 @@
 
         function salvarInscritos() {
             localStorage.setItem('inscritosIBN', JSON.stringify(inscritos));
-            // Sobe para a nuvem (mesmo esquema dos membros) — gestão vê em qualquer aparelho
+            try {
+                if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                    var fila = (inscritos || []).slice(0, 50);
+                    IBNEventosCloud.salvarInscritosLista(fila).then(function (r) {
+                        if (r && !r.sucesso) console.warn('Supabase inscritos:', r);
+                    }).catch(function () {});
+                    return;
+                }
+            } catch (eSb) {}
             try {
                 if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
-                    // Envia os que mudaram recentemente (ultimos 30) para nao travar
-                    var fila = (inscritos || []).slice(0, 30);
-                    fila.forEach(function (insc) {
+                    var fila2 = (inscritos || []).slice(0, 30);
+                    fila2.forEach(function (insc) {
                         if (!insc || !(insc.codigo || insc.id)) return;
                         IBNNuvem.salvarInscritoEventoNuvem(insc).catch(function () {});
                     });
@@ -1902,6 +1966,11 @@
         }
 
         function salvarUmInscritoNuvem(insc) {
+            try {
+                if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo() && insc) {
+                    return IBNEventosCloud.salvarInscrito(insc);
+                }
+            } catch (e0) {}
             try {
                 if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem && insc) {
                     return IBNNuvem.salvarInscritoEventoNuvem(insc);
@@ -1912,7 +1981,36 @@
 
         async function puxarInscritosDaNuvemEAtualizar(forcar) {
             try {
-                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.puxarInscritosEventosParaLocal) return false;
+                // Supabase primeiro
+                if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                    var rSb = await IBNEventosCloud.puxarInscritos();
+                    if (rSb && rSb.sucesso && Array.isArray(rSb.lista)) {
+                        // mescla com local
+                        var local = [];
+                        try { local = JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch (eL) { local = []; }
+                        if (!Array.isArray(local)) local = [];
+                        var map = {};
+                        local.forEach(function (i) {
+                            if (!i) return;
+                            var k = String(i.codigo || i.id || '');
+                            if (k) map[k] = i;
+                        });
+                        rSb.lista.forEach(function (n) {
+                            var k = String(n.codigo || n.id || '');
+                            if (!k) return;
+                            if (!map[k]) map[k] = n;
+                            else map[k] = Object.assign({}, map[k], n);
+                        });
+                        inscritos = Object.keys(map).map(function (k) { return map[k]; });
+                        try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (e2) {}
+                        try { carregarListaPublica(); } catch (e3) {}
+                        return true;
+                    }
+                }
+                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.puxarInscritosEventosParaLocal) {
+                    try { carregarListaPublica(); } catch (e4) {}
+                    return false;
+                }
                 var r = await IBNNuvem.puxarInscritosEventosParaLocal(forcar ? { force: true } : {});
                 if (r && r.sucesso && Array.isArray(r.lista)) {
                     inscritos = r.lista;
@@ -1920,7 +2018,6 @@
                     try { carregarListaPublica(); } catch (e3) {}
                     return true;
                 }
-                // Mesmo se nuvem falhar/throttle, atualiza tela com o que já tem no aparelho
                 try { carregarListaPublica(); } catch (e4) {}
                 return false;
             } catch (e) {
@@ -2135,7 +2232,11 @@
                     bUp.disabled = true;
                     try {
                         var ok = 0, falha = 0, total = (inscritos || []).length;
-                        if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
+                        if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                            var rL = await IBNEventosCloud.salvarInscritosLista(inscritos || []);
+                            ok = (rL && rL.ok) || 0;
+                            falha = (rL && rL.falha) || 0;
+                        } else if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
                             for (var i = 0; i < (inscritos || []).length; i++) {
                                 var insc = inscritos[i];
                                 if (!insc || !(insc.codigo || insc.id)) continue;
