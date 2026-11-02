@@ -2101,6 +2101,50 @@
             return { texto: '⏳ Pendente', cls: 'status-pendente' };
         }
 
+        function statusTextoInsc(i) {
+            if (!i) return '—';
+            if (i.pago || i.statusPagamento === 'confirmado') return 'Confirmado / pago pela secretaria';
+            if (i.statusPagamento === 'comprovante_recebido' || i.comprovanteRecebido) return 'Comprovante recebido pela secretaria — aguardando confirmação do pagamento';
+            if (i.statusPagamento === 'comprovante_enviado' || i.statusPagamento === 'aguardando_conferencia' || i.comprovanteEnviado || i.comprovante) {
+                return 'Comprovante enviado — aguardando secretaria conferir';
+            }
+            if (i.statusPagamento === 'pendente_comprovante' || i.comprovanteDepois) return 'Pendente — comprovante ainda não enviado';
+            return 'Pendente — aguardando pagamento/comprovante';
+        }
+
+        function linkAcompanhamentoInsc(codigo) {
+            codigo = String(codigo || '').trim();
+            if (!codigo) return '';
+            var path = location.pathname || '/eventos.html';
+            if (!/eventos\.html$/i.test(path)) {
+                path = path.replace(/\/?$/, '/') + 'eventos.html';
+            }
+            return (location.origin || 'https://ibndiamantino.com.br') + path + '?codigo=' + encodeURIComponent(codigo);
+        }
+
+        async function compartilharLinkAcompanhamento(codigo, nome) {
+            var link = linkAcompanhamentoInsc(codigo);
+            if (!link) { alert('Código inválido.'); return; }
+            var texto = 'Acompanhe sua inscrição no evento IBN Diamantino' +
+                (nome ? ' (' + nome + ')' : '') +
+                '\nCódigo: ' + codigo +
+                '\n\nAbra este link para ver se está pendente ou confirmada:\n' + link;
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: 'Inscrição IBN Diamantino', text: texto, url: link });
+                    return;
+                } catch (e) {}
+            }
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(texto);
+                    alert('Texto copiado! Cole no WhatsApp.');
+                    return;
+                }
+            } catch (e2) {}
+            prompt('Copie o link:', link);
+        }
+
         function carregarListaPublica() {
             const sec = document.getElementById('listaPublica');
             const container = document.getElementById('listaPub');
