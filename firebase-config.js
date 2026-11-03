@@ -19,13 +19,12 @@ const NUVEM_ATIVA = true;
 // ==============================================
 // Cloudflare R2 — fotos (ministérios e células)
 // Bucket: ibn-diamantino-fotos
-// Imagens vão para o R2; no Firestore fica só o link.
-// Token novo — nov/2026
+// Token S3 novo — nov/2026 (validado)
 // ==============================================
 const R2_CONFIG = {
     accountId: '8564cf6532488ef0f60f172f6888c3b4',
-    accessKeyId: '19a74986d7a36f940a2ef5a1e0e21dda',
-    secretAccessKey: '9defd01209446e45b2dac54b7441add532e83baf3b5a19b21aa778b2e0b0e0c',
+    accessKeyId: 'b0873f9ec8542ea523b811f8b3d9c869',
+    secretAccessKey: '9c09d5e0ef0c61f22c6d0ca030d1e0e48d9131826d0ed5f913470a3ba2cf283e',
     bucket: 'ibn-diamantino-fotos',
     publicBase: 'https://pub-0f1d5e64aade4cd18ab9635ae2e515af.r2.dev',
     endpoint: 'https://8564cf6532488ef0f60f172f6888c3b4.r2.cloudflarestorage.com'
