@@ -257,7 +257,23 @@
                 if (sel) sel.value = cid;
             }
         })();
+
+        // Mostra o que já está neste aparelho e em seguida puxa da nuvem
+        // (R2 só guarda o arquivo; a lista vem da coleção Firestore fotos_celulas)
         renderGaleria();
+        (async function puxarCelulasAoAbrir() {
+            try {
+                if (typeof IBNNuvem !== 'undefined') {
+                    if (IBNNuvem.iniciar) IBNNuvem.iniciar();
+                    if (IBNNuvem.puxarFotosCelulasParaLocal) {
+                        await IBNNuvem.puxarFotosCelulasParaLocal();
+                        renderGaleria();
+                    }
+                }
+            } catch (e) {
+                console.warn('Falha ao puxar fotos de células da nuvem:', e);
+            }
+        })();
     </script>
 </body>
 </html>
