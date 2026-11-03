@@ -587,9 +587,12 @@
             const arquivo = document.getElementById('fotoArquivo').files[0];
             const titulo = document.getElementById('fotoTitulo').value.trim();
             const ministerio = document.getElementById('fotoMinisterio').value;
-            const dia = selDia.value;
-            const mes = selMes.value;
-            const ano = selAno.value;
+            const selDia = document.getElementById('fotoDia');
+            const selMes = document.getElementById('fotoMes');
+            const selAno = document.getElementById('fotoAno');
+            const dia = selDia ? selDia.value : '';
+            const mes = selMes ? selMes.value : '';
+            const ano = selAno ? selAno.value : '';
 
             if (!arquivo || !titulo || !ministerio) return;
 
@@ -670,16 +673,16 @@
 
                 document.getElementById('modalEnviar').classList.remove('aberto');
                 document.getElementById('formEnviar').reset();
-                selDia.value = '';
-                selMes.value = '';
-                selAno.value = '';
+                if (selDia) selDia.value = '';
+                if (selMes) selMes.value = '';
+                if (selAno) selAno.value = '';
 
                 alert('✅ Foto enviada!' + msgNuvem);
             } catch (err) {
                 console.error(err);
                 alert('Não foi possível processar a foto. No iPhone evite HEIC: use JPEG/PNG ou "Formato mais compatível".');
             } finally {
-                if (btn) { btn.disabled = false; btn.textContent = 'Publicar Foto'; }
+                if (btn) { btn.disabled = false; btn.textContent = 'Enviar Foto'; }
             }
         });
 
