@@ -904,26 +904,14 @@
             carregarSelectEventos();
             atualizarUISemEvento();
             carregarListaPublica();
-            // Gestão/líder: sobe inscritos locais e puxa da nuvem (outros aparelhos)
+            // Gestão/líder: PRIMEIRO puxa da nuvem (exclusões e última versão prevalecem),
+            // depois sobe só o que ainda não existe na nuvem (feito dentro do puxar).
             try {
                 if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
-                    // Garante que o que está só neste aparelho vai para a nuvem
-                    try {
-                        if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
-                            IBNEventosCloud.salvarInscritosLista(inscritos || []).catch(function () {});
-                        } else if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
-                            (inscritos || []).forEach(function (insc) {
-                                if (!insc || !(insc.codigo || insc.id)) return;
-                                IBNNuvem.salvarInscritoEventoNuvem(insc).catch(function () {});
-                            });
-                        }
-                    } catch (eUp) {}
                     carregarListaPublica();
-                    // Se este aparelho está vazio, força 1x a busca na nuvem (inscrições já existem no Firebase)
                     (async function () {
                         try {
-                            var vazio = !inscritos || !inscritos.length;
-                            await puxarInscritosDaNuvemEAtualizar(!!vazio);
+                            await puxarInscritosDaNuvemEAtualizar(true);
                         } catch (eP) {}
                     })();
                     try { agendarEnvioInscritosPeriodico(); } catch (eAg) {}
@@ -942,18 +930,8 @@
                         try { if (typeof renderAdminEventos === 'function') renderAdminEventos(); } catch (eR) {}
                         try {
                             if (typeof podeVerInscritosGestao === 'function' && podeVerInscritosGestao()) {
-                                try {
-                                    if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
-                                        await IBNEventosCloud.salvarInscritosLista(inscritos || []);
-                                    } else if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
-                                        for (var k = 0; k < (inscritos || []).length; k++) {
-                                            var insc = inscritos[k];
-                                            if (!insc || !(insc.codigo || insc.id)) continue;
-                                            try { await IBNNuvem.salvarInscritoEventoNuvem(insc); } catch (eS) {}
-                                        }
-                                    }
-                                } catch (eUp2) {}
-                                await puxarInscritosDaNuvemEAtualizar();
+                                // Só puxa: nuvem prevalece; itens só-locais sobem dentro do puxar
+                                await puxarInscritosDaNuvemEAtualizar(true);
                             }
                         } catch (eIn) {}
                         // re-aplica evento do link de convite
@@ -1924,16 +1902,20 @@
             } catch (e0) { return; }
             async function tick() {
                 if (_envioInscritosBusy) return;
-                if (!inscritos || !inscritos.length) return;
                 _envioInscritosBusy = true;
                 try {
-                    if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
-                        await IBNEventosCloud.salvarInscritosLista(inscritos);
-                    } else if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
-                        for (var i = 0; i < inscritos.length; i++) {
-                            var insc = inscritos[i];
-                            if (!insc || !(insc.codigo || insc.id)) continue;
-                            try { await IBNNuvem.salvarInscritoEventoNuvem(insc); } catch (e1) {}
+                    // 1) Puxa da nuvem primeiro (exclusões e última versão prevalecem)
+                    try { await puxarInscritosDaNuvemEAtualizar(true); } catch (eP) {}
+                    // 2) Upsert só garante que o que ainda está local (e na nuvem) está atualizado
+                    if (inscritos && inscritos.length) {
+                        if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
+                            await IBNEventosCloud.salvarInscritosLista(inscritos);
+                        } else if (typeof IBNNuvem !== 'undefined' && IBNNuvem.salvarInscritoEventoNuvem) {
+                            for (var i = 0; i < inscritos.length; i++) {
+                                var insc = inscritos[i];
+                                if (!insc || !(insc.codigo || insc.id)) continue;
+                                try { await IBNNuvem.salvarInscritoEventoNuvem(insc); } catch (e1) {}
+                            }
                         }
                     }
                 } catch (e) {}
@@ -1981,29 +1963,59 @@
 
         async function puxarInscritosDaNuvemEAtualizar(forcar) {
             try {
-                // Supabase primeiro
+                // Supabase primeiro — NUVEM É A FONTE DA VERDADE
+                // O que foi apagado no banco some nos outros computadores ao atualizar.
                 if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
                     var rSb = await IBNEventosCloud.puxarInscritos();
                     if (rSb && rSb.sucesso && Array.isArray(rSb.lista)) {
-                        // mescla com local
                         var local = [];
                         try { local = JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch (eL) { local = []; }
                         if (!Array.isArray(local)) local = [];
-                        var map = {};
+
+                        // Códigos que existem na nuvem
+                        var naNuvem = {};
+                        rSb.lista.forEach(function (n) {
+                            var k = String((n && (n.codigo || n.id)) || '');
+                            if (k) naNuvem[k] = true;
+                        });
+
+                        // Itens só no aparelho (ainda não subiram): sobem para a nuvem e entram na lista final
+                        var soLocal = [];
                         local.forEach(function (i) {
                             if (!i) return;
                             var k = String(i.codigo || i.id || '');
-                            if (k) map[k] = i;
+                            if (!k || naNuvem[k]) return;
+                            soLocal.push(i);
                         });
+                        if (soLocal.length) {
+                            try {
+                                await IBNEventosCloud.salvarInscritosLista(soLocal);
+                            } catch (eUp) {
+                                console.warn('Não foi possível subir inscritos só-locais:', eUp);
+                            }
+                        }
+
+                        // Lista final = nuvem + o que era só local (e acabou de subir)
+                        // Assim exclusões feitas na nuvem (gestor / painel Supabase) somem daqui.
+                        var mapFinal = {};
                         rSb.lista.forEach(function (n) {
-                            var k = String(n.codigo || n.id || '');
-                            if (!k) return;
-                            if (!map[k]) map[k] = n;
-                            else map[k] = Object.assign({}, map[k], n);
+                            var k = String((n && (n.codigo || n.id)) || '');
+                            if (k) mapFinal[k] = n;
                         });
-                        inscritos = Object.keys(map).map(function (k) { return map[k]; });
+                        soLocal.forEach(function (i) {
+                            var k = String(i.codigo || i.id || '');
+                            if (k && !mapFinal[k]) mapFinal[k] = i;
+                        });
+                        // Preferir dados da nuvem quando o mesmo código existe nos dois
+                        rSb.lista.forEach(function (n) {
+                            var k = String((n && (n.codigo || n.id)) || '');
+                            if (k) mapFinal[k] = Object.assign({}, mapFinal[k] || {}, n);
+                        });
+
+                        inscritos = Object.keys(mapFinal).map(function (k) { return mapFinal[k]; });
                         try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (e2) {}
                         try { carregarListaPublica(); } catch (e3) {}
+                        console.log('Inscritos sincronizados com Supabase (nuvem prevalece):', inscritos.length);
                         return true;
                     }
                 }
@@ -2480,8 +2492,16 @@
             if (idx < 0) return;
             var cod = String(inscritos[idx].codigo || inscritos[idx].id || codigo);
             inscritos.splice(idx, 1);
-            salvarInscritos();
+            // Grava só o local (não faz upsert da lista inteira, para não recriar o que apagamos)
+            try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (e0) {}
             try {
+                // Prioridade: Supabase (fonte da verdade)
+                if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo() && IBNEventosCloud.removerInscrito) {
+                    IBNEventosCloud.removerInscrito(cod).catch(function (err) {
+                        console.warn('Falha ao apagar inscrito no Supabase:', err);
+                    });
+                }
+                // Fallback Firebase antigo
                 if (typeof IBNNuvem !== 'undefined' && IBNNuvem.removerInscritoEventoNuvem) {
                     IBNNuvem.removerInscritoEventoNuvem(cod);
                 }
