@@ -422,9 +422,12 @@
                 var cor = corPendencia(m);
                 var nasc = m.nascimento || m.dataNascimento || '—';
                 var tel = m.telefone || '—';
+                var nPend = pends.length;
+                if (m.status === 'pendente') nPend = Math.max(nPend, 1);
+                var corBtn = nPend > 0 ? 'bg-red-500' : 'bg-green-600';
                 var btnAloc = m.status === 'pendente'
-                    ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-aloc bg-green-600 text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Aprovar / Alocar</button>'
-                    : '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-aloc bg-primary text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Editar alocação</button>';
+                    ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-aloc ' + corBtn + ' text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Aprovar / Alocar</button>'
+                    : '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-aloc ' + corBtn + ' text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Editar alocação</button>';
                 var btnRem = (typeof isGestor === 'function' && isGestor())
                     ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-rem border border-red-500 text-red-600 px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Remover</button>'
                     : '';
