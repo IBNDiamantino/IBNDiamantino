@@ -46,14 +46,23 @@
         .install-banner {
             position: fixed;
             bottom: 70px;
-            right: 20px;
-            max-width: 320px;
-            background: #fff9e6;
-            border: 1px solid #ffd900;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            left: 12px;
+            right: 12px;
+            max-width: 420px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #fff9e6 0%, #fff 60%);
+            border: 2px solid #D4AF37;
+            border-radius: 14px;
+            box-shadow: 0 8px 28px rgba(10, 26, 63, 0.22);
             z-index: 99;
             display: none;
+        }
+        @media (min-width: 640px) {
+            .install-banner {
+                left: auto;
+                right: 20px;
+                margin: 0;
+            }
         }
         .live-indicator {
             animation: pulse 2s infinite;
@@ -88,17 +97,21 @@
     </style>
 </head>
 <body class="bg-light text-gray-800 font-sans antialiased">
-    <!-- ✅ Aviso de Instalação do App (Android / Chrome) -->
+    <!-- ✅ Aviso de Instalação do App — aparece na web se ainda não instalou -->
     <div id="installBanner" class="install-banner p-4">
         <div class="flex items-start gap-3">
-            <div class="flex-1">
-                <p class="font-bold text-primary mb-1">Instalar App IBN</p>
-                <p class="text-sm text-gray-600 mb-3">Acesse mais rápido, mesmo offline</p>
-                <button id="btnInstalar" class="bg-secondary text-primary px-4 py-2 rounded-md font-bold w-full hover:bg-yellow-400">
-                    <i class="fa fa-download mr-2"></i> Instalar Agora
+            <div class="flex-1 min-w-0">
+                <p class="font-bold text-primary mb-0.5 text-sm sm:text-base">
+                    <i class="fa fa-mobile mr-1"></i> Instale o App IBN
+                </p>
+                <p id="txtInstallBanner" class="text-xs sm:text-sm text-gray-600 mb-3 leading-snug">
+                    Você está no navegador. Instale na tela inicial para abrir mais rápido, como um app.
+                </p>
+                <button id="btnInstalar" class="bg-secondary text-primary px-4 py-2.5 rounded-lg font-bold w-full hover:bg-yellow-400 text-sm">
+                    <i class="fa fa-download mr-2"></i> Instalar agora
                 </button>
             </div>
-            <button id="btnFecharAviso" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            <button id="btnFecharAviso" class="text-gray-400 hover:text-gray-600 text-xl leading-none shrink-0" title="Fechar neste acesso">&times;</button>
         </div>
     </div>
 
@@ -2457,32 +2470,56 @@
         }
 
         function configurarInstalacaoPWA() {
-            // Captura o evento do Chrome/Android
+            var ban = document.getElementById('installBanner');
+            var btnTop = document.getElementById('btnBaixarApp');
+            var txtBan = document.getElementById('txtInstallBanner');
+
+            // Já instalado / aberto como app → não mostra aviso
+            if (isStandalone()) {
+                if (ban) ban.style.display = 'none';
+                if (btnTop) btnTop.style.display = 'none';
+                return;
+            }
+
+            // Texto um pouco mais direto se estiver logado como membro
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (u && txtBan) {
+                    txtBan.textContent = 'Olá' + (u.nome ? ', ' + String(u.nome).split(' ')[0] : '') +
+                        '! Você está no navegador. Instale o app para abrir mais rápido na próxima vez.';
+                }
+            } catch (eU) {}
+
+            // Chrome / Edge / Android: guarda o prompt nativo quando o navegador oferecer
             window.addEventListener('beforeinstallprompt', function(e) {
                 e.preventDefault();
                 promptInstalacao = e;
-                // Mostra o banner flutuante após alguns segundos (só se não estiver instalado)
-                if (!isStandalone()) {
-                    setTimeout(function() {
-                        var ban = document.getElementById('installBanner');
-                        if (ban) ban.style.display = 'block';
-                    }, 2500);
-                }
             });
+
+            // SEMPRE mostra o banner na web (cada visita), não só quando o Chrome dispara o evento
+            // (iPhone, Firefox, etc. nunca disparam beforeinstallprompt)
+            function mostrarBannerInstalar() {
+                if (isStandalone()) return;
+                // Fechou neste acesso? sessionStorage some ao fechar a aba
+                try {
+                    if (sessionStorage.getItem('ibn_install_banner_fechado') === '1') return;
+                } catch (eS) {}
+                if (ban) ban.style.display = 'block';
+            }
+            setTimeout(mostrarBannerInstalar, 1800);
 
             // Botão do banner
             var btnInst = document.getElementById('btnInstalar');
             if (btnInst) btnInst.addEventListener('click', tentarInstalarApp);
 
             // Botão do topo "Baixar / Instalar App"
-            var btnTop = document.getElementById('btnBaixarApp');
             if (btnTop) btnTop.addEventListener('click', tentarInstalarApp);
 
-            // Fechar banner
+            // Fechar só neste acesso (na próxima abertura do site volta a aparecer)
             var btnFechar = document.getElementById('btnFecharAviso');
             if (btnFechar) btnFechar.addEventListener('click', function() {
-                var ban = document.getElementById('installBanner');
                 if (ban) ban.style.display = 'none';
+                try { sessionStorage.setItem('ibn_install_banner_fechado', '1'); } catch (e) {}
             });
 
             // Fechar modal
@@ -2495,13 +2532,6 @@
                 modal.addEventListener('click', function(e) {
                     if (e.target === modal) fecharModalInstalar();
                 });
-            }
-
-            // Se já estiver rodando como app, esconde o botão de instalar
-            if (isStandalone()) {
-                var ban = document.getElementById('installBanner');
-                if (ban) ban.style.display = 'none';
-                if (btnTop) btnTop.style.display = 'none';
             }
         }
 
