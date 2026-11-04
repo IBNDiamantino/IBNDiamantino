@@ -146,18 +146,13 @@
                 </div>
             </div>
 
-            <!-- Pergunta de segurança -->
-            <div class="border-t pt-4 space-y-3">
-                <h3 class="font-bold text-primary"><i class="fa fa-shield mr-1"></i> Recuperação de senha</h3>
-                <p class="text-xs text-gray-500">Usado se você esquecer a senha</p>
-                <div>
-                    <label class="block text-sm font-semibold mb-1">Pergunta de segurança *</label>
-                    <select id="perguntaSeguranca" required class="w-full px-3 py-2 border rounded-lg bg-white"></select>
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold mb-1">Sua resposta *</label>
-                    <input type="text" id="respostaSeguranca" required class="w-full px-3 py-2 border rounded-lg" placeholder="Resposta secreta">
-                </div>
+            <!-- Recuperação de senha: nome + telefone + data de nascimento (sem pergunta secreta) -->
+            <div class="border-t pt-4">
+                <p class="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+                    <i class="fa fa-info-circle mr-1"></i>
+                    Se esquecer a senha, use <strong>nome, telefone e data de nascimento</strong> na recuperação.
+                    O sistema gera uma senha provisória e, no próximo login, você cria uma nova.
+                </p>
             </div>
 
             <div id="msg" class="text-sm hidden"></div>
@@ -221,10 +216,7 @@
         selCargo.addEventListener('change', atualizarCamposLider);
         atualizarCamposLider();
 
-        const selPergunta = document.getElementById('perguntaSeguranca');
-        PERGUNTAS_SEGURANCA.forEach(p => {
-            selPergunta.innerHTML += `<option value="${p}">${p}</option>`;
-        });
+        // Pergunta secreta removida: recuperação usa nome + telefone + nascimento
 
         // Mostra/esconde blocos de membro
         document.getElementById('jaMembro').addEventListener('change', function() {
@@ -344,8 +336,8 @@
                 funcaoEspecifica: jaMembro ? document.getElementById('funcaoEspecifica').value.trim() : '',
                 lideraCelulaId: jaMembro ? (document.getElementById('lideraCelulaId').value || '') : '',
                 lideraMinisterio: jaMembro ? (document.getElementById('lideraMinisterio').value || '') : '',
-                perguntaSeguranca: document.getElementById('perguntaSeguranca').value,
-                respostaSeguranca: document.getElementById('respostaSeguranca').value.trim()
+                perguntaSeguranca: '',
+                respostaSeguranca: ''
             };
 
             const resultado = cadastrarMembro(dados);
