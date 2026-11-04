@@ -18,27 +18,49 @@ function normalizarDataParaISO(str) {
     if (!str) return '';
     const s = String(str).trim();
     if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    // dd/mm/aaaa (ano com 4 dígitos) — formato correto
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (m) {
         const dd = m[1].padStart(2, '0');
         const mm = m[2].padStart(2, '0');
         return m[3] + '-' + mm + '-' + dd;
+    }
+    // Legado: dd/mm/aa (2 dígitos) — só para LER dados antigos; cadastro novo não deve gravar assim
+    const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+    if (m2) {
+        const dd = m2[1].padStart(2, '0');
+        const mm = m2[2].padStart(2, '0');
+        var yy = parseInt(m2[3], 10);
+        // 00–30 → 2000–2030; 31–99 → 1931–1999
+        var full = yy <= 30 ? 2000 + yy : 1900 + yy;
+        return full + '-' + mm + '-' + dd;
     }
     return s;
 }
 
 /**
  * Valida data de nascimento real (calendário).
- * Aceita ISO (yyyy-mm-dd) ou dd/mm/aaaa.
+ * Aceita ISO (yyyy-mm-dd) ou dd/mm/aaaa com ANO DE 4 DÍGITOS.
+ * Ano com 2 dígitos (ex.: 20/09/68) NÃO é aceito no cadastro/edição.
  * Retorna { ok, iso, mensagem }.
  */
 function dataNascimentoValida(str) {
     if (str == null || !String(str).trim()) {
         return { ok: false, iso: '', mensagem: 'Data de nascimento é obrigatória.' };
     }
-    var iso = normalizarDataParaISO(str);
+    var raw = String(str).trim();
+    // Rejeita explicitamente ano com 2 dígitos no formulário (dd/mm/aa)
+    if (/^\d{1,2}\/\d{1,2}\/\d{2}$/.test(raw)) {
+        return { ok: false, iso: '', mensagem: 'Use o ano com 4 dígitos (ex.: 20/09/1968, não 20/09/68).' };
+    }
+    // Se digitou só números: precisa ter 8 (ddmmaaaa)
+    var soDigitos = raw.replace(/\D/g, '');
+    if (/^\d+$/.test(soDigitos) && soDigitos.length > 0 && soDigitos.length < 8 && raw.indexOf('-') === -1) {
+        return { ok: false, iso: '', mensagem: 'Data incompleta. Digite dia, mês e ano com 4 dígitos (ex.: 15/03/1990).' };
+    }
+    var iso = normalizarDataParaISO(raw);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-        return { ok: false, iso: '', mensagem: 'Data de nascimento inválida. Use dia/mês/ano (ex.: 15/03/1990).' };
+        return { ok: false, iso: '', mensagem: 'Data de nascimento inválida. Use dia/mês/ano com 4 dígitos (ex.: 15/03/1990).' };
     }
     var p = iso.split('-');
     var y = parseInt(p[0], 10);
@@ -631,19 +653,34 @@ function registrarExclusaoMembro(m) {
         }
     } catch (e) {}
 }
+/**
+ * Só considera "removido pela gestão" se for a MESMA pessoa:
+ *  - mesmo id do registro excluído, OU
+ *  - nome+nascimento (chave) E telefone iguais
+ * E-mail sozinho ou telefone sozinho NÃO bloqueia — pode ser outra pessoa.
+ */
 function membroFoiExcluido(m) {
     if (!m) return false;
     const lista = lerExcluidos();
     if (!lista.length) return false;
-    const id = String(m.id);
-    const email = String(m.email || '').toLowerCase().trim();
+    const id = String(m.id || '');
     const tel = String(m.telefone || '').replace(/\D/g, '');
     const chave = chaveIdentidadePessoa(m.nome, m.nascimento || m.dataNascimento) || '';
+    function telIgual(a, b) {
+        a = String(a || '').replace(/\D/g, '');
+        b = String(b || '').replace(/\D/g, '');
+        if (!a || !b) return false;
+        if (a === b) return true;
+        // últimos 8 dígitos (ignora DDI / 9º dígito extra)
+        var a8 = a.slice(-8);
+        var b8 = b.slice(-8);
+        return a8.length >= 8 && a8 === b8;
+    }
     return lista.some(function (x) {
-        if (x.id && String(x.id) === id) return true;
-        if (chave && x.chave && x.chave === chave) return true;
-        if (email && x.email && x.email === email) return true;
-        if (tel && x.telefone && (x.telefone === tel || x.telefone.endsWith(tel.slice(-8)) || tel.endsWith(String(x.telefone).slice(-8)))) return true;
+        // Mesmo documento reaparecendo
+        if (id && x.id && String(x.id) === id) return true;
+        // Identidade completa: nome+nascimento E telefone
+        if (chave && x.chave && x.chave === chave && telIgual(tel, x.telefone)) return true;
         return false;
     });
 }

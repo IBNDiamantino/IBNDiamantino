@@ -234,13 +234,64 @@
             });
         });
 
-        // Máscara data
-        document.getElementById('nascimento').addEventListener('input', function() {
-            let v = this.value.replace(/\D/g, '').slice(0, 8);
-            if (v.length >= 5) v = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4);
-            else if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
-            this.value = v;
-        });
+        // Máscara data: dd/mm/aaaa (ano SEMPRE com 4 dígitos — 8 números)
+        (function () {
+            var el = document.getElementById('nascimento');
+            if (!el) return;
+            var hint = document.createElement('p');
+            hint.id = 'hintNascimentoCad';
+            hint.className = 'text-xs text-gray-500 mt-1';
+            hint.textContent = 'Digite dia, mês e ano com 4 dígitos (ex.: 15/03/1990).';
+            el.parentNode.appendChild(hint);
+
+            function formatar(val) {
+                var dig = String(val || '').replace(/\D/g, '').slice(0, 8);
+                if (dig.length >= 5) return dig.slice(0, 2) + '/' + dig.slice(2, 4) + '/' + dig.slice(4);
+                if (dig.length >= 3) return dig.slice(0, 2) + '/' + dig.slice(2);
+                return dig;
+            }
+            function atualizarHint() {
+                var dig = el.value.replace(/\D/g, '');
+                if (dig.length === 0) {
+                    hint.className = 'text-xs text-gray-500 mt-1';
+                    hint.textContent = 'Digite dia, mês e ano com 4 dígitos (ex.: 15/03/1990).';
+                    el.classList.remove('border-red-400', 'border-green-500');
+                    return;
+                }
+                if (dig.length < 8) {
+                    hint.className = 'text-xs text-amber-700 mt-1 font-semibold';
+                    hint.textContent = 'Faltam ' + (8 - dig.length) + ' dígito(s). Ano precisa ter 4 números (ex.: 1968, não 68).';
+                    el.classList.add('border-red-400');
+                    el.classList.remove('border-green-500');
+                    return;
+                }
+                if (typeof dataNascimentoValida === 'function') {
+                    var v = dataNascimentoValida(el.value);
+                    if (!v.ok) {
+                        hint.className = 'text-xs text-red-600 mt-1 font-semibold';
+                        hint.textContent = v.mensagem || 'Data inválida.';
+                        el.classList.add('border-red-400');
+                        el.classList.remove('border-green-500');
+                        return;
+                    }
+                }
+                hint.className = 'text-xs text-green-700 mt-1 font-semibold';
+                hint.textContent = 'Data ok.';
+                el.classList.remove('border-red-400');
+                el.classList.add('border-green-500');
+            }
+            el.addEventListener('input', function () {
+                el.value = formatar(el.value);
+                atualizarHint();
+            });
+            el.addEventListener('blur', atualizarHint);
+            el.addEventListener('paste', function () {
+                setTimeout(function () {
+                    el.value = formatar(el.value);
+                    atualizarHint();
+                }, 0);
+            });
+        })();
 
         document.getElementById('formCompletar').addEventListener('submit', function(e) {
             e.preventDefault();
