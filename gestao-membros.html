@@ -77,7 +77,7 @@
 
         <div id="avisoMembroUnico" class="hidden mb-4 bg-primary/5 border border-primary/20 rounded-xl p-3 flex flex-wrap justify-between gap-2 items-center">
             <p class="text-sm text-primary"><strong>Ficha individual</strong> — só este membro e as pendências da gestão.</p>
-            <a href="gestao-membros.html" class="text-sm font-bold text-secondary underline">Ver todos os membros</a>
+            <a href="gestao-membros.html" id="linkVerTodosMembros" class="text-sm font-bold text-secondary underline">Ver todos os membros</a>
         </div>
         <div id="lista" class="space-y-4"></div>
         <p id="vazio" class="text-center text-gray-400 py-12 hidden">Nenhum membro encontrado.</p>
@@ -224,23 +224,33 @@
             sair();
         });
 
-        // Preenche selects / checkboxes do modal
-        LISTA_CARGOS.forEach(c => {
-            document.getElementById('alocCargo').innerHTML += `<option value="${c}">${c}</option>`;
-        });
-        if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
-        LISTA_CELULAS.filter(c => c.dia === 'terca').forEach(c => {
-            document.getElementById('alocTerca').innerHTML += `<option value="${c.id}">${c.nome}</option>`;
-        });
-        LISTA_CELULAS.filter(c => c.dia === 'sabado').forEach(c => {
-            document.getElementById('alocSabado').innerHTML += `<option value="${c.id}">${c.nome}</option>`;
-        });
-        const boxP = document.getElementById('boxMinsParticipa');
-        const boxL = document.getElementById('boxMinsLidera');
-        LISTA_MINISTERIOS.forEach(m => {
-            boxP.innerHTML += `<label class="flex items-center gap-1"><input type="checkbox" name="alocMin" value="${m}" class="accent-secondary"> ${m}</label>`;
-            boxL.innerHTML += `<label class="flex items-center gap-1"><input type="checkbox" name="alocMinLidera" value="${m}" class="accent-secondary"> ${m}</label>`;
-        });
+        // Preenche selects / checkboxes do modal (não pode derrubar a lista se falhar)
+        try {
+            if (typeof LISTA_CARGOS !== 'undefined' && Array.isArray(LISTA_CARGOS)) {
+                LISTA_CARGOS.forEach(function(c) {
+                    document.getElementById('alocCargo').innerHTML += '<option value="' + c + '">' + c + '</option>';
+                });
+            }
+            if (typeof carregarListaCelulas === 'function') carregarListaCelulas();
+            if (typeof LISTA_CELULAS !== 'undefined' && Array.isArray(LISTA_CELULAS)) {
+                LISTA_CELULAS.filter(function(c) { return c.dia === 'terca'; }).forEach(function(c) {
+                    document.getElementById('alocTerca').innerHTML += '<option value="' + c.id + '">' + c.nome + '</option>';
+                });
+                LISTA_CELULAS.filter(function(c) { return c.dia === 'sabado'; }).forEach(function(c) {
+                    document.getElementById('alocSabado').innerHTML += '<option value="' + c.id + '">' + c.nome + '</option>';
+                });
+            }
+            var boxP = document.getElementById('boxMinsParticipa');
+            var boxL = document.getElementById('boxMinsLidera');
+            if (typeof LISTA_MINISTERIOS !== 'undefined' && Array.isArray(LISTA_MINISTERIOS) && boxP && boxL) {
+                LISTA_MINISTERIOS.forEach(function(m) {
+                    boxP.innerHTML += '<label class="flex items-center gap-1"><input type="checkbox" name="alocMin" value="' + m + '" class="accent-secondary"> ' + m + '</label>';
+                    boxL.innerHTML += '<label class="flex items-center gap-1"><input type="checkbox" name="alocMinLidera" value="' + m + '" class="accent-secondary"> ' + m + '</label>';
+                });
+            }
+        } catch (eModalInit) {
+            console.warn('Falha ao montar opções do modal de alocação:', eModalInit);
+        }
 
         let membroAtualId = null;
 
@@ -312,7 +322,15 @@
 
             if (st === 'pendente') itens.push('Cadastro aguardando aprovação / alocação');
             if (st === 'rejeitado') itens.push('Cadastro rejeitado');
-            if (!(m.nascimento || m.dataNascimento)) itens.push('Falta data de nascimento');
+            (function () {
+                var rawNasc = m.nascimento || m.dataNascimento || '';
+                if (!String(rawNasc).trim()) {
+                    itens.push('Falta data de nascimento');
+                } else if (typeof dataNascimentoValida === 'function') {
+                    var vn = dataNascimentoValida(rawNasc);
+                    if (!vn.ok) itens.push('Data de nascimento inválida — pedir correção ao membro');
+                }
+            })();
             if (!String(m.telefone || '').replace(/\D/g, '')) itens.push('Falta telefone');
             if (!String(m.email || '').trim()) itens.push('Falta e-mail');
             // Célula: vale para todos (incluindo gestor — ele tem a célula dele)
@@ -373,24 +391,29 @@
         }
 
         function renderizar() {
+            try {
+            const statusEl = document.getElementById('filtroStatus');
+            const buscaEl = document.getElementById('filtroBusca');
+            const status = statusEl ? statusEl.value : '';
+            const busca = buscaEl ? String(buscaEl.value || '').toLowerCase().trim() : '';
+            let lista = [];
+            try { lista = (typeof lerMembros === 'function') ? (lerMembros() || []) : []; } catch (eL) { lista = []; }
+            if (!Array.isArray(lista)) lista = [];
 
-            const status = document.getElementById('filtroStatus').value;
-            const busca = document.getElementById('filtroBusca').value.toLowerCase().trim();
-            let lista = lerMembros();
-
-            if (status) lista = lista.filter(m => m.status === status);
+            if (status) lista = lista.filter(function(m) { return m && m.status === status; });
             if (busca) {
-                lista = lista.filter(m =>
-                    (m.nome || '').toLowerCase().includes(busca) ||
-                    (m.email || '').toLowerCase().includes(busca) ||
-                    (m.telefone || '').includes(busca)
-                );
+                lista = lista.filter(function(m) {
+                    if (!m) return false;
+                    return (m.nome || '').toLowerCase().indexOf(busca) !== -1 ||
+                        (m.email || '').toLowerCase().indexOf(busca) !== -1 ||
+                        String(m.telefone || '').indexOf(busca) !== -1;
+                });
             }
 
             var soUmId = idMembroDoHash();
             var aviso = document.getElementById('avisoMembroUnico');
             if (soUmId) {
-                lista = lista.filter(function(m) { return String(m.id) === String(soUmId); });
+                lista = lista.filter(function(m) { return m && String(m.id) === String(soUmId); });
                 if (aviso) aviso.classList.remove('hidden');
             } else if (aviso) {
                 aviso.classList.add('hidden');
@@ -398,13 +421,16 @@
 
             // Ordem alfabética pelo nome
             lista.sort(function (a, b) {
-                return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' });
+                return String((a && a.nome) || '').localeCompare(String((b && b.nome) || ''), 'pt-BR', { sensitivity: 'base' });
             });
 
             const container = document.getElementById('lista');
-            document.getElementById('vazio').classList.toggle('hidden', lista.length > 0);
+            var vazioEl = document.getElementById('vazio');
+            if (vazioEl) vazioEl.classList.toggle('hidden', lista.length > 0);
+            if (!container) return;
 
             function corPendencia(m) {
+                if (!m) return { bg: 'bg-white border border-gray-300', title: '—' };
                 if (m.status === 'rejeitado' || m.bloqueado || m.removido) return { bg: 'bg-black', title: 'Bloqueado / excluído' };
                 var n = 0;
                 try { n = (listarPendenciasMembro(m) || []).length; } catch (e) { n = 0; }
@@ -415,23 +441,47 @@
                 return { bg: 'bg-white border border-gray-300', title: 'Sem pendências' };
             }
 
-            container.innerHTML = lista.map(function (m) {
-                var idJs = JSON.stringify(String(m.id));
+            function safeCelulas(m) {
+                try {
+                    return (Array.isArray(m.celulas) ? m.celulas : []).map(function(c) {
+                        if (!c) return '';
+                        return c.nome || c.id || '';
+                    }).filter(Boolean).join(', ') || '—';
+                } catch (e) { return '—'; }
+            }
+            function safeMins(m) {
+                try {
+                    return (Array.isArray(m.ministerios) ? m.ministerios : []).map(function(x) {
+                        return String(x || '').trim();
+                    }).filter(Boolean).join(', ') || '—';
+                } catch (e) { return '—'; }
+            }
+
+            var htmlParts = [];
+            lista.forEach(function (m) {
+                if (!m || m.id === undefined || m.id === null) return;
+                try {
                 var pends = [];
-                try { pends = listarPendenciasMembro(m) || []; } catch (e) {}
+                try { pends = listarPendenciasMembro(m) || []; } catch (e) { pends = []; }
+                if (!Array.isArray(pends)) pends = [];
                 var cor = corPendencia(m);
                 var nasc = m.nascimento || m.dataNascimento || '—';
                 var tel = m.telefone || '—';
                 var nPend = pends.length;
                 if (m.status === 'pendente') nPend = Math.max(nPend, 1);
                 var corBtn = nPend > 0 ? 'bg-red-500' : 'bg-green-600';
+                var idAttr = String(m.id).replace(/"/g, '');
                 var btnAloc = m.status === 'pendente'
-                    ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-aloc ' + corBtn + ' text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Aprovar / Alocar</button>'
-                    : '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-aloc ' + corBtn + ' text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Editar alocação</button>';
+                    ? '<button type="button" data-id="' + idAttr + '" class="btn-aloc ' + corBtn + ' text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Aprovar / Alocar</button>'
+                    : '<button type="button" data-id="' + idAttr + '" class="btn-aloc ' + corBtn + ' text-white px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Editar alocação</button>';
                 var btnRem = (typeof isGestor === 'function' && isGestor())
-                    ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-rem border border-red-500 text-red-600 px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Remover</button>'
+                    ? '<button type="button" data-id="' + idAttr + '" class="btn-rem border border-red-500 text-red-600 px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap">Remover</button>'
                     : '';
-                return '<div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden" data-membro-row="' + String(m.id).replace(/"/g,'') + '">' +
+                var pendsHtml = pends.length
+                    ? '<div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-amber-900 mb-2"><p class="font-bold mb-1">Pendências (' + pends.length + ')</p><ul class="list-disc pl-5 text-xs">' + pends.map(function(x){ return '<li>' + String(x || '') + '</li>'; }).join('') + '</ul></div>'
+                    : '<div class="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-xs mb-2">✓ Sem pendências</div>';
+                htmlParts.push(
+                    '<div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden" data-membro-row="' + idAttr + '">' +
                     '<div class="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 cursor-pointer row-membro-toggle">' +
                     '<div class="flex-1 min-w-0">' +
                     '<p class="font-bold text-primary text-sm truncate">' + (m.nome || '—') + '</p>' +
@@ -439,24 +489,28 @@
                     '</div>' +
                     '<div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">' +
                     btnAloc + btnRem +
-                    '<span class="w-3.5 h-3.5 rounded-full shrink-0 ' + cor.bg + '" title="' + cor.title + '"></span>' +
+                    '<span class="w-3.5 h-3.5 rounded-full shrink-0 ' + cor.bg + '" title="' + (cor.title || '') + '"></span>' +
                     '</div></div>' +
                     '<div class="hidden px-3 pb-3 border-t border-gray-100 text-sm detalhe-membro">' +
                     '<div class="grid sm:grid-cols-2 gap-1 text-gray-600 pt-2 mb-2">' +
                     '<p><strong>E-mail:</strong> ' + (m.email || '—') + '</p>' +
                     '<p><strong>Status:</strong> ' + (m.status || '—') + '</p>' +
-                    '<p><strong>Células:</strong> ' + ((m.celulas || []).map(function(c){ return c.nome; }).join(', ') || '—') + '</p>' +
-                    '<p><strong>Ministérios:</strong> ' + ((m.ministerios || []).join(', ') || '—') + '</p>' +
+                    '<p><strong>Células:</strong> ' + safeCelulas(m) + '</p>' +
+                    '<p><strong>Ministérios:</strong> ' + safeMins(m) + '</p>' +
                     '<p class="sm:col-span-2"><strong>Endereço:</strong> ' + (m.endereco || '—') + (m.municipio ? ' · ' + m.municipio : '') + '</p>' +
                     '</div>' +
-                    (pends.length
-                        ? '<div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-amber-900 mb-2"><p class="font-bold mb-1">Pendências (' + pends.length + ')</p><ul class="list-disc pl-5 text-xs">' + pends.map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ul></div>'
-                        : '<div class="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-xs mb-2">✓ Sem pendências</div>') +
+                    pendsHtml +
                     '<div class="flex flex-wrap gap-2">' +
-                    (m.status === 'pendente' ? '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-rej bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-bold">Rejeitar</button>' : '') +
-                    '<button type="button" data-id="' + String(m.id).replace(/"/g,'') + '" class="btn-block border border-amber-500 text-amber-700 px-3 py-1 rounded text-xs font-bold">Bloquear</button>' +
-                    '</div></div></div>';
-            }).join('');
+                    (m.status === 'pendente' ? '<button type="button" data-id="' + idAttr + '" class="btn-rej bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-bold">Rejeitar</button>' : '') +
+                    '<button type="button" data-id="' + idAttr + '" class="btn-block border border-amber-500 text-amber-700 px-3 py-1 rounded text-xs font-bold">Bloquear</button>' +
+                    '</div></div></div>'
+                );
+                } catch (eItem) {
+                    console.warn('Falha ao montar card do membro', m && m.id, eItem);
+                }
+            });
+            container.innerHTML = htmlParts.join('');
+            if (vazioEl) vazioEl.classList.toggle('hidden', htmlParts.length > 0);
 
             // handlers da lista compacta
             container.querySelectorAll('.row-membro-toggle').forEach(function (row) {
@@ -489,6 +543,16 @@
                     bloquearMembro(b.getAttribute('data-id'));
                 });
             });
+            } catch (eRender) {
+                console.error('Erro ao renderizar lista de membros:', eRender);
+                try {
+                    var c = document.getElementById('lista');
+                    var v = document.getElementById('vazio');
+                    if (c && !c.innerHTML) {
+                        if (v) v.classList.remove('hidden');
+                    }
+                } catch (e2) {}
+            }
         }
 
         function abrirAprovar(id) {
@@ -803,6 +867,25 @@
         document.getElementById('filtroBusca').addEventListener('keyup', function(e) {
             if (e.key === 'Enter') renderizar();
         });
+        // "Ver todos" sem recarregar a página — limpa o #membro- e re-renderiza o local
+        (function () {
+            var linkTodos = document.getElementById('linkVerTodosMembros');
+            if (!linkTodos) return;
+            linkTodos.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (location.hash) {
+                    history.replaceState(null, '', location.pathname + location.search);
+                }
+                try { renderizar(); } catch (eR) {}
+                try {
+                    var lista = document.getElementById('lista');
+                    if (lista) lista.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (eS) {}
+            });
+        })();
+        window.addEventListener('hashchange', function () {
+            try { renderizar(); } catch (eH) {}
+        });
 
         async function atualizarEspelhoNuvem(manual, modoPull) {
             // modoPull: 'incremental' | 'full' | 'auto'
@@ -892,20 +975,34 @@
             btnForce.addEventListener('click', function () { forcarEnvioCadastrosLocais(); });
         }
 
-        // Ao abrir Gestão: 1 pull INCREMENTAL (só quem mudou) — barato vs full
+        // Ao abrir Gestão: mostra o que já está no aparelho NA HORA, depois puxa só mudanças
         (async function iniciarGestaoMembros() {
-            formatarUltimoEnvio();
             var txt = document.getElementById('txtSyncGestao');
+            try { formatarUltimoEnvio(); } catch (eF) {}
+            // 1) Lista local primeiro — não depende da nuvem para aparecer
+            try { renderizar(); } catch (eR) { console.warn('render inicial', eR); }
+            try { renderBloqueios(); } catch (eB) {}
+            var qtdLocal = 0;
+            try { qtdLocal = (typeof lerMembros === 'function') ? (lerMembros() || []).length : 0; } catch (eQ) {}
             if (txt) {
-                txt.textContent = 'Abrindo… baixando só mudanças desde o último pull.';
+                if (qtdLocal > 0) {
+                    txt.textContent = qtdLocal + ' membro(s) neste aparelho. Consultando mudanças na nuvem…';
+                } else {
+                    txt.textContent = 'Abrindo… baixando dados da nuvem (primeira vez neste aparelho).';
+                }
             }
-            try { renderizar(); } catch (eR) {}
+            // 2) Pull em segundo plano (incremental se já houve pull; senão full)
             try {
                 await atualizarEspelhoNuvem(false, 'auto');
             } catch (eInit) {
                 if (txt) {
-                    txt.textContent = 'Clique em "Atualizar (só mudanças)" ou "Sync completa (lotes)".';
+                    if (qtdLocal > 0) {
+                        txt.textContent = qtdLocal + ' membro(s) neste aparelho (offline/falha na nuvem). Use "Atualizar" quando a internet voltar.';
+                    } else {
+                        txt.textContent = 'Clique em "Atualizar (só mudanças)" ou "Sync completa (lotes)".';
+                    }
                 }
+                try { renderizar(); } catch (eR2) {}
             }
         })();
     </script>

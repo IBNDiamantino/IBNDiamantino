@@ -441,6 +441,26 @@
         </div>
     </div>
 
+    <!-- Data de nascimento obrigatória (cadastros antigos / inválidos) — não fecha até corrigir -->
+    <div id="modalCorrigirNascimento" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[70] p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl" onclick="event.stopPropagation()">
+            <h2 class="text-lg font-bold text-primary mb-1">Data de nascimento pendente</h2>
+            <p id="txtMotivoNascimento" class="text-sm text-gray-600 mb-4">Seu cadastro está sem data de nascimento válida. Informe a data correta para continuar usando o aplicativo.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">Data de nascimento *</label>
+                    <input type="date" id="inputCorrigirNascimento" required class="w-full border-2 border-amber-400 rounded-lg px-3 py-2.5 text-sm focus:border-primary outline-none">
+                    <p class="text-xs text-gray-500 mt-1">Use o calendário ou digite no formato do aparelho (ano-mês-dia).</p>
+                </div>
+            </div>
+            <p id="msgCorrigirNascimento" class="text-sm text-center mt-3 hidden"></p>
+            <button type="button" id="btnSalvarNascimento" class="w-full mt-4 bg-primary text-white py-2.5 rounded-lg font-bold">
+                Salvar e continuar
+            </button>
+            <p class="text-[11px] text-gray-400 text-center mt-3">Não é possível fechar esta tela até informar uma data válida.</p>
+        </div>
+    </div>
+
 
     <script>
     (function () {
@@ -457,8 +477,40 @@
             if (location.search.indexOf('trocarSenha=1') !== -1) return true;
             return false;
         }
+        function abrirCorrigirNascimento() {
+            var m = document.getElementById('modalCorrigirNascimento');
+            if (!m) return;
+            var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+            var txt = document.getElementById('txtMotivoNascimento');
+            var inp = document.getElementById('inputCorrigirNascimento');
+            if (u && typeof dataNascimentoValida === 'function') {
+                var raw = u.nascimento || u.dataNascimento || '';
+                var v = dataNascimentoValida(raw);
+                if (txt) {
+                    txt.textContent = !String(raw).trim()
+                        ? 'Seu cadastro está sem data de nascimento. Informe a data correta para continuar usando o aplicativo.'
+                        : ('A data de nascimento no cadastro está inválida' + (v.mensagem ? ' (' + v.mensagem + ')' : '') + '. Corrija para continuar.');
+                }
+                if (inp && v.ok) inp.value = v.iso;
+                else if (inp && /^\d{4}-\d{2}-\d{2}$/.test(String(raw).slice(0, 10))) inp.value = String(raw).slice(0, 10);
+            }
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+            setTimeout(function () { if (inp) inp.focus(); }, 200);
+        }
+        function precisaCorrigirNascimento() {
+            var u = typeof getUsuarioLogado === 'function' ? getUsuarioLogado() : null;
+            if (!u) return false;
+            if (location.search.indexOf('corrigirNascimento=1') !== -1) return true;
+            if (typeof membroPrecisaCorrigirNascimento === 'function') return membroPrecisaCorrigirNascimento(u);
+            return false;
+        }
         document.addEventListener('DOMContentLoaded', function () {
-            if (precisaTrocar()) abrirTrocaSenha();
+            if (precisaTrocar()) {
+                abrirTrocaSenha();
+            } else if (precisaCorrigirNascimento()) {
+                abrirCorrigirNascimento();
+            }
             var btn = document.getElementById('btnSalvarSenhaNova');
             if (btn) btn.addEventListener('click', function () {
                 var r = trocarSenha(
@@ -478,10 +530,62 @@
                         if (location.search.indexOf('trocarSenha') !== -1) {
                             history.replaceState(null, '', 'area-membro.html');
                         }
+                        // Depois da senha, se ainda falta nascimento, trava
+                        if (precisaCorrigirNascimento()) abrirCorrigirNascimento();
                     }, 800);
                 } else {
                     msg.className = 'text-sm text-center mt-3 text-red-500 font-bold';
                     msg.textContent = r.mensagem || 'Não foi possível alterar.';
+                }
+            });
+
+            var btnNasc = document.getElementById('btnSalvarNascimento');
+            if (btnNasc) btnNasc.addEventListener('click', async function () {
+                var msg = document.getElementById('msgCorrigirNascimento');
+                var inp = document.getElementById('inputCorrigirNascimento');
+                var val = inp ? inp.value : '';
+                msg.classList.remove('hidden');
+                if (typeof dataNascimentoValida === 'function') {
+                    var v = dataNascimentoValida(val);
+                    if (!v.ok) {
+                        msg.className = 'text-sm text-center mt-3 text-red-500 font-bold';
+                        msg.textContent = v.mensagem || 'Informe uma data válida.';
+                        return;
+                    }
+                } else if (!val) {
+                    msg.className = 'text-sm text-center mt-3 text-red-500 font-bold';
+                    msg.textContent = 'Informe a data de nascimento.';
+                    return;
+                }
+                btnNasc.disabled = true;
+                msg.className = 'text-sm text-center mt-3 text-gray-600 font-semibold';
+                msg.textContent = 'Salvando…';
+                try {
+                    var r = (typeof atualizarPerfil === 'function')
+                        ? await Promise.resolve(atualizarPerfil({ nascimento: val }))
+                        : { sucesso: false, mensagem: 'Função indisponível.' };
+                    if (r && r.sucesso) {
+                        msg.className = 'text-sm text-center mt-3 text-green-600 font-bold';
+                        msg.textContent = 'Data salva! ' + (r.nuvem ? 'Enviada para a igreja.' : 'Salva neste aparelho.');
+                        setTimeout(function () {
+                            var m = document.getElementById('modalCorrigirNascimento');
+                            if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+                            if (location.search.indexOf('corrigirNascimento') !== -1) {
+                                history.replaceState(null, '', 'area-membro.html');
+                            }
+                            // Atualiza o card "Meus Dados" se existir
+                            try { if (typeof carregarPerfil === 'function') carregarPerfil(); } catch (e) {}
+                            try { location.reload(); } catch (e2) {}
+                        }, 900);
+                    } else {
+                        msg.className = 'text-sm text-center mt-3 text-red-500 font-bold';
+                        msg.textContent = (r && r.mensagem) || 'Não foi possível salvar.';
+                        btnNasc.disabled = false;
+                    }
+                } catch (err) {
+                    msg.className = 'text-sm text-center mt-3 text-red-500 font-bold';
+                    msg.textContent = (err && err.message) || 'Erro ao salvar.';
+                    btnNasc.disabled = false;
                 }
             });
         });

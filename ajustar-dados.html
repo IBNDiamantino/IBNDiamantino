@@ -48,8 +48,9 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Data de Nascimento</label>
-                        <input type="date" id="nascimento" class="w-full p-3 border rounded-lg">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Data de Nascimento *</label>
+                        <input type="date" id="nascimento" required class="w-full p-3 border rounded-lg">
+                        <p id="hintNascimento" class="text-xs text-amber-700 mt-1 hidden">Informe uma data válida (obrigatória).</p>
                     </div>
                 </div>
 
@@ -234,6 +235,19 @@
         document.getElementById('nascimento').value = (typeof normalizarDataParaISO === 'function')
             ? normalizarDataParaISO(usuario.nascimento || '')
             : (usuario.nascimento || '');
+        (function () {
+            var precisa = (typeof membroPrecisaCorrigirNascimento === 'function' && membroPrecisaCorrigirNascimento(usuario));
+            var hn = document.getElementById('hintNascimento');
+            var inp = document.getElementById('nascimento');
+            if (precisa && inp) {
+                inp.classList.add('border-amber-500', 'ring-2', 'ring-amber-300');
+                if (hn) {
+                    hn.classList.remove('hidden');
+                    hn.textContent = 'Sua data de nascimento está faltando ou inválida. Corrija e salve para continuar.';
+                }
+                setTimeout(function () { try { inp.focus(); inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }, 300);
+            }
+        })();
         document.getElementById('estadoCivil').value = usuario.estadoCivil || '';
         document.getElementById('endereco').value = usuario.endereco || '';
         document.getElementById('municipio').value = usuario.municipio || '';
@@ -334,11 +348,26 @@
                 ministerios.push(el.value);
             });
 
+            var nascVal = document.getElementById('nascimento').value;
+            if (typeof dataNascimentoValida === 'function') {
+                var vn = dataNascimentoValida(nascVal);
+                if (!vn.ok) {
+                    msg.classList.remove('hidden');
+                    msg.className = 'text-sm mt-2 text-center text-red-600 font-bold';
+                    msg.textContent = vn.mensagem || 'Data de nascimento inválida.';
+                    var hn = document.getElementById('hintNascimento');
+                    if (hn) hn.classList.remove('hidden');
+                    document.getElementById('nascimento').focus();
+                    if (btn) { btn.disabled = false; if (btn.getAttribute('data-txt')) btn.innerHTML = btn.getAttribute('data-txt'); }
+                    return;
+                }
+            }
+
             var dadosNovos = {
                 telefone: document.getElementById('telefone').value.trim(),
                 email: document.getElementById('email').value.trim().toLowerCase(),
                 sexo: document.getElementById('sexo').value,
-                nascimento: document.getElementById('nascimento').value,
+                nascimento: nascVal,
                 estadoCivil: document.getElementById('estadoCivil').value,
                 endereco: document.getElementById('endereco').value.trim(),
                 municipio: document.getElementById('municipio').value.trim(),

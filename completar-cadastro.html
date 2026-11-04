@@ -264,10 +264,22 @@
                 ministerios.push(el.value);
             });
 
+            const nascRaw = document.getElementById('nascimento').value;
+            if (typeof dataNascimentoValida === 'function') {
+                const vn = dataNascimentoValida(nascRaw);
+                if (!vn.ok) {
+                    msg.textContent = vn.mensagem || 'Data de nascimento inválida.';
+                    msg.className = 'text-red-500 text-sm';
+                    msg.classList.remove('hidden');
+                    document.getElementById('nascimento').focus();
+                    return;
+                }
+            }
+
             const dados = {
                 ...parcial,
                 sexo: document.getElementById('sexo').value,
-                nascimento: document.getElementById('nascimento').value,
+                nascimento: nascRaw,
                 estadoCivil: document.getElementById('estadoCivil').value,
                 endereco: document.getElementById('endereco').value.trim(),
                 municipio: document.getElementById('municipio').value.trim(),

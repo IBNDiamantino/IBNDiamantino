@@ -942,6 +942,15 @@
     <script src="playlist-data.js"></script>
 
     <script>
+        // Trava: membro logado sem data de nascimento válida deve corrigir
+        (function () {
+            try {
+                var u = (typeof getUsuarioLogado === 'function') ? getUsuarioLogado() : null;
+                if (u && typeof membroPrecisaCorrigirNascimento === 'function' && membroPrecisaCorrigirNascimento(u)) {
+                    window.location.replace('area-membro.html?corrigirNascimento=1');
+                }
+            } catch (e) {}
+        })();
 
         // ==================================================
         // 🔔 Cadastro na nuvem — aviso na HOME (logado)

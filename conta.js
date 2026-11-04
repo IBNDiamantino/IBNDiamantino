@@ -27,6 +27,57 @@ function normalizarDataParaISO(str) {
     return s;
 }
 
+/**
+ * Valida data de nascimento real (calendário).
+ * Aceita ISO (yyyy-mm-dd) ou dd/mm/aaaa.
+ * Retorna { ok, iso, mensagem }.
+ */
+function dataNascimentoValida(str) {
+    if (str == null || !String(str).trim()) {
+        return { ok: false, iso: '', mensagem: 'Data de nascimento é obrigatória.' };
+    }
+    var iso = normalizarDataParaISO(str);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+        return { ok: false, iso: '', mensagem: 'Data de nascimento inválida. Use dia/mês/ano (ex.: 15/03/1990).' };
+    }
+    var p = iso.split('-');
+    var y = parseInt(p[0], 10);
+    var m = parseInt(p[1], 10);
+    var d = parseInt(p[2], 10);
+    var dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+        return { ok: false, iso: '', mensagem: 'Data de nascimento inválida (dia ou mês inexistente).' };
+    }
+    var hoje = new Date();
+    hoje.setHours(23, 59, 59, 999);
+    if (dt.getTime() > hoje.getTime()) {
+        return { ok: false, iso: '', mensagem: 'Data de nascimento não pode ser no futuro.' };
+    }
+    if (y < 1900) {
+        return { ok: false, iso: '', mensagem: 'Ano de nascimento inválido. Verifique a data.' };
+    }
+    // idade absurda (> 120 anos)
+    var idade = hoje.getFullYear() - y;
+    if (hoje.getMonth() < m - 1 || (hoje.getMonth() === m - 1 && hoje.getDate() < d)) idade--;
+    if (idade > 120) {
+        return { ok: false, iso: '', mensagem: 'Data de nascimento parece incorreta. Verifique o ano.' };
+    }
+    return { ok: true, iso: iso, mensagem: '' };
+}
+
+/** Membro comum precisa corrigir nascimento (vazio ou inválido). Contas de sistema/admin-master não travam. */
+function membroPrecisaCorrigirNascimento(m) {
+    if (!m) return false;
+    try {
+        if (typeof isContaSistema === 'function' && isContaSistema(m)) return false;
+    } catch (e) {}
+    var nivel = String(m.nivel || '').toLowerCase();
+    // Gestão continua usando o painel; a trava é para o membro no app
+    if (nivel === 'admin' || nivel === 'gestor') return false;
+    var v = dataNascimentoValida(m.nascimento || m.dataNascimento || '');
+    return !v.ok;
+}
+
 /** Exibe data em pt-BR a partir de ISO, dd/mm/aaaa ou Date */
 function formatarDataBR(str) {
     if (!str) return 'Não informado';
@@ -792,8 +843,11 @@ function cadastrarMembro(dados) {
     if (!(dados.telefone || '').trim()) {
         return { sucesso: false, mensagem: 'Telefone é obrigatório.' };
     }
-    if (!(dados.nascimento || '').trim()) {
-        return { sucesso: false, mensagem: 'Data de nascimento é obrigatória.' };
+    var nascCheck = (typeof dataNascimentoValida === 'function')
+        ? dataNascimentoValida(dados.nascimento)
+        : { ok: !!(dados.nascimento || '').trim(), iso: normalizarDataParaISO(dados.nascimento || ''), mensagem: 'Data de nascimento é obrigatória.' };
+    if (!nascCheck.ok) {
+        return { sucesso: false, mensagem: nascCheck.mensagem || 'Data de nascimento é obrigatória e deve ser válida.' };
     }
     if (!(dados.endereco || '').trim()) {
         return { sucesso: false, mensagem: 'Endereço é obrigatório.' };
@@ -844,7 +898,7 @@ function cadastrarMembro(dados) {
         telefone: (dados.telefone || '').trim(),
         senha: dados.senha,
         sexo: dados.sexo || '',
-        nascimento: normalizarDataParaISO(dados.nascimento || ''),
+        nascimento: nascCheck.iso || normalizarDataParaISO(dados.nascimento || ''),
         estadoCivil: dados.estadoCivil || '',
         endereco: dados.endereco || '',
         municipio: (dados.municipio || '').trim(),
@@ -1451,6 +1505,15 @@ function atualizarPerfil(dadosNovos) {
     // cargo / funções oficiais só mudam com aprovação da gestão
     delete seguros.cargo;
     delete seguros.funcoesAprovadas;
+
+    // Data de nascimento: obrigatória e válida (cadastros antigos sem data precisam corrigir)
+    if (seguros.nascimento !== undefined || membroPrecisaCorrigirNascimento(atual)) {
+        var checkNasc = dataNascimentoValida(seguros.nascimento != null ? seguros.nascimento : (atual.nascimento || atual.dataNascimento || ''));
+        if (!checkNasc.ok) {
+            return { sucesso: false, mensagem: checkNasc.mensagem || 'Informe uma data de nascimento válida.' };
+        }
+        seguros.nascimento = checkNasc.iso;
+    }
 
     // ---- Diff: tudo que o membro mudou no formulário vira pendência da gestão ----
     var resumoPend = [];
