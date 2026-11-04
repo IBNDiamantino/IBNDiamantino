@@ -681,8 +681,10 @@ const IBNNuvem = (function () {
         }
     }
 
-    async function puxarMembrosParaLocal() {
-        const r = await buscarMembros();
+    async function puxarMembrosParaLocal(opcoes) {
+        // opcoes.modo: 'auto' | 'incremental' | 'full'
+        // opcoes.onProgress, lote, pausaMs — repassados a buscarMembros
+        const r = await buscarMembros(opcoes || {});
         if (!r.sucesso) return r;
         try {
             // Carrega lista de removidos ANTES de mesclar (não ressuscita)
@@ -834,24 +836,146 @@ const IBNNuvem = (function () {
                     }
                 }
             } catch (eSess2) {}
-            return { sucesso: true, lista: mesclada };
+            return {
+                sucesso: true,
+                lista: mesclada,
+                modo: r.modo || 'full',
+                quantidadeNuvem: (r.lista && r.lista.length) || 0,
+                mensagem: r.mensagem || ''
+            };
         } catch (e) {
             return { sucesso: false, mensagem: String(e) };
         }
     }
 
-    async function buscarMembros() {
-        if (!iniciar() || !db) return { sucesso: false, lista: [], mensagem: ultimoErro };
+    // ---- Economia de leituras de membros ----
+    // Incremental: só docs com atualizadoEm > último pull
+    // Full: paginado em lotes de 50 com pausa (evita pico/timeout)
+    var CHAVE_ULTIMO_PULL_MEMBROS_ISO = 'ibn_nuvem_ultimo_pull_membros_iso';
+    var TAM_LOTE_MEMBROS = 50;
+    var PAUSA_LOTE_MEMBROS_MS = 4000; // 3–5 s entre lotes
+
+    function _lerUltimoPullMembrosIso() {
+        try { return localStorage.getItem(CHAVE_ULTIMO_PULL_MEMBROS_ISO) || ''; } catch (e) { return ''; }
+    }
+
+    function _salvarUltimoPullMembrosIso(iso) {
+        if (!iso) return;
         try {
-            const snap = await db.collection('membros').get();
-            const lista = [];
-            snap.forEach(function (doc) {
-                lista.push(Object.assign({ id: doc.id }, doc.data()));
-            });
+            var atual = _lerUltimoPullMembrosIso();
+            if (!atual || String(iso) > String(atual)) {
+                localStorage.setItem(CHAVE_ULTIMO_PULL_MEMBROS_ISO, String(iso));
+            }
+        } catch (e) {}
+    }
+
+    function _maxAtualizadoEmLista(lista) {
+        var max = '';
+        (lista || []).forEach(function (m) {
+            var t = (m && (m.atualizadoEm || m.criadoEm || m.dataCadastro)) || '';
+            if (t && String(t) > String(max)) max = t;
+        });
+        return max;
+    }
+
+    function _sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    }
+
+    /**
+     * Busca membros na nuvem.
+     * opcoes:
+     *   - modo: 'incremental' | 'full' | 'auto' (default auto)
+     *   - onProgress(atual, totalEstimado, etapa)
+     *   - lote: tamanho do lote no full (default 50)
+     *   - pausaMs: pausa entre lotes (default 4000)
+     * auto = incremental se já houve pull com ISO; senão full em lotes.
+     */
+    async function buscarMembros(opcoes) {
+        if (!iniciar() || !db) return { sucesso: false, lista: [], mensagem: ultimoErro };
+        opcoes = opcoes || {};
+        var onProgress = typeof opcoes.onProgress === 'function' ? opcoes.onProgress : null;
+        var lote = Math.max(10, parseInt(opcoes.lote, 10) || TAM_LOTE_MEMBROS);
+        var pausaMs = Math.max(1000, parseInt(opcoes.pausaMs, 10) || PAUSA_LOTE_MEMBROS_MS);
+        var modo = String(opcoes.modo || 'auto').toLowerCase();
+        var desdeIso = _lerUltimoPullMembrosIso();
+
+        if (modo === 'auto') {
+            modo = desdeIso ? 'incremental' : 'full';
+        }
+
+        try {
+            var lista = [];
+            var col = db.collection('membros');
+
+            // ---- INCREMENTAL: só quem mudou desde o último pull ----
+            if (modo === 'incremental' && desdeIso) {
+                try {
+                    if (onProgress) try { onProgress(0, 0, 'incremental'); } catch (eP) {}
+                    var snapInc = await col.where('atualizadoEm', '>', desdeIso).get();
+                    snapInc.forEach(function (doc) {
+                        lista.push(Object.assign({ id: doc.id }, doc.data()));
+                    });
+                    lista.sort(function (a, b) {
+                        return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+                    });
+                    var maxIso = _maxAtualizadoEmLista(lista) || desdeIso;
+                    _salvarUltimoPullMembrosIso(maxIso);
+                    return {
+                        sucesso: true,
+                        lista: lista,
+                        modo: 'incremental',
+                        desde: desdeIso,
+                        quantidade: lista.length,
+                        mensagem: lista.length
+                            ? ('Incremental: ' + lista.length + ' membro(s) alterado(s) desde o último pull')
+                            : 'Incremental: nenhum membro novo/alterado desde o último pull'
+                    };
+                } catch (eInc) {
+                    // Índice faltando ou campo ausente → cai no full em lotes
+                    console.warn('Pull incremental falhou, usando full em lotes:', eInc);
+                    modo = 'full';
+                }
+            }
+
+            // ---- FULL em lotes (orderBy documentId + limit + startAfter + pausa) ----
+            if (onProgress) try { onProgress(0, 0, 'full_inicio'); } catch (eP2) {}
+            var lastDoc = null;
+            var rodada = 0;
+            while (true) {
+                var q = col.orderBy(firebase.firestore.FieldPath.documentId()).limit(lote);
+                if (lastDoc) q = q.startAfter(lastDoc);
+                var snap = await q.get();
+                if (!snap || snap.empty) break;
+                snap.forEach(function (doc) {
+                    lista.push(Object.assign({ id: doc.id }, doc.data()));
+                });
+                lastDoc = snap.docs[snap.docs.length - 1];
+                rodada++;
+                if (onProgress) {
+                    try { onProgress(lista.length, lista.length, 'lote_' + rodada); } catch (eP3) {}
+                }
+                // Se veio menos que o lote, acabou
+                if (snap.size < lote) break;
+                await _sleep(pausaMs);
+            }
+
             lista.sort(function (a, b) {
                 return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
             });
-            return { sucesso: true, lista: lista };
+            var maxFull = _maxAtualizadoEmLista(lista);
+            if (maxFull) _salvarUltimoPullMembrosIso(maxFull);
+            // Se a base ainda não tinha atualizadoEm em ninguém, grava "agora" para próximos incrementais
+            if (!maxFull) _salvarUltimoPullMembrosIso(new Date().toISOString());
+
+            return {
+                sucesso: true,
+                lista: lista,
+                modo: 'full',
+                lotes: rodada,
+                quantidade: lista.length,
+                mensagem: 'Full em ' + rodada + ' lote(s): ' + lista.length + ' membro(s)'
+            };
         } catch (e) {
             ultimoErro = (e && e.message) || String(e);
             return { sucesso: false, lista: [], mensagem: ultimoErro };
@@ -1753,7 +1877,11 @@ const IBNNuvem = (function () {
             // MEMBROS: só quando gestão/manual ou a cada 30+ min no automático
             if (precisaMembros || !_pullMuitoRecente(forcar)) {
                 if (precisaMembros || /inicio|periodico|foco|focus/i.test(motivo) || !motivo) {
-                    try { await puxarMembrosParaLocal(); } catch (e1) {}
+                    try {
+                        // Gestão manual → full em lotes; resto → incremental (auto)
+                        var modoPull = /gestao-manual|manual/i.test(motivo) ? 'full' : 'auto';
+                        await puxarMembrosParaLocal({ modo: modoPull });
+                    } catch (e1) {}
                     try { await puxarExcluidosParaLocal(); } catch (e2) {}
                 }
             }
@@ -2040,6 +2168,7 @@ const IBNNuvem = (function () {
         sincronizarUmMembro: sincronizarUmMembro,
         buscarMembros: buscarMembros,
         puxarMembrosParaLocal: puxarMembrosParaLocal,
+        lerUltimoPullMembrosIso: _lerUltimoPullMembrosIso,
         puxarExcluidosParaLocal: puxarExcluidosParaLocal,
         sincronizarExcluidos: sincronizarExcluidos,
 

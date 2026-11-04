@@ -40,8 +40,11 @@
                     <p id="txtUltimoEnvioGestao" class="text-xs mt-1 text-blue-700"></p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" id="btnAtualizarNuvemGestao" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-accent whitespace-nowrap">
-                        <i class="fa fa-refresh"></i> Atualizar da nuvem agora
+                    <button type="button" id="btnAtualizarNuvemGestao" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-accent whitespace-nowrap" title="Baixa só quem mudou desde o último pull">
+                        <i class="fa fa-refresh"></i> Atualizar (só mudanças)
+                    </button>
+                    <button type="button" id="btnFullPullGestao" class="bg-white text-primary border border-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 whitespace-nowrap" title="Baixa todos em lotes de 50 com pausa">
+                        <i class="fa fa-database"></i> Sync completa (lotes)
                     </button>
                     <button type="button" id="btnForcarEnvioCadastros" class="bg-secondary text-primary px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 whitespace-nowrap border border-yellow-600">
                         <i class="fa fa-cloud-upload"></i> Subir cadastros que faltam
@@ -798,17 +801,22 @@
             if (e.key === 'Enter') renderizar();
         });
 
-        async function atualizarEspelhoNuvem(manual) {
+        async function atualizarEspelhoNuvem(manual, modoPull) {
+            // modoPull: 'incremental' | 'full' | 'auto'
+            modoPull = modoPull || (manual ? 'incremental' : 'auto');
             var txt = document.getElementById('txtSyncGestao');
             var btn = document.getElementById('btnAtualizarNuvemGestao');
-            if (txt) txt.textContent = manual ? 'Atualizando da nuvem…' : 'Sincronizando com a nuvem…';
-            if (btn && manual) { btn.disabled = true; }
+            var btnFull = document.getElementById('btnFullPullGestao');
+            if (txt) {
+                txt.textContent = modoPull === 'full'
+                    ? 'Sync completa (lotes de 50)…'
+                    : (manual ? 'Atualizando só mudanças…' : 'Sincronizando…');
+            }
+            if (btn) btn.disabled = true;
+            if (btnFull) btnFull.disabled = true;
             try {
                 var r = null;
                 if (typeof IBNNuvem !== 'undefined') {
-                    // Prioridade da gestão no clique manual: sobe alterações locais com force
-                    // antes de puxar, para não perder aprovação/edição deste aparelho
-                    // e para garantir que novos cadastros deste aparelho cheguem à nuvem.
                     if (manual) {
                         try {
                             if (typeof lerMembros === 'function' && IBNNuvem.sincronizarMembros) {
@@ -819,20 +827,37 @@
                             console.warn('Push gestão → nuvem:', ePush);
                         }
                     }
-                    if (IBNNuvem.sincronizarTudoDaNuvem) {
-                        if (txt) txt.textContent = manual ? 'Baixando da nuvem…' : 'Sincronizando com a nuvem…';
-                        await IBNNuvem.sincronizarTudoDaNuvem(manual ? 'gestao-manual' : 'gestao-auto');
-                    }
                     if (IBNNuvem.puxarMembrosParaLocal) {
-                        r = await IBNNuvem.puxarMembrosParaLocal();
+                        if (txt) {
+                            txt.textContent = modoPull === 'full'
+                                ? 'Baixando em lotes de 50 (pode levar 1–2 min)…'
+                                : 'Baixando só quem mudou…';
+                        }
+                        r = await IBNNuvem.puxarMembrosParaLocal({
+                            modo: modoPull,
+                            lote: 50,
+                            pausaMs: 4000,
+                            onProgress: function (atual, total, etapa) {
+                                if (!txt) return;
+                                if (String(etapa).indexOf('lote_') === 0) {
+                                    txt.textContent = 'Lote ' + String(etapa).replace('lote_', '') + ' — ' + atual + ' membro(s)…';
+                                } else if (etapa === 'incremental') {
+                                    txt.textContent = 'Consultando mudanças na nuvem…';
+                                }
+                            }
+                        });
                     }
                 }
-                var qtd = (r && r.lista) ? r.lista.length : ((typeof lerMembros === 'function') ? lerMembros().length : 0);
+                var qtdLocal = (r && r.lista) ? r.lista.length : ((typeof lerMembros === 'function') ? lerMembros().length : 0);
+                var qtdNuvem = (r && r.quantidadeNuvem != null) ? r.quantidadeNuvem : null;
                 var agora = new Date();
                 var hh = String(agora.getHours()).padStart(2, '0');
                 var mm = String(agora.getMinutes()).padStart(2, '0');
+                var modoTxt = (r && r.modo === 'incremental')
+                    ? ('incremental' + (qtdNuvem != null ? (': ' + qtdNuvem + ' mudaram') : ''))
+                    : ((r && r.modo) || modoPull || 'full');
                 if (txt) {
-                    txt.textContent = 'Última sincronização ' + hh + ':' + mm + ' — ' + qtd + ' membro(s). Clique em Atualizar da nuvem para ver o que os membros enviaram.';
+                    txt.textContent = 'Última sync ' + hh + ':' + mm + ' (' + modoTxt + ') — ' + qtdLocal + ' membro(s) neste aparelho.';
                 }
                 try { renderizar(); } catch (eR) {}
                 try { formatarUltimoEnvio(); } catch (eU) {}
@@ -843,107 +868,42 @@
                 return false;
             } finally {
                 if (btn) btn.disabled = false;
+                if (btnFull) btnFull.disabled = false;
                 try { formatarUltimoEnvio(); } catch (eU2) {}
-            }
-        }
-
-        function formatarUltimoEnvio() {
-            var el = document.getElementById('txtUltimoEnvioGestao');
-            var aviso = document.getElementById('avisoForce24h');
-            if (!el) return;
-            try {
-                if (typeof IBNNuvem === 'undefined' || !IBNNuvem.lerUltimoEnvioMembros) {
-                    el.textContent = '';
-                    if (aviso) aviso.classList.add('hidden');
-                    return;
-                }
-                var u = IBNNuvem.lerUltimoEnvioMembros();
-                var precisa = IBNNuvem.precisaForceEnvio24h && IBNNuvem.precisaForceEnvio24h();
-                if (aviso) {
-                    if (precisa) aviso.classList.remove('hidden');
-                    else aviso.classList.add('hidden');
-                }
-                if (!u || !u.em) {
-                    el.textContent = 'Último envio de cadastros para a nuvem: ainda não registrado neste aparelho.';
-                    return;
-                }
-                var d = new Date(u.em);
-                var hh = String(d.getHours()).padStart(2, '0');
-                var mm = String(d.getMinutes()).padStart(2, '0');
-                var dd = String(d.getDate()).padStart(2, '0');
-                var mo = String(d.getMonth() + 1).padStart(2, '0');
-                var ms = (IBNNuvem.msDesdeUltimoEnvioMembros && IBNNuvem.msDesdeUltimoEnvioMembros()) || 0;
-                var horas = Math.floor(ms / 3600000);
-                el.textContent = 'Último envio ok: ' + dd + '/' + mo + ' ' + hh + ':' + mm +
-                    (horas >= 1 ? ' (há ~' + horas + 'h)' : ' (há pouco)') +
-                    (u.force ? ' · forçado' : '') +
-                    (u.quantidade ? ' · ' + u.quantidade + ' reg.' : '');
-            } catch (e) {
-                el.textContent = '';
-            }
-        }
-
-        async function forcarEnvioCadastrosLocais() {
-            var txt = document.getElementById('txtSyncGestao');
-            var btn = document.getElementById('btnForcarEnvioCadastros');
-            var btn2 = document.getElementById('btnAtualizarNuvemGestao');
-            if (!confirm('Subir para a nuvem os cadastros que existem NESTE aparelho e ainda não estão na nuvem?\n\nIMPORTANTE: use o celular/PC onde a pessoa se cadastrou.\nSe der timeout, publique as Regras do Firestore (arquivo firestore.rules).')) {
-                return;
-            }
-            if (btn) btn.disabled = true;
-            if (btn2) btn2.disabled = true;
-            if (txt) txt.textContent = 'Comparando aparelho × nuvem…';
-            try {
-                if (typeof IBNNuvem === 'undefined') {
-                    alert('Nuvem não disponível neste aparelho.');
-                    return;
-                }
-                var r;
-                if (IBNNuvem.enviarCadastrosAusentesNaNuvem) {
-                    r = await IBNNuvem.enviarCadastrosAusentesNaNuvem(function (a, b, etapa) {
-                        if (txt) txt.textContent = (etapa === 'comparando' ? 'Comparando… ' : 'Enviando faltantes… ') + a + '/' + b;
-                    });
-                } else {
-                    r = await IBNNuvem.forcarEnvioMembrosLocais(function (a, b) {
-                        if (txt) txt.textContent = 'Enviando… ' + a + '/' + b;
-                    });
-                }
-                if (IBNNuvem.puxarMembrosParaLocal) {
-                    if (txt) txt.textContent = 'Atualizando lista…';
-                    await IBNNuvem.puxarMembrosParaLocal();
-                }
-                formatarUltimoEnvio();
-                if (txt) txt.textContent = (r && r.mensagem) || 'Concluído';
-                try { renderizar(); } catch (eR) {}
-                alert((r && r.mensagem) || 'Concluído');
-            } catch (e) {
-                if (txt) txt.textContent = 'Erro: ' + ((e && e.message) || String(e));
-                alert('Erro: ' + ((e && e.message) || String(e)));
-            } finally {
-                if (btn) btn.disabled = false;
-                if (btn2) btn2.disabled = false;
-                formatarUltimoEnvio();
             }
         }
 
         var btnNuvem = document.getElementById('btnAtualizarNuvemGestao');
         if (btnNuvem) {
-            btnNuvem.addEventListener('click', function () { atualizarEspelhoNuvem(true); });
+            btnNuvem.addEventListener('click', function () { atualizarEspelhoNuvem(true, 'incremental'); });
+        }
+        var btnFull = document.getElementById('btnFullPullGestao');
+        if (btnFull) {
+            btnFull.addEventListener('click', function () {
+                if (!confirm('Sincronização completa em lotes de 50 (pausa ~4s entre lotes).\n\nUse se faltar membro na lista. Consome mais leituras do Firebase.')) return;
+                atualizarEspelhoNuvem(true, 'full');
+            });
         }
         var btnForce = document.getElementById('btnForcarEnvioCadastros');
         if (btnForce) {
             btnForce.addEventListener('click', function () { forcarEnvioCadastrosLocais(); });
         }
 
-        // Master/adm/gestor: sempre o mesmo espelho da nuvem ao abrir
+        // Ao abrir Gestão: 1 pull INCREMENTAL (só quem mudou) — barato vs full
         (async function iniciarGestaoMembros() {
-            // 100% MANUAL: não baixa nem sobe sozinho ao abrir / em intervalo
             formatarUltimoEnvio();
             var txt = document.getElementById('txtSyncGestao');
             if (txt) {
-                txt.textContent = 'Modo manual: clique em "Atualizar da nuvem agora" para baixar, ou "Subir cadastros que faltam" para enviar.';
+                txt.textContent = 'Abrindo… baixando só mudanças desde o último pull.';
             }
             try { renderizar(); } catch (eR) {}
+            try {
+                await atualizarEspelhoNuvem(false, 'auto');
+            } catch (eInit) {
+                if (txt) {
+                    txt.textContent = 'Clique em "Atualizar (só mudanças)" ou "Sync completa (lotes)".';
+                }
+            }
         })();
     </script>
 </body>
