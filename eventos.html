@@ -1963,56 +1963,15 @@
 
         async function puxarInscritosDaNuvemEAtualizar(forcar) {
             try {
-                // Supabase primeiro — NUVEM É A FONTE DA VERDADE
-                // O que foi apagado no banco some nos outros computadores ao atualizar.
+                // Supabase primeiro — NUVEM É A FONTE DA VERDADE.
+                // Com forcar=true (abrir gestão / Baixar / Vassoura): lista local = exatamente a nuvem.
+                // Itens só no aparelho NÃO sobem sozinhos (evita exclusões voltarem).
+                // Para subir algo de propósito, use o botão "Enviar deste aparelho".
                 if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo()) {
                     var rSb = await IBNEventosCloud.puxarInscritos();
                     if (rSb && rSb.sucesso && Array.isArray(rSb.lista)) {
-                        var local = [];
-                        try { local = JSON.parse(localStorage.getItem('inscritosIBN') || '[]'); } catch (eL) { local = []; }
-                        if (!Array.isArray(local)) local = [];
-
-                        // Códigos que existem na nuvem
-                        var naNuvem = {};
-                        rSb.lista.forEach(function (n) {
-                            var k = String((n && (n.codigo || n.id)) || '');
-                            if (k) naNuvem[k] = true;
-                        });
-
-                        // Itens só no aparelho (ainda não subiram): sobem para a nuvem e entram na lista final
-                        var soLocal = [];
-                        local.forEach(function (i) {
-                            if (!i) return;
-                            var k = String(i.codigo || i.id || '');
-                            if (!k || naNuvem[k]) return;
-                            soLocal.push(i);
-                        });
-                        if (soLocal.length) {
-                            try {
-                                await IBNEventosCloud.salvarInscritosLista(soLocal);
-                            } catch (eUp) {
-                                console.warn('Não foi possível subir inscritos só-locais:', eUp);
-                            }
-                        }
-
-                        // Lista final = nuvem + o que era só local (e acabou de subir)
-                        // Assim exclusões feitas na nuvem (gestor / painel Supabase) somem daqui.
-                        var mapFinal = {};
-                        rSb.lista.forEach(function (n) {
-                            var k = String((n && (n.codigo || n.id)) || '');
-                            if (k) mapFinal[k] = n;
-                        });
-                        soLocal.forEach(function (i) {
-                            var k = String(i.codigo || i.id || '');
-                            if (k && !mapFinal[k]) mapFinal[k] = i;
-                        });
-                        // Preferir dados da nuvem quando o mesmo código existe nos dois
-                        rSb.lista.forEach(function (n) {
-                            var k = String((n && (n.codigo || n.id)) || '');
-                            if (k) mapFinal[k] = Object.assign({}, mapFinal[k] || {}, n);
-                        });
-
-                        inscritos = Object.keys(mapFinal).map(function (k) { return mapFinal[k]; });
+                        // Nuvem prevalece: substitui a lista local pelo que veio do Supabase
+                        inscritos = rSb.lista.slice();
                         try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (e2) {}
                         try { carregarListaPublica(); } catch (e3) {}
                         console.log('Inscritos sincronizados com Supabase (nuvem prevalece):', inscritos.length);
@@ -2202,13 +2161,14 @@
                     <div class="flex flex-wrap gap-2 items-center">
                         <button type="button" id="btnBaixarInscritosNuvem" class="text-sm font-bold bg-amber-500 text-white px-3 py-2 rounded-lg hover:bg-amber-600 w-fit"><i class="fa fa-cloud-download mr-1"></i> Baixar da nuvem</button>
                         <button type="button" id="btnEnviarInscritosNuvem" class="text-sm font-bold bg-primary text-white px-3 py-2 rounded-lg hover:opacity-90 w-fit"><i class="fa fa-cloud-upload mr-1"></i> Enviar deste aparelho</button>
+                        ${ehAdminGestao ? '<button type="button" id="btnVassouraInscritos" class="text-sm font-bold bg-rose-600 text-white px-3 py-2 rounded-lg hover:bg-rose-700 w-fit" title="Limpa o cache deste aparelho e deixa a lista igual à nuvem (Supabase). Não apaga nada do banco."><i class="fa fa-refresh mr-1"></i> Vassoura (alinhar com nuvem)</button>' : ''}
                         ${ehAdminGestao ? '<button type="button" id="btnCsvInscritos" class="text-sm font-bold bg-primary text-white px-4 py-2 rounded-lg hover:opacity-90 w-fit"><i class="fa fa-download mr-1"></i> Baixar CSV de inscritos</button>' : ''}
                         <span id="msgSyncInscritos" class="text-xs text-gray-500"></span>
                     </div>
                     <p class="text-sm text-gray-500">Total: ${lista.length} · Pagos: ${pagos} · Pendentes: ${lista.length - pagos}</p>
                 </div>
                 <div class="space-y-2">
-                    ${lista.length === 0 ? '<p class="text-gray-500 text-center py-4">Nenhum inscrito neste aparelho.<br><span class="text-sm">Clique em <b>Baixar da nuvem</b> para trazer do Firebase.</span></p>' : ''}
+                    ${lista.length === 0 ? '<p class="text-gray-500 text-center py-4">Nenhum inscrito neste aparelho.<br><span class="text-sm">Clique em <b>Baixar da nuvem</b> ou use a <b>Vassoura</b> para alinhar com o Supabase.</span></p>' : ''}
                     ${lista.map(i => {
                         const cod = String(i.codigo || i.id || '');
                         const tipo = (i.tipo === 'visitante') ? 'Visitante' : 'Membro';
@@ -2306,6 +2266,44 @@
                     } catch (e) {
                         if (msgSync) msgSync.textContent = 'Falha ao enviar.';
                     } finally { bUp.disabled = false; }
+                };
+            }
+            // Vassoura: limpa cache local deste aparelho e deixa a lista = exatamente a do Supabase
+            // Não apaga nada do banco. Só resolve o problema de inscritos antigos voltarem pelo localStorage.
+            var bVassoura = document.getElementById('btnVassouraInscritos');
+            if (bVassoura) {
+                bVassoura.onclick = async function () {
+                    if (!confirm('VASSOURA — Alinhar este aparelho com a nuvem\n\n• Limpa o cache local de inscritos deste navegador/aparelho\n• Baixa de novo só o que está no Supabase\n• Não apaga nenhum registro do banco\n• Não mexe em membros, células ou outros dados\n\nContinuar?')) return;
+                    if (msgSync) msgSync.textContent = 'Limpando local e baixando da nuvem...';
+                    bVassoura.disabled = true;
+                    try {
+                        // 1) Zera o espelho local deste aparelho
+                        inscritos = [];
+                        try { localStorage.setItem('inscritosIBN', '[]'); } catch (e0) {}
+                        try { localStorage.removeItem('inscritosIBN'); } catch (e1) {}
+                        try { localStorage.setItem('inscritosIBN', '[]'); } catch (e2) {}
+
+                        // 2) Puxa só a nuvem (com local vazio não há "só-local" para reenviar)
+                        if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo() && IBNEventosCloud.puxarInscritos) {
+                            var rSb = await IBNEventosCloud.puxarInscritos();
+                            if (rSb && rSb.sucesso && Array.isArray(rSb.lista)) {
+                                inscritos = rSb.lista.slice();
+                            } else {
+                                inscritos = [];
+                            }
+                        } else {
+                            // Fallback: usa o puxar normal (local já está vazio)
+                            await puxarInscritosDaNuvemEAtualizar(true);
+                        }
+                        try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos || [])); } catch (e3) {}
+                        if (msgSync) msgSync.textContent = 'Aparelho alinhado com a nuvem. Total: ' + (inscritos || []).length;
+                        carregarListaPublica();
+                    } catch (e) {
+                        console.warn('Vassoura inscritos:', e);
+                        if (msgSync) msgSync.textContent = 'Falha ao alinhar. Tente de novo.';
+                    } finally {
+                        bVassoura.disabled = false;
+                    }
                 };
             }
             // Liga os botões de gestão
