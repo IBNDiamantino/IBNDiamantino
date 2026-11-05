@@ -613,12 +613,54 @@
                 return { n: n, excluido: false };
             }
 
-            function bolinha(info) {
-                if (info.excluido) return { cor: 'bg-black', title: 'Membro excluído / rejeitado' };
-                if (info.n <= 0) return { cor: 'bg-white border border-gray-300', title: 'Sem pendência' };
-                if (info.n === 1) return { cor: 'bg-yellow-400', title: '1 pendência' };
-                if (info.n === 2) return { cor: 'bg-orange-500', title: '2 pendências' };
-                return { cor: 'bg-red-600', title: info.n + ' pendências' };
+            function bolinha(info, m) {
+                // Cores por tipo: vermelho = alteração cadastro; amarelo = sem ministério; azul claro = sem célula
+                if (info && info.excluido) return { cor: 'bg-black', title: 'Membro excluído / rejeitado' };
+                if (!m) {
+                    if (!info || info.n <= 0) return { cor: 'bg-white border border-gray-300', title: 'Sem pendência' };
+                    if (info.n === 1) return { cor: 'bg-yellow-400', title: '1 pendência' };
+                    if (info.n === 2) return { cor: 'bg-orange-500', title: '2 pendências' };
+                    return { cor: 'bg-red-600', title: info.n + ' pendências' };
+                }
+                var motivos = [];
+                var temAlt = false, semMin = false, semCel = false;
+                var st = String(m.status || '').toLowerCase();
+                if (st === 'pendente' || st === 'aguardando') {
+                    temAlt = true;
+                    motivos.push('Cadastro aguardando aprovação');
+                }
+                try {
+                    var alt = m.alteracoesPendentesGestao;
+                    if (alt && Array.isArray(alt.resumo) && alt.resumo.length) {
+                        temAlt = true;
+                        motivos.push('Alteração de cadastro pendente');
+                    }
+                } catch (eA) {}
+                var nivel = String(m.nivel || '').toLowerCase();
+                var cargo = String(m.cargo || '').toLowerCase();
+                var ehGestor = nivel === 'gestor' || cargo.indexOf('gestor') !== -1;
+                var ehAdminMaster = nivel === 'admin' && (
+                    String(m.usuario || '').toLowerCase() === 'admin' ||
+                    String(m.nome || '').toLowerCase().indexOf('admin') === 0
+                );
+                if (!ehGestor && !ehAdminMaster) {
+                    if (!Array.isArray(m.ministerios) || !m.ministerios.length) {
+                        semMin = true;
+                        motivos.push('Sem ministério');
+                    }
+                }
+                if (!Array.isArray(m.celulas) || !m.celulas.length) {
+                    semCel = true;
+                    motivos.push('Sem célula');
+                }
+                var title = motivos.length ? motivos.join(' · ') : 'Sem pendência';
+                if (temAlt) return { cor: 'bg-red-600', title: title };
+                if (semMin) return { cor: 'bg-yellow-400', title: title };
+                if (semCel) return { cor: 'bg-sky-300', title: title };
+                if (info && info.n > 0) {
+                    return { cor: 'bg-orange-400', title: info.n + ' outra(s) pendência(s)' };
+                }
+                return { cor: 'bg-white border border-gray-300', title: 'Sem pendência' };
             }
 
             if (q) {
@@ -651,7 +693,7 @@
 
             container.innerHTML = lista.map(function(m) {
                 const info = contarPendencias(m);
-                const bol = bolinha(info);
+                const bol = bolinha(info, m);
                 const nasc = m.nascimento || m.dataNascimento || '—';
                 const tel = m.telefone || '—';
                 return (
