@@ -78,6 +78,23 @@
 
     <main class="container mx-auto px-4 py-12 max-w-4xl">
 
+        <!-- Popup: só aparece se houver inscrição pendente neste aparelho -->
+        <div id="popupInscPendenteLocal" class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40">
+            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 border border-blue-100" role="dialog" aria-modal="true" aria-labelledby="txtInscPendenteLocal">
+                <p id="txtInscPendenteLocal" class="font-semibold text-primary text-lg text-center">Sua inscrição no evento falta finalizar.</p>
+                <p id="detInscPendenteLocal" class="text-sm text-gray-600 mt-2 text-center"></p>
+                <p class="text-xs text-gray-500 mt-3 text-center">Deseja continuar de onde parou?</p>
+                <div class="flex flex-col sm:flex-row gap-2 mt-5">
+                    <button type="button" id="btnConcluirInscPendente" class="flex-1 bg-primary text-white px-4 py-3 rounded-lg font-bold hover:opacity-90">
+                        Sim, finalizar
+                    </button>
+                    <button type="button" id="btnDispensarInscPendente" class="flex-1 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg font-semibold hover:bg-gray-200">
+                        Depois
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Escolha simples: Membro ou Visitante -->
         <div id="avisoNaoLogado" class="hidden mb-8 bg-yellow-50 border border-yellow-300 rounded-xl p-5 text-center">
             <p class="font-bold text-primary mb-4 text-lg">Como deseja se inscrever?</p>
@@ -180,7 +197,14 @@
         </section>
 
         <section id="fatura" class="hidden mb-12">
-            <h2 class="text-2xl font-bold mb-6 text-primary">Pagamento da Inscrição</h2>
+            <h2 class="text-2xl font-bold mb-4 text-primary">Inscrição gerada</h2>
+            <!-- Aviso fixo: inscrição já foi salva; falta o próximo passo -->
+            <div id="boxInscSalvaAviso" class="mb-4 p-4 bg-green-50 border-2 border-green-400 rounded-xl">
+                <p class="font-bold text-green-800 text-lg"><i class="fa fa-check-circle mr-1"></i> Inscrição salva com sucesso!</p>
+                <p class="text-sm text-green-900 mt-1">Seu código já está com a gestão. <strong>Ainda falta o próximo passo abaixo</strong> (pagamento e/ou envio do comprovante / confirmação).</p>
+                <p class="text-xs text-green-800 mt-2">Código: <span id="codigoInscTopo" class="font-mono font-bold"></span></p>
+                <p id="statusNuvemInsc" class="text-xs mt-1 text-green-700"></p>
+            </div>
             <div class="bg-white rounded-xl shadow-lg p-6 border-2 border-green-200">
                 <div class="mb-4">
                     <p class="text-sm text-gray-500">Código da Inscrição:</p>
@@ -194,7 +218,8 @@
                     <p class="text-sm text-gray-500">Valor:</p>
                     <p id="valorEventoFat" class="text-2xl font-bold text-secondary"></p>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-lg mb-4 space-y-3">
+                <!-- Bloco de pagamento (oculto em evento gratuito) -->
+                <div id="blocoPagamentoInsc" class="bg-gray-50 p-4 rounded-lg mb-4 space-y-3">
                     <p class="text-sm font-semibold">Escolha a forma de pagamento:</p>
                     <div class="flex flex-col gap-2 text-sm" id="opcoesPagamento">
                         <label class="flex items-center gap-2"><input type="radio" name="meioPag" value="PIX" checked class="accent-secondary"> PIX (chave da igreja)</label>
@@ -237,17 +262,28 @@
                         Este evento ainda não tem link PagBank. Use a chave PIX ou pague na secretaria.
                     </p>
                 </div>
-                <div class="mt-6 pt-4 border-t space-y-3">
-                    <p class="font-semibold">Comprovante (PIX) ou foto do recibo do cartão:</p>
-                    <input type="file" id="comprovantePag" accept="image/*,application/pdf" class="w-full text-sm border rounded-lg p-2">
-                    <p class="text-xs text-gray-500">A secretaria confere. Enquanto isso a inscrição fica <strong>pendente</strong>.</p>
-                    <button id="btnConfirmar" class="w-full bg-green-600 text-white p-3 rounded-md font-bold hover:bg-green-700">
+                <div id="boxProximoPasso" class="mt-6 pt-4 border-t-4 border-green-500 space-y-3 scroll-mt-4">
+                    <p id="tituloProximoPasso" class="font-bold text-lg text-green-800">
+                        <i class="fa fa-arrow-down mr-1"></i> Próximo passo — confirme com a gestão
+                    </p>
+                    <p id="textoProximoPassoPago" class="text-sm text-gray-700">
+                        Sua inscrição <strong>já foi salva</strong>. Pague acima e depois envie o comprovante (ou finalize e envie depois). A gestão só confirma quando receber o comprovante ou o aviso.
+                    </p>
+                    <p id="textoProximoPassoGratis" class="hidden text-sm text-gray-700">
+                        Evento <strong>gratuito</strong>. Sua inscrição <strong>já foi salva</strong>. Toque no botão abaixo para avisar a gestão e solicitar a confirmação.
+                    </p>
+                    <div id="boxUploadComprovante">
+                        <p class="font-semibold">Comprovante (PIX) ou foto do recibo do cartão:</p>
+                        <input type="file" id="comprovantePag" accept="image/*,application/pdf" class="w-full text-sm border rounded-lg p-2">
+                        <p class="text-xs text-gray-500 mt-1">A secretaria confere. Enquanto isso a inscrição fica <strong>pendente</strong>.</p>
+                    </div>
+                    <button id="btnConfirmar" class="w-full bg-green-600 text-white p-3 rounded-md font-bold hover:bg-green-700 text-base">
                         <i class="fa fa-check mr-2"></i> Enviar comprovante e finalizar
                     </button>
                     <button type="button" id="btnComprovanteDepois" class="w-full bg-white border-2 border-primary text-primary p-3 rounded-md font-bold hover:bg-gray-50">
                         <i class="fa fa-clock-o mr-2"></i> Finalizar e enviar comprovante depois
                     </button>
-                    <p class="text-xs text-gray-500 text-center">A inscrição é gerada do mesmo jeito. Sem comprovante, fica <b>pendente</b> para a secretaria.</p>
+                    <p id="ajudaProximoPasso" class="text-xs text-gray-500 text-center">A inscrição já está salva. Sem comprovante, fica <b>pendente</b> para a secretaria.</p>
                     <p id="msgConfirmacao" class="mt-3 hidden text-center font-bold text-green-600">✅ Comprovante enviado! Aguarde confirmação da secretaria.</p>
                     <button type="button" id="btnWhatsAppSecretaria" class="hidden w-full mt-2 bg-green-600 text-white p-3 rounded-md font-bold hover:bg-green-700">
                         <i class="fa fa-whatsapp mr-2"></i> Enviar dados no WhatsApp da secretaria
@@ -616,6 +652,208 @@
             }
         } catch (eVs) {}
 
+        /** Inscrição incompleta: não paga / sem confirmação da gestão */
+        function inscritoEstaPendente(i) {
+            if (!i || !(i.codigo || i.id)) return false;
+            if (i.pago === true || i.statusPagamento === 'confirmado') return false;
+            // já enviou comprovante e está só aguardando gestão — ainda conta como "concluir/acompanhar"
+            return true;
+        }
+
+        function listarInscricoesPendentesLocais() {
+            var lista = [];
+            try {
+                var raw = JSON.parse(localStorage.getItem('inscritosIBN') || '[]');
+                if (!Array.isArray(raw)) raw = [];
+                lista = raw.filter(inscritoEstaPendente);
+            } catch (e) { lista = []; }
+            // mais recente primeiro
+            lista.sort(function (a, b) {
+                var ta = Date.parse(a.atualizadoEm || a.dataInsc || 0) || 0;
+                var tb = Date.parse(b.atualizadoEm || b.dataInsc || 0) || 0;
+                return tb - ta;
+            });
+            return lista;
+        }
+
+        /** Preenche a seção fatura e abre para a pessoa concluir */
+        function abrirFaturaDeInscrito(insc, opts) {
+            opts = opts || {};
+            if (!insc) return;
+            inscricaoAtual = insc;
+            var codigo = String(insc.codigo || insc.id || '');
+            var evento = null;
+            try {
+                evento = (eventos || []).find(function (e) { return String(e.id) === String(insc.eventoId); }) || null;
+            } catch (e0) {}
+            var valorNum = Number(insc.valor != null ? insc.valor : (evento && evento.valor) || 0) || 0;
+
+            document.getElementById('fatura').classList.remove('hidden');
+            document.getElementById('codigoInsc').textContent = codigo;
+            var codTopo = document.getElementById('codigoInscTopo');
+            if (codTopo) codTopo.textContent = codigo;
+            var stNuvem = document.getElementById('statusNuvemInsc');
+            if (stNuvem) {
+                stNuvem.textContent = opts.retomada
+                    ? 'Retomando inscrição deste aparelho — finalize o próximo passo.'
+                    : '';
+                stNuvem.className = 'text-xs mt-1 text-amber-800 font-semibold';
+            }
+            var av = document.getElementById('boxInscSalvaAviso');
+            if (av) {
+                var tit = av.querySelector('.font-bold');
+                if (tit && opts.retomada) {
+                    tit.innerHTML = '<i class="fa fa-exclamation-triangle mr-1"></i> Conclua sua inscrição';
+                }
+            }
+            document.getElementById('nomeEventoFat').textContent = (insc.eventoNome || (evento && evento.nome) || 'Evento');
+            document.getElementById('valorEventoFat').textContent = valorNum <= 0 ? 'Gratuito' : ('R$ ' + valorNum.toFixed(2));
+            document.getElementById('formaPagamento').textContent = (evento && (evento.forma || evento.formaPagamento)) || 'PIX, Cartão, Dinheiro';
+            document.getElementById('pixCode').textContent = (evento && (evento.pix || evento.pixDestino || '').trim()) || '36.158.983/0001-36';
+            var refEl = document.getElementById('pixReferencia');
+            if (refEl) refEl.textContent = codigo;
+            var infoCod = document.getElementById('pixInfoCodigo');
+            if (infoCod) infoCod.textContent = codigo;
+            var infoEv = document.getElementById('pixInfoEvento');
+            if (infoEv) infoEv.textContent = insc.eventoNome || (evento && evento.nome) || '';
+
+            var linkPag = (evento && (evento.linkPagamento || '')) || '';
+            var boxLink = document.getElementById('boxLinkOnline');
+            var btnOn = document.getElementById('btnPagarOnline');
+            if (boxLink && btnOn) {
+                if (linkPag) { btnOn.href = linkPag; btnOn.setAttribute('href', linkPag); boxLink.classList.remove('hidden'); }
+                else { btnOn.removeAttribute('href'); btnOn.href = '#'; boxLink.classList.add('hidden'); }
+            }
+
+            var gratis = valorNum <= 0;
+            var blocoPag = document.getElementById('blocoPagamentoInsc');
+            var boxUp = document.getElementById('boxUploadComprovante');
+            var txtPago = document.getElementById('textoProximoPassoPago');
+            var txtGratis = document.getElementById('textoProximoPassoGratis');
+            var btnConf = document.getElementById('btnConfirmar');
+            var btnDepois = document.getElementById('btnComprovanteDepois');
+            var ajuda = document.getElementById('ajudaProximoPasso');
+            var titProx = document.getElementById('tituloProximoPasso');
+            if (blocoPag) blocoPag.classList.toggle('hidden', gratis);
+            if (boxUp) boxUp.classList.toggle('hidden', gratis);
+            if (txtPago) txtPago.classList.toggle('hidden', gratis);
+            if (txtGratis) txtGratis.classList.toggle('hidden', !gratis);
+            if (titProx) {
+                titProx.innerHTML = gratis
+                    ? '<i class="fa fa-arrow-down mr-1"></i> Próximo passo — avise a gestão'
+                    : '<i class="fa fa-arrow-down mr-1"></i> Próximo passo — pague e confirme com a gestão';
+            }
+            if (btnConf) {
+                btnConf.innerHTML = gratis
+                    ? '<i class="fa fa-check mr-2"></i> Solicitar confirmação da gestão'
+                    : '<i class="fa fa-check mr-2"></i> Enviar comprovante e finalizar';
+            }
+            if (btnDepois) {
+                if (gratis) btnDepois.classList.add('hidden');
+                else {
+                    btnDepois.classList.remove('hidden');
+                    btnDepois.innerHTML = '<i class="fa fa-clock-o mr-2"></i> Finalizar e enviar comprovante depois';
+                }
+            }
+            if (ajuda) {
+                ajuda.innerHTML = gratis
+                    ? 'Sua inscrição está neste aparelho. Toque no botão verde para a gestão confirmar.'
+                    : 'Finalize o pagamento e envie o comprovante (ou envie depois).';
+            }
+
+            try {
+                var formBox = document.getElementById('formInscricao');
+                if (formBox) formBox.classList.add('hidden');
+                var secInsc = document.getElementById('inscricao');
+                if (secInsc) secInsc.classList.add('hidden');
+            } catch (eHide) {}
+
+            var pixRadio = document.querySelector('input[name="meioPag"][value="PIX"]');
+            if (pixRadio) pixRadio.checked = true;
+            if (typeof atualizarMeioPagUI === 'function') atualizarMeioPagUI();
+
+            try { document.getElementById('fatura').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e1) {}
+            setTimeout(function () {
+                var alvo = document.getElementById('boxProximoPasso') || document.getElementById('boxInscSalvaAviso');
+                if (alvo) try { alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) {}
+            }, 300);
+        }
+
+        function fecharPopupInscPendente() {
+            var box = document.getElementById('popupInscPendenteLocal');
+            if (box) box.classList.add('hidden');
+        }
+
+        function mostrarAvisoInscPendenteLocal() {
+            var box = document.getElementById('popupInscPendenteLocal');
+            if (!box) return;
+            var pend = listarInscricoesPendentesLocais();
+            // Sem pendência → não abre nada
+            if (!pend.length) {
+                box.classList.add('hidden');
+                return;
+            }
+            var i = pend[0];
+            var det = document.getElementById('detInscPendenteLocal');
+            var txt = document.getElementById('txtInscPendenteLocal');
+            var nomeEv = (i.eventoNome || 'evento').trim();
+            if (txt) txt.textContent = 'Sua inscrição no evento ' + nomeEv + ' falta finalizar.';
+            if (det) det.textContent = (i.nome ? (i.nome + ' · ') : '') + String(i.codigo || i.id || '');
+            window._inscPendenteLocalAtual = i;
+            box.classList.remove('hidden');
+        }
+
+        async function retomarInscricaoPendente() {
+            var i = window._inscPendenteLocalAtual;
+            if (!i) {
+                var pend = listarInscricoesPendentesLocais();
+                i = pend[0];
+            }
+            if (!i) return;
+            fecharPopupInscPendente();
+            // 1) Sobe na hora para a nuvem
+            try {
+                i.atualizadoEm = new Date().toISOString();
+                if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo() && IBNEventosCloud.salvarInscrito) {
+                    var r = await IBNEventosCloud.salvarInscrito(i);
+                    if (!(r && r.sucesso)) await IBNEventosCloud.salvarInscrito(i);
+                } else if (typeof salvarUmInscritoNuvem === 'function') {
+                    await salvarUmInscritoNuvem(i);
+                }
+            } catch (eUp) {
+                console.warn('Retomada nuvem:', eUp);
+            }
+            // 2) Abre a parte que falta (pagamento / próximo passo)
+            abrirFaturaDeInscrito(i, { retomada: true });
+        }
+
+        function ligarBotoesAvisoInscPendente() {
+            var btnOk = document.getElementById('btnConcluirInscPendente');
+            var btnNo = document.getElementById('btnDispensarInscPendente');
+            var box = document.getElementById('popupInscPendenteLocal');
+            if (btnOk && !btnOk.dataset.bound) {
+                btnOk.dataset.bound = '1';
+                btnOk.addEventListener('click', function () { retomarInscricaoPendente(); });
+            }
+            if (btnNo && !btnNo.dataset.bound) {
+                btnNo.dataset.bound = '1';
+                btnNo.addEventListener('click', function () {
+                    fecharPopupInscPendente();
+                    try { sessionStorage.setItem('ibn_dispensa_insc_pendente', String(Date.now())); } catch (e) {}
+                });
+            }
+            // Clique no fundo escuro = Depois
+            if (box && !box.dataset.bound) {
+                box.dataset.bound = '1';
+                box.addEventListener('click', function (ev) {
+                    if (ev.target === box) {
+                        fecharPopupInscPendente();
+                        try { sessionStorage.setItem('ibn_dispensa_insc_pendente', String(Date.now())); } catch (e) {}
+                    }
+                });
+            }
+        }
+
         function verificarMembro() {
             membro = null;
             try {
@@ -811,18 +1049,74 @@
                 }
             } catch (ePre) {}
             // Visitante: só nome, telefone, nascimento → continua inscrição
-            // Máscara dd/mm/aaaa na data de nascimento do visitante
+            // Máscara dd/mm/aaaa (ano com 4 dígitos obrigatório)
             (function () {
                 var el = document.getElementById('visNascimento');
                 if (!el || el.dataset.maskBound) return;
                 el.dataset.maskBound = '1';
+                el.setAttribute('placeholder', 'dd/mm/aaaa');
+                el.setAttribute('maxlength', '10');
                 el.addEventListener('input', function () {
                     var v = this.value.replace(/\D/g, '').slice(0, 8);
                     if (v.length >= 5) v = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
                     else if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
                     this.value = v;
                 });
+                el.addEventListener('blur', function () {
+                    var ok = validarDataNascimentoBR(this.value);
+                    if (this.value && !ok.ok) {
+                        this.classList.add('border-red-500');
+                        this.title = ok.msg || 'Use 4 dígitos no ano (ex.: 1990)';
+                    } else {
+                        this.classList.remove('border-red-500');
+                        this.title = '';
+                    }
+                });
             })();
+
+            /** Valida data dd/mm/aaaa com ano de 4 dígitos (relatórios da igreja). */
+            function validarDataNascimentoBR(str) {
+                var s = String(str || '').trim();
+                if (!s) return { ok: false, msg: 'Informe a data de nascimento (dd/mm/aaaa).' };
+                var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+                if (!m) {
+                    // aceita também yyyy-mm-dd do input type=date
+                    var m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    if (m2) {
+                        var ano2 = parseInt(m2[1], 10);
+                        var mes2 = parseInt(m2[2], 10);
+                        var dia2 = parseInt(m2[3], 10);
+                        if (ano2 < 1900 || ano2 > new Date().getFullYear()) {
+                            return { ok: false, msg: 'Ano de nascimento inválido. Use 4 dígitos (ex.: 1990).' };
+                        }
+                        if (mes2 < 1 || mes2 > 12 || dia2 < 1 || dia2 > 31) {
+                            return { ok: false, msg: 'Data de nascimento inválida.' };
+                        }
+                        return { ok: true, iso: m2[1] + '-' + m2[2] + '-' + m2[3], br: m2[3] + '/' + m2[2] + '/' + m2[1] };
+                    }
+                    return { ok: false, msg: 'Data incompleta. Use o formato dd/mm/aaaa com ano de 4 dígitos (ex.: 15/03/1990).' };
+                }
+                var dia = parseInt(m[1], 10);
+                var mes = parseInt(m[2], 10);
+                var ano = parseInt(m[3], 10);
+                if (ano < 1900 || ano > new Date().getFullYear()) {
+                    return { ok: false, msg: 'Ano de nascimento inválido. Use 4 dígitos (ex.: 1990).' };
+                }
+                if (mes < 1 || mes > 12 || dia < 1 || dia > 31) {
+                    return { ok: false, msg: 'Data de nascimento inválida.' };
+                }
+                var dt = new Date(ano, mes - 1, dia);
+                if (dt.getFullYear() !== ano || dt.getMonth() !== mes - 1 || dt.getDate() !== dia) {
+                    return { ok: false, msg: 'Data de nascimento inválida.' };
+                }
+                return {
+                    ok: true,
+                    iso: String(ano) + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0'),
+                    br: m[1] + '/' + m[2] + '/' + m[3]
+                };
+            }
+            // expõe para outros handlers no mesmo escopo
+            window._validarDataNascimentoBR = validarDataNascimentoBR;
 
             var btnVis = document.getElementById('btnModoVisitante');
             if (btnVis) {
@@ -844,6 +1138,12 @@
                     var end = (document.getElementById('visEndereco') && document.getElementById('visEndereco').value || '').trim();
                     if (!nome) return alert('Informe o nome.');
                     if (!tel) return alert('Informe o telefone.');
+                    var vn = (typeof validarDataNascimentoBR === 'function')
+                        ? validarDataNascimentoBR(nasc)
+                        : (window._validarDataNascimentoBR ? window._validarDataNascimentoBR(nasc) : { ok: !!nasc.match(/^\d{2}\/\d{2}\/\d{4}$/), msg: 'Use dd/mm/aaaa com ano de 4 dígitos.' });
+                    if (!vn.ok) return alert(vn.msg || 'Informe a data de nascimento com ano de 4 dígitos (ex.: 15/03/1990).');
+                    nasc = vn.br || nasc;
+                    try { document.getElementById('visNascimento').value = nasc; } catch (eN) {}
                     modoVisitante = true;
                     window._visitanteEvento = { nome: nome, telefone: tel, nascimento: nasc, endereco: end };
                     try { sessionStorage.setItem('ibn_evento_visitante', JSON.stringify(window._visitanteEvento)); } catch (e) {}
@@ -904,6 +1204,17 @@
             carregarSelectEventos();
             atualizarUISemEvento();
             carregarListaPublica();
+            // Aviso de inscrição incompleta só neste aparelho
+            try {
+                ligarBotoesAvisoInscPendente();
+                var dispensou = false;
+                try {
+                    var tDisp = parseInt(sessionStorage.getItem('ibn_dispensa_insc_pendente') || '0', 10) || 0;
+                    // dispensa vale só nesta sessão de aba (até fechar)
+                    dispensou = !!tDisp;
+                } catch (eD) {}
+                if (!dispensou) mostrarAvisoInscPendenteLocal();
+            } catch (eAv) {}
             // Gestão/líder: PRIMEIRO puxa da nuvem (exclusões e última versão prevalecem),
             // depois sobe só o que ainda não existe na nuvem (feito dentro do puxar).
             try {
@@ -1277,6 +1588,17 @@
                         if (el) try { el.focus(); } catch (e) {}
                         return;
                     }
+                    var vn2 = (typeof validarDataNascimentoBR === 'function')
+                        ? validarDataNascimentoBR(nasc)
+                        : (window._validarDataNascimentoBR ? window._validarDataNascimentoBR(nasc) : { ok: !!nasc.match(/^\d{2}\/\d{2}\/\d{4}$/), msg: 'Use dd/mm/aaaa com ano de 4 dígitos.' });
+                    if (!vn2.ok) {
+                        alert(vn2.msg || 'Informe a data de nascimento com ano de 4 dígitos (ex.: 15/03/1990).');
+                        var elN = document.getElementById('visNascimento');
+                        if (elN) try { elN.focus(); } catch (eF) {}
+                        return;
+                    }
+                    nasc = vn2.br || nasc;
+                    try { document.getElementById('visNascimento').value = nasc; } catch (eN2) {}
                     modoVisitante = true;
                     window._visitanteEvento = { nome: n, telefone: t, nascimento: nasc, endereco: end };
                     try { sessionStorage.setItem('ibn_evento_visitante', JSON.stringify(window._visitanteEvento)); } catch (e) {}
@@ -1341,7 +1663,7 @@
             } catch (eF) {}
         }
 
-        document.getElementById('formInsc').addEventListener('submit', function(e) {
+        document.getElementById('formInsc').addEventListener('submit', async function(e) {
             e.preventDefault();
             // Pode preencher tudo antes; na hora de salvar exige Membro ou Visitante
             var ehMembro = verificarMembro();
@@ -1381,9 +1703,14 @@
                 || '';
             const munV = (document.getElementById('municipioInsc') || {}).value || '';
             const paraOutro = !ehMembro || quemEhParticipante() === 'outro' || modoVisitante;
-            // Visitante: exige nome, telefone e nascimento (endereço opcional)
+            // Visitante: exige nome, telefone e nascimento com ano de 4 dígitos (endereço opcional)
             if (paraOutro && !temFormCustom) {
                 if (!nascV) return alert('Informe a data de nascimento do participante.');
+                var vnInsc = (typeof validarDataNascimentoBR === 'function')
+                    ? validarDataNascimentoBR(nascV)
+                    : (window._validarDataNascimentoBR ? window._validarDataNascimentoBR(nascV) : { ok: true });
+                // type=date já vem yyyy-mm-dd; valida ano
+                if (vnInsc && !vnInsc.ok) return alert(vnInsc.msg || 'Data de nascimento inválida. Use ano com 4 dígitos.');
             }
 
             // Evitar inscrição duplicada no mesmo evento
@@ -1393,13 +1720,26 @@
                 return;
             }
 
+            var btnGerar = document.getElementById('btnEnviarInsc');
+            if (btnGerar) {
+                btnGerar.disabled = true;
+                btnGerar.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> Salvando inscrição...';
+            }
+
             // Código limpo: IBN-EV + id do evento (só alfanumérico) + sufixo aleatório curto
             const codigo = 'IBN-' + String(eventoId || 'EV').toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' + Date.now().toString(36).toUpperCase().slice(-6) + Math.random().toString(36).toUpperCase().slice(2, 6);
 
             const tipoInsc = (ehMembro && quemEhParticipante() === 'eu' && !modoVisitante) ? 'membro' : 'visitante';
+            const agoraIso = new Date().toISOString();
             const novaInsc = {
                 codigo, eventoId, eventoNome: evento.nome, nome, telefone, email,
-                valor: evento.valor, dataInsc: new Date().toLocaleString('pt-BR'), pago: false,
+                valor: Number(evento.valor) || 0,
+                dataInsc: new Date().toLocaleString('pt-BR'),
+                pago: false,
+                statusPagamento: 'pendente',
+                comprovanteEnviado: false,
+                comprovanteRecebido: false,
+                atualizadoEm: agoraIso,
                 tipo: tipoInsc,
                 nascimento: nascV || (membro && membro.nascimento) || '',
                 endereco: endV || (membro && membro.endereco) || '',
@@ -1411,8 +1751,46 @@
                 respostas: col.respostas || {}
             };
             inscritos.push(novaInsc);
-            salvarInscritos();
-            try { salvarUmInscritoNuvem(novaInsc); } catch (eNuv) {}
+            // 1) Espelho local
+            try { localStorage.setItem('inscritosIBN', JSON.stringify(inscritos)); } catch (eLoc) {}
+            // 2) Nuvem (Supabase) — OBRIGATÓRIO na primeira fase; aguarda e tenta de novo se falhar
+            var nuvemOk = false;
+            var nuvemMsg = '';
+            try {
+                if (typeof IBNEventosCloud !== 'undefined' && IBNEventosCloud.ativo && IBNEventosCloud.ativo() && IBNEventosCloud.salvarInscrito) {
+                    var r1 = await IBNEventosCloud.salvarInscrito(novaInsc);
+                    if (r1 && r1.sucesso) {
+                        nuvemOk = true;
+                    } else {
+                        // segunda tentativa
+                        var r2 = await IBNEventosCloud.salvarInscrito(novaInsc);
+                        if (r2 && r2.sucesso) nuvemOk = true;
+                        else nuvemMsg = (r2 && r2.mensagem) || (r1 && r1.mensagem) || 'Falha ao gravar no Supabase';
+                    }
+                } else if (typeof salvarUmInscritoNuvem === 'function') {
+                    var r3 = await salvarUmInscritoNuvem(novaInsc);
+                    nuvemOk = !!(r3 && r3.sucesso);
+                    if (!nuvemOk) nuvemMsg = (r3 && r3.mensagem) || 'Supabase/Firebase não respondeu';
+                } else {
+                    nuvemMsg = 'Módulo de nuvem não carregou';
+                }
+            } catch (eNuv) {
+                console.error('Salvar inscrição na nuvem:', eNuv);
+                nuvemMsg = (eNuv && eNuv.message) || String(eNuv);
+            }
+            if (!nuvemOk) {
+                console.warn('Inscrição ficou só no aparelho:', nuvemMsg);
+                // não bloqueia a pessoa, mas avisa com clareza
+                try {
+                    alert('Inscrição salva neste aparelho, mas NÃO entrou na nuvem ainda.\n\n' +
+                        (nuvemMsg ? ('Motivo: ' + nuvemMsg + '\n\n') : '') +
+                        'Verifique a internet e, se for gestão, use "Enviar deste aparelho".\nCódigo: ' + codigo);
+                } catch (eAl) {}
+            } else {
+                console.log('Inscrição gravada no Supabase:', codigo);
+            }
+            // mantém fila local + tentativa extra em lote (não atrasa a tela)
+            try { salvarInscritos(); } catch (eSal) {}
             try {
                 registrarNotifEvento('inscrito', evento,
                     'Nova inscrição: ' + (nome || '—') +
@@ -1421,6 +1799,11 @@
             } catch (eN) {}
 
             inscricaoAtual = novaInsc;
+            if (btnGerar) {
+                btnGerar.disabled = false;
+                btnGerar.innerHTML = '<i class="fa fa-check-circle mr-2"></i> Gerar Inscrição';
+            }
+            // Inscrição salva em local; nuvemOk indica se o Supabase confirmou
             document.getElementById('fatura').classList.remove('hidden');
             (function(){
                 var linkPag = (evento && (evento.linkPagamento || '')) || '';
@@ -1433,8 +1816,21 @@
                 if (typeof atualizarMeioPagUI === 'function') atualizarMeioPagUI();
             })();
             document.getElementById('codigoInsc').textContent = codigo;
+            var codTopo = document.getElementById('codigoInscTopo');
+            if (codTopo) codTopo.textContent = codigo;
+            var stNuvem = document.getElementById('statusNuvemInsc');
+            if (stNuvem) {
+                if (nuvemOk) {
+                    stNuvem.textContent = '✓ Registrado na nuvem (gestão já pode ver).';
+                    stNuvem.className = 'text-xs mt-1 text-green-700';
+                } else {
+                    stNuvem.textContent = '⚠ Ainda só neste aparelho — gestão pode não ver até sincronizar.';
+                    stNuvem.className = 'text-xs mt-1 text-amber-700 font-semibold';
+                }
+            }
             document.getElementById('nomeEventoFat').textContent = evento.nome;
-            document.getElementById('valorEventoFat').textContent = `R$ ${Number(evento.valor).toFixed(2)}`;
+            var valorNum = Number(evento.valor) || 0;
+            document.getElementById('valorEventoFat').textContent = valorNum <= 0 ? 'Gratuito' : ('R$ ' + valorNum.toFixed(2));
             document.getElementById('formaPagamento').textContent = evento.forma || evento.formaPagamento || 'PIX, Cartão, Dinheiro';
             document.getElementById('pixCode').textContent = (evento.pix || evento.pixDestino || '').trim() || '36.158.983/0001-36';
             var refEl = document.getElementById('pixReferencia');
@@ -1444,7 +1840,63 @@
             var infoEv = document.getElementById('pixInfoEvento');
             if (infoEv) infoEv.textContent = evento.nome || '';
 
-            document.getElementById('fatura').scrollIntoView({ behavior: 'smooth' });
+            // Evento gratuito x pago: ajusta UI do próximo passo
+            var gratis = valorNum <= 0;
+            var blocoPag = document.getElementById('blocoPagamentoInsc');
+            var boxUp = document.getElementById('boxUploadComprovante');
+            var txtPago = document.getElementById('textoProximoPassoPago');
+            var txtGratis = document.getElementById('textoProximoPassoGratis');
+            var btnConf = document.getElementById('btnConfirmar');
+            var btnDepois = document.getElementById('btnComprovanteDepois');
+            var ajuda = document.getElementById('ajudaProximoPasso');
+            var titProx = document.getElementById('tituloProximoPasso');
+            if (blocoPag) blocoPag.classList.toggle('hidden', gratis);
+            if (boxUp) boxUp.classList.toggle('hidden', gratis);
+            if (txtPago) txtPago.classList.toggle('hidden', gratis);
+            if (txtGratis) txtGratis.classList.toggle('hidden', !gratis);
+            if (titProx) {
+                titProx.innerHTML = gratis
+                    ? '<i class="fa fa-arrow-down mr-1"></i> Próximo passo — avise a gestão'
+                    : '<i class="fa fa-arrow-down mr-1"></i> Próximo passo — pague e confirme com a gestão';
+            }
+            if (btnConf) {
+                btnConf.innerHTML = gratis
+                    ? '<i class="fa fa-check mr-2"></i> Solicitar confirmação da gestão'
+                    : '<i class="fa fa-check mr-2"></i> Enviar comprovante e finalizar';
+            }
+            if (btnDepois) {
+                if (gratis) {
+                    btnDepois.classList.add('hidden');
+                } else {
+                    btnDepois.classList.remove('hidden');
+                    btnDepois.innerHTML = '<i class="fa fa-clock-o mr-2"></i> Finalizar e enviar comprovante depois';
+                }
+            }
+            if (ajuda) {
+                ajuda.innerHTML = gratis
+                    ? 'Sua inscrição <b>já está salva</b>. Toque no botão verde para a gestão confirmar o recebimento.'
+                    : 'A inscrição <b>já está salva</b>. Sem comprovante, fica <b>pendente</b> para a secretaria.';
+            }
+
+            // Esconde o formulário de inscrição para a pessoa focar no próximo passo
+            try {
+                var formBox = document.getElementById('formInscricao');
+                if (formBox) formBox.classList.add('hidden');
+                var secInsc = document.getElementById('inscricao');
+                if (secInsc) secInsc.classList.add('hidden');
+            } catch (eHide) {}
+
+            // Rola até o aviso verde + bloco do próximo passo (não só o topo do pagamento)
+            try {
+                document.getElementById('fatura').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (eSc1) {}
+            setTimeout(function () {
+                var alvo = document.getElementById('boxProximoPasso') || document.getElementById('boxInscSalvaAviso');
+                if (alvo) {
+                    try { alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (eSc2) {}
+                }
+            }, 350);
+
             // reset meio pagamento UI
             var pixRadio = document.querySelector('input[name="meioPag"][value="PIX"]');
             if (pixRadio) pixRadio.checked = true;
@@ -1459,17 +1911,47 @@
             var boxLink = document.getElementById('boxLinkOnline');
             var btnOn = document.getElementById('btnPagarOnline');
             var aviso = document.getElementById('avisoSemLinkPag');
+            var boxUp = document.getElementById('boxUploadComprovante');
+            var btnConf = document.getElementById('btnConfirmar');
+            var btnDepois = document.getElementById('btnComprovanteDepois');
+            var ajuda = document.getElementById('ajudaProximoPasso');
             var temLink = !!(btnOn && btnOn.getAttribute('href') && btnOn.getAttribute('href') !== '#' && btnOn.getAttribute('href').length > 8);
+            var ehDinheiro = /dinheiro/i.test(meio);
             if (boxPix) boxPix.classList.toggle('hidden', meio !== 'PIX');
             if (boxCard) boxCard.classList.toggle('hidden', meio.indexOf('PagBank') === -1 && meio.indexOf('Cartão') === -1);
             if (boxLink) {
                 // mostra link PagBank em PIX ou cartão, se existir
-                if (temLink && meio !== 'Dinheiro') boxLink.classList.remove('hidden');
+                if (temLink && !ehDinheiro) boxLink.classList.remove('hidden');
                 else boxLink.classList.add('hidden');
             }
             if (aviso) {
-                if (!temLink && meio !== 'Dinheiro' && meio !== 'PIX') aviso.classList.remove('hidden');
+                if (!temLink && !ehDinheiro && meio !== 'PIX') aviso.classList.remove('hidden');
                 else aviso.classList.add('hidden');
+            }
+            // Dinheiro na secretaria: não pede comprovante/arquivo
+            if (boxUp) boxUp.classList.toggle('hidden', ehDinheiro);
+            if (btnConf) {
+                if (ehDinheiro) {
+                    btnConf.innerHTML = '<i class="fa fa-check mr-2"></i> Confirmar pagamento em dinheiro na secretaria';
+                } else {
+                    // não sobrescreve texto de evento gratuito se upload já estiver oculto por valor 0
+                    var valorTxt = (document.getElementById('valorEventoFat') || {}).textContent || '';
+                    if (!/gratuito/i.test(valorTxt)) {
+                        btnConf.innerHTML = '<i class="fa fa-check mr-2"></i> Enviar comprovante e finalizar';
+                    }
+                }
+            }
+            if (btnDepois) {
+                if (ehDinheiro) btnDepois.classList.add('hidden');
+                else {
+                    var valorTxt2 = (document.getElementById('valorEventoFat') || {}).textContent || '';
+                    if (!/gratuito/i.test(valorTxt2)) btnDepois.classList.remove('hidden');
+                }
+            }
+            if (ajuda) {
+                if (ehDinheiro) {
+                    ajuda.innerHTML = 'Pagamento em <b>dinheiro</b> é na secretaria — não precisa enviar comprovante. Toque no botão verde para avisar a gestão.';
+                }
             }
         }
         document.addEventListener('change', function(ev) {
